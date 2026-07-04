@@ -1,0 +1,161 @@
+:root {
+  color-scheme: light;
+  --background: #f7f7f5;
+  --foreground: #1f2933;
+  --muted: #5f6b76;
+  --line: #d8ddd7;
+  --panel: #ffffff;
+  --accent: #006c67;
+  --accent-strong: #004f4b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.shell {
+  min-height: 100vh;
+}
+
+.topbar {
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.topbar-inner {
+  align-items: center;
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+  margin: 0 auto;
+  max-width: 1120px;
+  padding: 16px 24px;
+}
+
+.brand {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 14px;
+}
+
+.nav a {
+  color: var(--muted);
+}
+
+.nav a:hover {
+  color: var(--accent-strong);
+}
+
+.main {
+  margin: 0 auto;
+  max-width: 1120px;
+  padding: 40px 24px 64px;
+}
+
+.hero {
+  display: grid;
+  gap: 18px;
+  max-width: 760px;
+}
+
+.eyebrow {
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: clamp(36px, 7vw, 68px);
+  line-height: 1;
+  margin: 0;
+}
+
+h2 {
+  font-size: 24px;
+  margin: 0 0 12px;
+}
+
+p {
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  margin-top: 36px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.card h2,
+.card h3 {
+  margin-top: 0;
+}
+
+.card h3 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.list {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0 0;
+  padding: 0;
+}
+
+.list li {
+  color: var(--muted);
+  line-height: 1.5;
+  list-style-position: inside;
+}
+
+.status {
+  background: #e8f3f1;
+  border: 1px solid #b7d6d1;
+  border-radius: 8px;
+  color: var(--accent-strong);
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 8px 12px;
+}
+
+@media (max-width: 720px) {
+  .topbar-inner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

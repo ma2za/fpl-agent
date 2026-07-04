@@ -1,0 +1,21 @@
+{
+  "name": "fpl-agent",
+  "version": "0.0.1",
+  "private": true,
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@11.9.0",
+  "scripts": {
+    "dev": "corepack pnpm --filter @fpl-agent/web dev",
+    "build": "corepack pnpm --filter @fpl-agent/web build",
+    "test": "vitest run",
+    "fetch:data": "tsx scripts/fetch-fpl-data.ts",
+    "recommend": "node scripts/not-implemented.mjs recommend",
+    "verify": "node scripts/not-implemented.mjs verify",
+    "postmortem": "node scripts/not-implemented.mjs postmortem"
+  },
+  "devDependencies": {
+    "tsx": "4.22.5",
+    "typescript": "6.0.3",
+    "vitest": "4.1.9"
+  }
+}
