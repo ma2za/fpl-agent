@@ -65,7 +65,9 @@ pnpm install
 pnpm dev
 pnpm test
 pnpm fetch:data
+pnpm fixtures -- --gw 1 --horizon 6
 pnpm recommend -- --gw auto
+pnpm compare:squads -- --a path/to/a.json --b path/to/b.json
 pnpm verify -- --gw 1
 pnpm postmortem -- --gw 1
 ```
@@ -74,7 +76,11 @@ pnpm postmortem -- --gw 1
 
 `pnpm fetch:data` fetches public FPL API data, writes raw cache files, writes timestamped snapshots, and writes normalized player data.
 
+`pnpm fixtures -- --gw {n} --horizon {n}` writes a fixture ticker for agent review. It does not alter recommendations.
+
 `pnpm recommend -- --gw {n}` prepares evidence for the coding agent. It does not select players or write a final recommendation.
+
+`pnpm compare:squads` compares two agent-authored recommendation files and prints or writes a decision report.
 
 `pnpm verify -- --gw {n}` re-validates an agent-authored recommendation, rewrites the legality report, and exits non-zero when the recommendation is missing, illegal, or missing required rationale.
 
@@ -131,6 +137,8 @@ For coding-agent review, start with `agent-brief.md`. It lists the evidence file
 Scripts must not choose the squad, starting XI, captain, vice-captain, bench order, transfers, or chips. Those decisions belong to Codex, Claude Code, or a human developer after reviewing the evidence.
 
 Evidence includes `projection-summary.md`, `budget-tiers.json`, `club-exposure.json`, and `decision-prompts.md`.
+
+Fixture context is generated separately with `pnpm fixtures -- --gw {n} --horizon 6`.
 
 Large derived evidence JSON files are ignored by git. Regenerate them locally with `pnpm recommend -- --gw {n}`.
 

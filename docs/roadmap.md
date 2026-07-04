@@ -54,6 +54,8 @@
 - projection summary and decision prompts: done
 - recommendation quality gates: done
 - expanded verification report: done
+- fixture ticker evidence: done
+- squad comparison command: done
 
 ## Milestone 8: Cron Support
 

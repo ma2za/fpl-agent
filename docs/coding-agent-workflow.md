@@ -44,6 +44,10 @@ recommendation-template.json
 
 Large derived evidence JSON files are local artifacts and ignored by git. Commit authored recommendation files and compact summaries, not raw generated player pools.
 
+`pnpm fixtures -- --gw {n} --horizon 6` writes fixture ticker evidence for the same gameweek folder.
+
+`pnpm compare:squads -- --a <recommendation.json> --b <recommendation.json>` compares two authored drafts without choosing between them.
+
 ## Quality Gates
 
 `pnpm verify -- --gw {n}` checks legality and recommendation quality. Legality errors block. Missing required rationale blocks. Stale data, excess bank, low-minutes starters, and club concentration are reported as warnings for agent review.

@@ -120,3 +120,62 @@ export type RecommendationQualityReport = {
   warnings: string[];
   gates: QualityGateResult[];
 };
+
+export type FixtureTickerFixture = {
+  event: number;
+  opponentTeamId: number;
+  opponentName: string;
+  venue: "H" | "A";
+  difficulty: number;
+  kickoffTime: string | null;
+  finished: boolean;
+};
+
+export type FixtureTickerTeam = {
+  teamId: number;
+  teamName: string;
+  shortName: string;
+  fixtures: FixtureTickerFixture[];
+  fixtureCount: number;
+  blankCount: number;
+  doubleCount: number;
+  averageDifficulty: number | null;
+  difficultySum: number;
+};
+
+export type FixtureTicker = {
+  gameweek: number;
+  horizon: number;
+  generatedAt: string;
+  teams: FixtureTickerTeam[];
+};
+
+export type SquadComparison = {
+  generatedAt: string;
+  a: {
+    label: string;
+    recommendation: WeeklyRecommendation;
+    quality: RecommendationQualityReport;
+  };
+  b: {
+    label: string;
+    recommendation: WeeklyRecommendation;
+    quality: RecommendationQualityReport;
+  };
+  sharedPlayerIds: number[];
+  onlyAPlayerIds: number[];
+  onlyBPlayerIds: number[];
+  summary: {
+    budgetUsedA: number;
+    budgetUsedB: number;
+    bankA: number;
+    bankB: number;
+    projectedPointsA: number;
+    projectedPointsB: number;
+    captainA: number;
+    captainB: number;
+    chipA: string;
+    chipB: string;
+  };
+  notes: string[];
+};

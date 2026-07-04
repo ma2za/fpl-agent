@@ -243,6 +243,7 @@ packages/content/recommendations/**/projections.json
 packages/content/recommendations/**/player-pool.json
 packages/content/recommendations/**/budget-tiers.json
 packages/content/recommendations/**/club-exposure.json
+packages/content/recommendations/**/fixture-ticker.json
 
 # Local OS/editor noise
 .DS_Store
