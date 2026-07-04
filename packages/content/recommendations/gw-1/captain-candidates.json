@@ -1,0 +1,47 @@
+[
+  {
+    "playerId": 430,
+    "projectedPoints": 6.2,
+    "expectedMinutes": 85,
+    "fixtureSummary": "Old-data projection only",
+    "risk": "low",
+    "upsideCase": "Best projection in this selected squad and elite goal volume profile.",
+    "downsideCase": "Stale fixture and price data may not reflect real GW1 context."
+  },
+  {
+    "playerId": 449,
+    "projectedPoints": 5.9,
+    "expectedMinutes": 85,
+    "fixtureSummary": "Old-data projection only",
+    "risk": "low",
+    "upsideCase": "High minutes, set-piece involvement, and second-best squad projection.",
+    "downsideCase": "Old team and fixture context may be wrong."
+  },
+  {
+    "playerId": 5,
+    "projectedPoints": 5.8,
+    "expectedMinutes": 85,
+    "fixtureSummary": "Old-data projection only",
+    "risk": "low",
+    "upsideCase": "Strong defensive projection with set-piece threat.",
+    "downsideCase": "Defender captaincy has lower ceiling than premium attackers."
+  },
+  {
+    "playerId": 249,
+    "projectedPoints": 5.1,
+    "expectedMinutes": 85,
+    "fixtureSummary": "Old-data projection only",
+    "risk": "medium",
+    "upsideCase": "Forward slot with good old-data projection at mid-price.",
+    "downsideCase": "Role and minutes need current confirmation."
+  },
+  {
+    "playerId": 16,
+    "projectedPoints": 4.8,
+    "expectedMinutes": 75,
+    "fixtureSummary": "Old-data projection only",
+    "risk": "medium",
+    "upsideCase": "Premium midfielder profile and Arsenal attacking exposure.",
+    "downsideCase": "Projection trails Haaland and Bruno in the stale data."
+  }
+]

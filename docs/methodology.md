@@ -14,7 +14,7 @@ The first complete recommendation model should be simple, transparent, and repla
 
 - Prefer legal recommendations over aggressive optimization.
 - Treat deadline status as a hard constraint.
-- Prefer transparent point projections over black-box models.
+- Use transparent point projections as evidence, not as automatic player selection.
 - Keep chip recommendations conservative.
 - Include risks and conditions that would change the decision.
 
@@ -32,6 +32,12 @@ projected_points =
 ```
 
 This model is intentionally simple and inspectable.
+
+## Agent Selection
+
+Final squad, starting XI, captaincy, bench order, transfer, and chip decisions are authored by the coding agent or human developer after reviewing evidence and current public context.
+
+Scripts must not make those final calls.
 
 ## Manual Execution
 

@@ -1,0 +1,27 @@
+{
+  "status": "agent_decision_required",
+  "gameweek": 1,
+  "createdAt": null,
+  "deadline": "2025-08-15T17:30:00Z",
+  "deadlineStatus": "unknown",
+  "dataMode": "provisional",
+  "squadBefore": {
+    "players": [],
+    "bank": null,
+    "freeTransfers": 1,
+    "chipsAvailable": [
+      "wildcard",
+      "free_hit",
+      "bench_boost",
+      "triple_captain"
+    ]
+  },
+  "recommendedAction": null,
+  "pickTeam": null,
+  "captaincy": null,
+  "chip": null,
+  "confidence": null,
+  "risks": [],
+  "whatWouldChangeMyMind": [],
+  "manualExecutionRequired": true
+}

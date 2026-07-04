@@ -1,0 +1,310 @@
+{
+  "gameweek": 1,
+  "createdAt": "2026-07-04T15:59:10.4060362Z",
+  "deadline": "2025-08-15T17:30:00Z",
+  "deadlineStatus": "unknown",
+  "dataMode": "provisional",
+  "squadBefore": {
+    "players": [
+      {
+        "id": 139,
+        "name": "Bart Verbruggen",
+        "position": "GKP",
+        "teamId": 6,
+        "price": 4.6,
+        "nowCost": 46,
+        "status": "a",
+        "minutes": 3420
+      },
+      {
+        "id": 679,
+        "name": "Mads Hermansen",
+        "position": "GKP",
+        "teamId": 19,
+        "price": 4.2,
+        "nowCost": 42,
+        "status": "a",
+        "minutes": 1620
+      },
+      {
+        "id": 5,
+        "name": "Gabriel dos Santos Magalhães",
+        "position": "DEF",
+        "teamId": 1,
+        "price": 7.3,
+        "nowCost": 73,
+        "status": "a",
+        "minutes": 2750
+      },
+      {
+        "id": 72,
+        "name": "Marcos Senesi Barón",
+        "position": "DEF",
+        "teamId": 4,
+        "price": 5.2,
+        "nowCost": 52,
+        "status": "a",
+        "minutes": 3288
+      },
+      {
+        "id": 694,
+        "name": "Nordi Mukiele",
+        "position": "DEF",
+        "teamId": 17,
+        "price": 4.6,
+        "nowCost": 46,
+        "status": "a",
+        "minutes": 2784
+      },
+      {
+        "id": 295,
+        "name": "Michael Keane",
+        "position": "DEF",
+        "teamId": 9,
+        "price": 4.5,
+        "nowCost": 45,
+        "status": "a",
+        "minutes": 2588
+      },
+      {
+        "id": 442,
+        "name": "Harry Maguire",
+        "position": "DEF",
+        "teamId": 14,
+        "price": 4.4,
+        "nowCost": 44,
+        "status": "a",
+        "minutes": 1649
+      },
+      {
+        "id": 449,
+        "name": "Bruno Borges Fernandes",
+        "position": "MID",
+        "teamId": 14,
+        "price": 10.4,
+        "nowCost": 104,
+        "status": "a",
+        "minutes": 3065
+      },
+      {
+        "id": 16,
+        "name": "Bukayo Saka",
+        "position": "MID",
+        "teamId": 1,
+        "price": 10,
+        "nowCost": 100,
+        "status": "a",
+        "minutes": 2218
+      },
+      {
+        "id": 417,
+        "name": "Rayan Cherki",
+        "position": "MID",
+        "teamId": 13,
+        "price": 6.5,
+        "nowCost": 65,
+        "status": "a",
+        "minutes": 1772
+      },
+      {
+        "id": 517,
+        "name": "Elliot Anderson",
+        "position": "MID",
+        "teamId": 16,
+        "price": 5.7,
+        "nowCost": 57,
+        "status": "a",
+        "minutes": 3332
+      },
+      {
+        "id": 242,
+        "name": "Kiernan Dewsbury-Hall",
+        "position": "MID",
+        "teamId": 9,
+        "price": 5.3,
+        "nowCost": 53,
+        "status": "a",
+        "minutes": 2629
+      },
+      {
+        "id": 430,
+        "name": "Erling Haaland",
+        "position": "FWD",
+        "teamId": 13,
+        "price": 14.7,
+        "nowCost": 147,
+        "status": "a",
+        "minutes": 2953
+      },
+      {
+        "id": 249,
+        "name": "João Pedro Junqueira de Jesus",
+        "position": "FWD",
+        "teamId": 7,
+        "price": 7.4,
+        "nowCost": 74,
+        "status": "a",
+        "minutes": 2658
+      },
+      {
+        "id": 100,
+        "name": "Junior Kroupi",
+        "position": "FWD",
+        "teamId": 4,
+        "price": 4.7,
+        "nowCost": 47,
+        "status": "a",
+        "minutes": 1663
+      }
+    ],
+    "bank": 0.5,
+    "freeTransfers": 1,
+    "chipsAvailable": [
+      "wildcard",
+      "free_hit",
+      "bench_boost",
+      "triple_captain"
+    ]
+  },
+  "recommendedAction": {
+    "type": "roll",
+    "transfers": [],
+    "transferCost": 0,
+    "bankAfter": 0.5,
+    "explanation": "Initial old-data draft squad. No transfer action applies because this is a from-scratch provisional squad."
+  },
+  "pickTeam": {
+    "formation": "3-4-3",
+    "startingXI": [
+      139,
+      5,
+      72,
+      694,
+      449,
+      16,
+      417,
+      517,
+      430,
+      249,
+      100
+    ],
+    "benchOrder": [
+      679,
+      242,
+      295,
+      442
+    ],
+    "projectedPoints": 52.7,
+    "explanation": "Agent-authored 3-4-3 using old-data projections. This version keeps premium attackers while reducing club concentration from the earlier draft."
+  },
+  "captaincy": {
+    "captainPlayerId": 430,
+    "viceCaptainPlayerId": 449,
+    "alternatives": [
+      {
+        "playerId": 430,
+        "projectedPoints": 6.2,
+        "expectedMinutes": 85,
+        "fixtureSummary": "Old-data projection only",
+        "risk": "low",
+        "upsideCase": "Best projection in this selected squad and elite goal volume profile.",
+        "downsideCase": "Stale fixture and price data may not reflect real GW1 context."
+      },
+      {
+        "playerId": 449,
+        "projectedPoints": 5.9,
+        "expectedMinutes": 85,
+        "fixtureSummary": "Old-data projection only",
+        "risk": "low",
+        "upsideCase": "High minutes, set-piece involvement, and second-best squad projection.",
+        "downsideCase": "Old team and fixture context may be wrong."
+      },
+      {
+        "playerId": 5,
+        "projectedPoints": 5.8,
+        "expectedMinutes": 85,
+        "fixtureSummary": "Old-data projection only",
+        "risk": "low",
+        "upsideCase": "Strong defensive projection with set-piece threat.",
+        "downsideCase": "Defender captaincy has lower ceiling than premium attackers."
+      },
+      {
+        "playerId": 249,
+        "projectedPoints": 5.1,
+        "expectedMinutes": 85,
+        "fixtureSummary": "Old-data projection only",
+        "risk": "medium",
+        "upsideCase": "Forward slot with good old-data projection at mid-price.",
+        "downsideCase": "Role and minutes need current confirmation."
+      },
+      {
+        "playerId": 16,
+        "projectedPoints": 4.8,
+        "expectedMinutes": 75,
+        "fixtureSummary": "Old-data projection only",
+        "risk": "medium",
+        "upsideCase": "Premium midfielder profile and Arsenal attacking exposure.",
+        "downsideCase": "Projection trails Haaland and Bruno in the stale data."
+      }
+    ],
+    "explanation": "Captain Haaland because he has the highest old-data projection and best explosive scoring profile. Vice Bruno because he is second in projection and a reliable minutes/set-piece option."
+  },
+  "chip": {
+    "chip": "none",
+    "confidence": "high",
+    "expectedGain": 0,
+    "reasons": [
+      "No GW1 chip should be used from stale data.",
+      "Bench boost and triple captain require current fixtures and team news."
+    ],
+    "warnings": [
+      "Human manager must confirm any chip manually in the official FPL interface."
+    ]
+  },
+  "topTransferCandidates": [
+    {
+      "id": "initial-draft",
+      "type": "roll",
+      "moves": [],
+      "transferCost": 0,
+      "expectedGain1GW": 0,
+      "expectedGain3GW": 0,
+      "expectedGain5GW": 0,
+      "risk": "low",
+      "reasons": [
+        "This is an initial squad draft, not a transfer plan."
+      ],
+      "concerns": [
+        "Official current-season data is not live in the public FPL API."
+      ],
+      "isLegal": true,
+      "legalityErrors": []
+    }
+  ],
+  "confidence": {
+    "score": 0.28,
+    "label": "low",
+    "explanation": "Low confidence because this is explicitly based on stale public FPL data, but this version improves club-risk balance."
+  },
+  "risks": [
+    "Official current-season FPL prices, player IDs, positions, clubs, fixtures, and flags may differ.",
+    "The public API data currently points to completed 2025/26 gameweek data.",
+    "No current injury, suspension, transfer, or predicted-lineup news has been ingested.",
+    "This should be replaced once official current-season FPL data is live."
+  ],
+  "whatWouldChangeMyMind": [
+    "Official FPL launch data changes prices, positions, or clubs.",
+    "GW1 fixtures make a premium attacker or defender clearly better.",
+    "Team news changes expected minutes for Cherki, Kroupi, João Pedro, or the defensive picks.",
+    "A current squad is supplied in config/squad.ts."
+  ],
+  "legality": {
+    "isValid": true,
+    "errors": [],
+    "warnings": [
+      "Deadline status is unknown.",
+      "Old-data provisional draft only."
+    ]
+  },
+  "manualExecutionRequired": true
+}

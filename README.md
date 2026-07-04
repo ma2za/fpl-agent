@@ -45,8 +45,9 @@ cron or human starts analysis
 public FPL API data is fetched
 manual squad config or public manager data is read
 rules and methodology are applied
+evidence files are written
 Codex, Claude Code, or a developer reviews facts and news
-recommendation files are written
+the agent authors recommendation files
 human reads manual-checklist.md
 human manually applies accepted changes in FPL
 postmortem compares recommendation to actual outcome
@@ -73,7 +74,11 @@ pnpm postmortem -- --gw 1
 
 `pnpm fetch:data` fetches public FPL API data, writes raw cache files, writes timestamped snapshots, and writes normalized player data.
 
-Recommendation, verification, and postmortem commands are placeholders until later milestones implement those workflows.
+`pnpm recommend -- --gw {n}` prepares evidence for the coding agent. It does not select players or write a final recommendation.
+
+`pnpm verify -- --gw {n}` re-validates an agent-authored recommendation, rewrites the legality report, and exits non-zero when the recommendation is missing, illegal, or missing required rationale.
+
+Postmortem commands are placeholders until later milestones implement those workflows.
 
 ## Configuration
 
@@ -115,19 +120,37 @@ data/processed/players.json
 
 ## Recommendations
 
-Future `pnpm recommend -- --gw {n}` output will live under:
+`pnpm recommend -- --gw {n}` evidence output lives under:
 
 ```txt
 packages/content/recommendations/gw-{n}/
 ```
 
-The most important file will be `manual-checklist.md`, written for a human who manually applies any accepted changes in FPL.
+For coding-agent review, start with `agent-brief.md`. It lists the evidence files and current judgment checks before the agent authors a final recommendation.
+
+Scripts must not choose the squad, starting XI, captain, vice-captain, bench order, transfers, or chips. Those decisions belong to Codex, Claude Code, or a human developer after reviewing the evidence.
+
+Evidence includes `projection-summary.md`, `budget-tiers.json`, `club-exposure.json`, and `decision-prompts.md`.
+
+Large derived evidence JSON files are ignored by git. Regenerate them locally with `pnpm recommend -- --gw {n}`.
+
+Manual context notes live under:
+
+```txt
+packages/content/context/
+```
 
 ## Verification
 
-Future `pnpm verify -- --gw {n}` will validate that generated recommendations obey FPL rules before a final manual checklist is accepted.
+`pnpm verify -- --gw {n}` validates agent-authored recommendation files before a manual checklist is trusted.
 
-Invalid recommendations must fail loudly.
+It checks squad legality, starting XI, formation, bench order, captaincy, chip availability, transfer cost, deadline status, the manual-execution safety flag, and quality gates for rationale and risk notes.
+
+Invalid recommendations fail loudly and update:
+
+```txt
+packages/content/recommendations/gw-{n}/legality-report.json
+```
 
 ## Cron
 
@@ -145,9 +168,10 @@ pnpm dev
 
 ## Known Limitations
 
-- The repo does not generate recommendations yet.
+- The repo prepares deterministic evidence files from cached FPL data.
 - The repo validates squads, formations, captaincy, bench order, chips, deadlines, and transfer costs.
-- The repo can generate deterministic projections, captain rankings, bench order, chip recommendations, and transfer candidates.
+- The repo can generate deterministic projections and player-pool evidence.
+- Player selection is intentionally agent-authored, not script-authored.
 - The repo does not ingest FPL news automatically.
 - Public manager endpoints exist in the API client but are not wired into recommendation flow yet.
 

@@ -238,6 +238,12 @@ data/raw/**/*.json
 data/processed/**/*.json
 data/cache/**/*.json
 
+# Large generated recommendation evidence
+packages/content/recommendations/**/projections.json
+packages/content/recommendations/**/player-pool.json
+packages/content/recommendations/**/budget-tiers.json
+packages/content/recommendations/**/club-exposure.json
+
 # Local OS/editor noise
 .DS_Store
 Thumbs.db

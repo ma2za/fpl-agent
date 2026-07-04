@@ -36,32 +36,40 @@
 
 ## Milestone 5: Recommendation Output
 
-- recommendation JSON
-- manual checklist markdown
-- legality report
-- deterministic template output
+- evidence pack output: done
+- recommendation template output: done
+- placeholder manual checklist: done
+- no script-selected players: done
 
 ## Milestone 6: Verification
 
-- recommendation validation command
-- illegal recommendation blocking
-- tests for invalid scenarios
+- agent-authored recommendation validation command: done
+- illegal recommendation blocking: done
+- tests for invalid scenarios: done
 
-## Milestone 7: Cron Support
+## Milestone 7: Agent Decision Toolkit
+
+- manual context notes: done
+- richer evidence pack: done
+- projection summary and decision prompts: done
+- recommendation quality gates: done
+- expanded verification report: done
+
+## Milestone 8: Cron Support
 
 - `--gw auto`
 - deadline detection
 - safe failure behavior
 - cron documentation
 
-## Milestone 8: Website
+## Milestone 9: Website
 
 - generated recommendation archive
 - recommendation detail pages
 - squad page backed by config/data
 - methodology and postmortem pages
 
-## Milestone 9: Postmortems
+## Milestone 10: Postmortems
 
 - load saved recommendations
 - compare projections to actual points

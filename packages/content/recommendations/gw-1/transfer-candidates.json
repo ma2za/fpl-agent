@@ -1,0 +1,20 @@
+[
+  {
+    "id": "initial-draft",
+    "type": "roll",
+    "moves": [],
+    "transferCost": 0,
+    "expectedGain1GW": 0,
+    "expectedGain3GW": 0,
+    "expectedGain5GW": 0,
+    "risk": "low",
+    "reasons": [
+      "This is an initial squad draft, not a transfer plan."
+    ],
+    "concerns": [
+      "Official current-season data is not live in the public FPL API."
+    ],
+    "isLegal": true,
+    "legalityErrors": []
+  }
+]

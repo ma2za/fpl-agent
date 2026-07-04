@@ -9,8 +9,8 @@
     "build": "corepack pnpm --filter @fpl-agent/web build",
     "test": "vitest run",
     "fetch:data": "tsx scripts/fetch-fpl-data.ts",
-    "recommend": "node scripts/not-implemented.mjs recommend",
-    "verify": "node scripts/not-implemented.mjs verify",
+    "recommend": "tsx scripts/generate-recommendation.ts",
+    "verify": "tsx scripts/verify-recommendation.ts",
     "postmortem": "node scripts/not-implemented.mjs postmortem"
   },
   "devDependencies": {

@@ -1,0 +1,74 @@
+{
+  "gameweek": 1,
+  "createdAt": "2026-07-04T15:58:18.215Z",
+  "dataMode": "provisional",
+  "deadline": "2025-08-15T17:30:00Z",
+  "deadlineStatus": "unknown",
+  "manualSquadConfigured": false,
+  "currentSquadPlayerIds": [],
+  "riskProfile": {
+    "transferHits": "conservative",
+    "chipUsage": "conservative",
+    "rotationRisk": "balanced",
+    "injuryRisk": "conservative"
+  },
+  "notes": {
+    "fixtures": "# Fixtures\n\nUse this file for manually reviewed fixture notes before authoring a recommendation.\n\n## Notes\n\n- Official 2026/27 GW1 fixtures are not confirmed in this repo yet.\n- Do not treat stale 2025/26 fixture data as current-season evidence.\n",
+    "teamNews": "# Team News\n\nUse this file for manually reviewed injury, suspension, transfer, and predicted-lineup notes.\n\n## Notes\n\n- No current team-news notes have been reviewed yet.\n- Confirm expected starters before trusting any provisional recommendation.\n",
+    "setPieces": "# Set Pieces\n\nUse this file for manually reviewed penalty, free-kick, and corner-taking notes.\n\n## Notes\n\n- No current set-piece notes have been reviewed yet.\n- Confirm penalty and set-piece roles before final captaincy or premium-midfield calls.\n",
+    "watchlist": "# Watchlist\n\nUse this file for players the agent should actively consider or avoid.\n\n## Consider\n\n- None yet.\n\n## Avoid\n\n- None yet.\n",
+    "strategy": "# Strategy\n\nUse this file for manager preference and season-opening strategy notes.\n\n## Defaults\n\n- Prefer legal, robust squads over aggressive punts.\n- Avoid early chips unless there is a clear fixture-driven reason.\n- Treat provisional or stale data as low-confidence evidence.\n"
+  },
+  "warnings": [
+    "Public FPL data may be stale. The agent must verify current season data before selecting players."
+  ],
+  "event": {
+    "id": 1,
+    "name": "Gameweek 1",
+    "deadline_time": "2025-08-15T17:30:00Z",
+    "is_current": false,
+    "is_next": false,
+    "is_previous": false,
+    "release_time": null,
+    "average_entry_score": 54,
+    "finished": true,
+    "data_checked": true,
+    "highest_scoring_entry": 3772644,
+    "deadline_time_epoch": 1755279000,
+    "deadline_time_game_offset": 0,
+    "highest_score": 127,
+    "cup_leagues_created": false,
+    "h2h_ko_matches_created": false,
+    "can_enter": false,
+    "can_manage": false,
+    "released": true,
+    "ranked_count": 9469118,
+    "overrides": {
+      "rules": {},
+      "scoring": {},
+      "element_types": [],
+      "pick_multiplier": null
+    },
+    "chip_plays": [
+      {
+        "chip_name": "bboost",
+        "num_played": 342779
+      },
+      {
+        "chip_name": "3xc",
+        "num_played": 272642
+      }
+    ],
+    "most_selected": 235,
+    "most_transferred_in": 1,
+    "top_element": 531,
+    "top_element_info": {
+      "id": 531,
+      "points": 17
+    },
+    "transfers_made": 0,
+    "most_captained": 381,
+    "most_vice_captained": 235
+  },
+  "officialModeRequested": false
+}

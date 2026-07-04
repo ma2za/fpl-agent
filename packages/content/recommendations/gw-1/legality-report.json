@@ -1,0 +1,63 @@
+{
+  "isValid": true,
+  "errors": [],
+  "warnings": [
+    "Deadline status is unknown.",
+    "Provisional recommendation: player IDs, prices, fixtures, and availability may be stale.",
+    "Recommendation uses provisional data."
+  ],
+  "quality": {
+    "isValid": true,
+    "errors": [],
+    "warnings": [
+      "Recommendation uses provisional data."
+    ],
+    "gates": [
+      {
+        "gate": "budget",
+        "status": "pass",
+        "message": "Squad uses £99.5 with £0.5 bank."
+      },
+      {
+        "gate": "position-counts",
+        "status": "pass",
+        "message": "Squad has valid position counts."
+      },
+      {
+        "gate": "club-exposure",
+        "status": "pass",
+        "message": "No club concentration warning."
+      },
+      {
+        "gate": "starter-minutes",
+        "status": "pass",
+        "message": "No low-minutes starter warning from available player metadata."
+      },
+      {
+        "gate": "data-freshness",
+        "status": "warn",
+        "message": "Recommendation uses provisional data."
+      },
+      {
+        "gate": "captaincy-rationale",
+        "status": "pass",
+        "message": "Captaincy rationale is present."
+      },
+      {
+        "gate": "chip-rationale",
+        "status": "pass",
+        "message": "Chip rationale is present."
+      },
+      {
+        "gate": "risks",
+        "status": "pass",
+        "message": "Risks are present."
+      },
+      {
+        "gate": "what-would-change",
+        "status": "pass",
+        "message": "Change conditions are present."
+      }
+    ]
+  }
+}
