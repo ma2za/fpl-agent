@@ -235,6 +235,7 @@ apps/web/.next/
 
 # Generated FPL data
 data/raw/**/*.json
+data/raw/**/*.csv
 data/processed/**/*.json
 data/cache/**/*.json
 
@@ -244,6 +245,9 @@ packages/content/recommendations/**/player-pool.json
 packages/content/recommendations/**/budget-tiers.json
 packages/content/recommendations/**/club-exposure.json
 packages/content/recommendations/**/fixture-ticker.json
+packages/content/recommendations/**/strategy-evidence.json
+packages/content/recommendations/**/raw-sources/
+packages/content/recommendations/**/source-snapshots/
 
 # Local OS/editor noise
 .DS_Store

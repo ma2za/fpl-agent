@@ -1,0 +1,37 @@
+{
+  "gameweek": 1,
+  "status": "agent_authored",
+  "riskProfile": "balanced",
+  "squadSource": "from_scratch",
+  "weeklyThesis": "GW1 is an initial structure week. Build a legal from-scratch squad around reliable captaincy, starter security, and flexibility for the first fixture swing. Official FPL data is available, but the squad still needs a final team-news check before deadline.",
+  "horizons": {
+    "oneGameweek": "Use for captaincy, vice-captaincy, starting XI, and bench order.",
+    "threeGameweeks": "Avoid one-week punts that force immediate transfers.",
+    "sixGameweeks": "Keep enough budget flexibility to react to early role, price, and fixture information."
+  },
+  "transferPlan": {
+    "posture": "roll",
+    "rationale": "No transfer action applies to a from-scratch initial squad. The weekly posture is roll unless a configured squad is supplied before deadline.",
+    "followsRiskProfile": true
+  },
+  "captaincyPlan": {
+    "primaryProfile": "Premium attacker with strong minutes, central goal involvement, and a favorable GW1 fixture.",
+    "rationale": "GW1 captaincy should prioritize role security and ceiling rather than a short-term punt."
+  },
+  "chipPlan": {
+    "chip": "none",
+    "rationale": "No chip in GW1. This follows the season chip posture of saving chips for doubles, blanks, or exceptional captaincy edges.",
+    "referencesSeasonPosture": true
+  },
+  "risks": [
+    "Official FPL data can still change through flags, transfers, and late availability updates.",
+    "Team news can change expected minutes before deadline.",
+    "A late transfer or injury can invalidate an otherwise legal squad."
+  ],
+  "whatWouldChangeMyMind": [
+    "A real configured squad is added before deadline.",
+    "Official FPL data changes the price or position assumptions.",
+    "Team news removes a planned starter from the XI.",
+    "Fixtures or captaincy projections create a clear chip edge."
+  ]
+}

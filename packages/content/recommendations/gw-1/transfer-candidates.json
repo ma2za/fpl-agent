@@ -1,6 +1,6 @@
 [
   {
-    "id": "initial-draft",
+    "id": "initial-gw1-draft",
     "type": "roll",
     "moves": [],
     "transferCost": 0,
@@ -9,10 +9,11 @@
     "expectedGain5GW": 0,
     "risk": "low",
     "reasons": [
-      "This is an initial squad draft, not a transfer plan."
+      "This is a from-scratch initial squad, not a transfer plan.",
+      "No configured squad exists to sell from."
     ],
     "concerns": [
-      "Official current-season data is not live in the public FPL API."
+      "Final player choices still need matched GW1 odds rows and predicted-lineup evidence before deadline."
     ],
     "isLegal": true,
     "legalityErrors": []

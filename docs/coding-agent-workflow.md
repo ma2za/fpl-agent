@@ -12,6 +12,7 @@ This repo is structured so Codex, Claude Code, or a developer can make decisions
 - manual context notes in `packages/content/context`
 - previous recommendations and postmortems in `packages/content`
 - generated evidence files from `pnpm recommend -- --gw {n}`
+- season and weekly strategy files under `packages/content/strategy`
 
 ## Agent Output
 
@@ -22,11 +23,14 @@ packages/content/recommendations/gw-{n}/recommendation.json
 packages/content/recommendations/gw-{n}/agent-brief.md
 packages/content/recommendations/gw-{n}/manual-checklist.md
 packages/content/recommendations/gw-{n}/legality-report.json
+packages/content/recommendations/gw-{n}/risk-report.md
 ```
 
 `agent-brief.md` is the first file a coding agent should read for a gameweek. It separates deterministic evidence from the non-deterministic judgment checks that require current FPL news and human review.
 
 Scripts must not select players. They can prepare evidence, projections, data status, and templates. The coding agent authors the final squad, starting XI, captaincy, bench order, transfers, and chip decision.
+
+The coding agent also authors the weekly strategy memo and JSON before verification. Strategy files explain the season posture, weekly thesis, transfer posture, captaincy profile, chip decision, risks, and change conditions.
 
 ## Evidence Files
 
@@ -34,23 +38,58 @@ Scripts must not select players. They can prepare evidence, projections, data st
 
 ```txt
 data-status.json
+evidence-report.json
+evidence-report.md
 player-pool.json
 projection-summary.md
 budget-tiers.json
 club-exposure.json
 decision-prompts.md
 recommendation-template.json
+strategy-evidence.json
 ```
 
 Large derived evidence JSON files are local artifacts and ignored by git. Commit authored recommendation files and compact summaries, not raw generated player pools.
 
+`pnpm evidence -- --gw {n}` refreshes `evidence-report.json` and `evidence-report.md`. The report tracks source presence and freshness for FPL data, fixtures, team news, set pieces, odds, and minutes evidence. It does not fetch external news or select players.
+
+`pnpm odds -- --gw {n}` writes `odds-report.json` and `odds-report.md` from the public Football-Data fixtures CSV. It is evidence-only: it can show match-level market coverage and derived team signals, but it must not choose players or hide source coverage gaps.
+
+`pnpm team-news -- --gw {n}` writes `team-news-report.json` and `team-news-report.md` from public FPL availability fields, including selected-squad flags when a recommendation exists.
+
+`pnpm set-pieces -- --gw {n}` writes `set-pieces-report.json` and `set-pieces-report.md` from public FPL role-order fields, including selected-squad role flags when a recommendation exists.
+
 `pnpm fixtures -- --gw {n} --horizon 6` writes fixture ticker evidence for the same gameweek folder.
 
+`pnpm fetch:pl-fixtures -- --gw {n} --horizon 6` writes current-season fixture evidence from the official Premier League fixture release when the Fantasy Premier League API has not yet exposed current event data.
+
 `pnpm compare:squads -- --a <recommendation.json> --b <recommendation.json>` compares two authored drafts without choosing between them.
+
+Authored variants should live under:
+
+```txt
+packages/content/recommendations/gw-{n}/variants/{slug}/recommendation.json
+```
+
+The decision loop is:
+
+1. Run `pnpm recommend -- --gw {n}` to refresh evidence.
+2. Run source-specific evidence commands such as `pnpm team-news`, `pnpm set-pieces`, and `pnpm odds`.
+3. Author `recommendation.json`, `agent-brief.md`, and `manual-checklist.md`.
+4. Run `pnpm verify -- --gw {n}`.
+5. Read `risk-report.md` and update manual context or author a variant if needed.
+6. Compare authored variants with `pnpm compare:squads`.
+7. Keep the final recommendation human-readable and manually executable.
 
 ## Quality Gates
 
 `pnpm verify -- --gw {n}` checks legality and recommendation quality. Legality errors block. Missing required rationale blocks. Stale data, excess bank, low-minutes starters, and club concentration are reported as warnings for agent review.
+
+Verification also checks `packages/content/strategy/weekly/gw-{n}.json` against the recommendation and `packages/content/strategy/season-plan.md`.
+
+Verification also writes `risk-report.json` and `risk-report.md`. The risk report is non-blocking and evidence-only. It may flag player risks, structure risks, fixture clusters, and missing context, but it must not recommend replacement players.
+
+Verification also writes the evidence report and copies its freshness warnings into `legality-report.json` as non-blocking warnings.
 
 ## Hard Rules
 

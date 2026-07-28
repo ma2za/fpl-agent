@@ -2,55 +2,57 @@
 
 ## Status
 
-Data mode: provisional old data
+Data mode: official
 
-Deadline in cached data: 2025-08-15T17:30:00Z
+Deadline: 2026-08-21T17:30:00Z
 
-Legality target: valid after verification
-
-Confidence: low
+Recommendation status: agent_authored
 
 Manual execution required: true
 
-## Agent-Authored Decision
+## Evidence Boundary
 
-This draft was selected by the coding agent from old cached FPL data. No script selected the squad.
+This recommendation was regenerated after deleting the previous GW1 authored squad. No script selected players.
 
-## Revision From Previous Draft
+Fresh evidence:
 
-The first authored draft used three Bournemouth players. This version reduces Bournemouth exposure to two players and avoids maxing out any club.
+- FPL data
+- Fixture evidence
+- FPL team-news availability evidence
+- FPL set-piece role evidence
+- Football-Data odds source fetch
+
+Missing evidence:
+
+- Automated minutes and predicted lineups
+
+Coverage gaps:
+
+- Odds report has no matched GW1 Premier League market rows yet.
+- Anytime scorer odds are not available from the current odds source.
 
 ## Squad Thesis
 
-Spend most of the £100.0m budget while keeping a premium core:
+The new draft keeps Haaland and Bruno as the captaincy core, adds Gabriel for Arsenal's elite GW1 defensive fixture and top defensive projection, and funds that by omitting Saka rather than weakening the playable bench or dropping the Haaland/Bruno structure.
 
-- Erling Haaland as captain and main forward premium
-- Bruno Borges Fernandes as vice-captain and high-minutes midfield premium
-- Bukayo Saka for Arsenal attacking exposure
-- Gabriel dos Santos Magalhães for Arsenal defensive and set-piece exposure
-- João Pedro and Junior Kroupi as forward value
-- No club above two selected players
+The value layer is Wilson, Okafor, Calvert-Lewin, Beto, Digne, Keane, Sessegnon, Spence, and Lewis-Potter. The first bench is playable, and every selected player is currently available in FPL team-news evidence.
 
-## Evidence Used
+## Main Tradeoffs
 
-- data-status.json
-- player-pool.json
-- projection-summary.md
-- budget-tiers.json
-- club-exposure.json
-- decision-prompts.md
-- recommendation.json
-- manual-checklist.md
+- Saka is omitted despite Coventry City at home and a high-confidence first penalty role.
+- Full £100.0m spent, so late upgrades need a structural change.
+- Leeds is maxed with Wilson, Okafor, and Calvert-Lewin.
+- Odds evidence exists as a fetched report but has no matched GW1 Premier League rows.
+- Predicted-lineup evidence is still missing.
 
-## Hard Caveat
+## Evidence Files To Recheck Before Deadline
 
-The public FPL API data is stale and points to completed 2025/26 gameweek data. This is a provisional exercise only, not a real current-season GW1 recommendation.
-
-## What To Check Before Real Use
-
-- Official FPL launch data
-- Current player prices
-- Current player teams and positions
-- GW1 fixture difficulty
-- Injuries, suspensions, transfers, and predicted lineups
-- Whether Cherki, Junior Kroupi, João Pedro, Maguire, and Mukiele have secure minutes
+- `evidence-report.md`
+- `team-news-report.md`
+- `set-pieces-report.md`
+- `odds-report.md`
+- `fixture-ticker.md`
+- `projection-summary.md`
+- `recommendation.json`
+- `legality-report.json`
+- `risk-report.md`

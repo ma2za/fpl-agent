@@ -1,47 +1,38 @@
 [
   {
-    "playerId": 430,
+    "playerId": 411,
     "projectedPoints": 6.2,
     "expectedMinutes": 85,
-    "fixtureSummary": "Old-data projection only",
+    "fixtureSummary": "Man City v Bournemouth, FDR 3",
     "risk": "low",
-    "upsideCase": "Best projection in this selected squad and elite goal volume profile.",
-    "downsideCase": "Stale fixture and price data may not reflect real GW1 context."
+    "upsideCase": "Highest selected projection, strong historical minutes, no FPL team-news flag, and high-confidence first penalty role.",
+    "downsideCase": "Odds report has no matched GW1 market rows, so the captaincy case is not market-checked."
   },
   {
-    "playerId": 449,
+    "playerId": 426,
     "projectedPoints": 5.9,
     "expectedMinutes": 85,
-    "fixtureSummary": "Old-data projection only",
+    "fixtureSummary": "Man Utd away to Hull City, FDR 2",
     "risk": "low",
-    "upsideCase": "High minutes, set-piece involvement, and second-best squad projection.",
-    "downsideCase": "Old team and fixture context may be wrong."
+    "upsideCase": "Second-highest selected projection, favorable GW1 fixture, no FPL team-news flag, and high-confidence first penalty and direct-free-kick roles.",
+    "downsideCase": "Odds report has no matched GW1 market rows and minutes evidence is still missing."
   },
   {
-    "playerId": 5,
+    "playerId": 4,
     "projectedPoints": 5.8,
     "expectedMinutes": 85,
-    "fixtureSummary": "Old-data projection only",
-    "risk": "low",
-    "upsideCase": "Strong defensive projection with set-piece threat.",
-    "downsideCase": "Defender captaincy has lower ceiling than premium attackers."
+    "fixtureSummary": "Arsenal v Coventry City, FDR 2",
+    "risk": "medium",
+    "upsideCase": "Top defensive projection in the evidence pack, strong minutes, and the best GW1 defensive fixture among selected players.",
+    "downsideCase": "Defender captaincy has lower goal involvement and no direct market confirmation from the odds report."
   },
   {
-    "playerId": 249,
+    "playerId": 399,
     "projectedPoints": 5.1,
-    "expectedMinutes": 85,
-    "fixtureSummary": "Old-data projection only",
-    "risk": "medium",
-    "upsideCase": "Forward slot with good old-data projection at mid-price.",
-    "downsideCase": "Role and minutes need current confirmation."
-  },
-  {
-    "playerId": 16,
-    "projectedPoints": 4.8,
     "expectedMinutes": 75,
-    "fixtureSummary": "Old-data projection only",
+    "fixtureSummary": "Man City v Bournemouth, FDR 3",
     "risk": "medium",
-    "upsideCase": "Premium midfielder profile and Arsenal attacking exposure.",
-    "downsideCase": "Projection trails Haaland and Bruno in the stale data."
+    "upsideCase": "Mid-priced Man City attacker with high-confidence first direct-free-kick role.",
+    "downsideCase": "Lower expected minutes than Haaland and Bruno, and no matched GW1 odds rows."
   }
 ]

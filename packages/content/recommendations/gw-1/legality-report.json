@@ -2,21 +2,33 @@
   "isValid": true,
   "errors": [],
   "warnings": [
-    "Deadline status is unknown.",
-    "Provisional recommendation: player IDs, prices, fixtures, and availability may be stale.",
-    "Recommendation uses provisional data."
+    "Team 13 uses all 3 slots.",
+    "Automated minutes evidence is missing.",
+    "No Football-Data Premier League odds rows matched GW1 FPL fixtures.",
+    "No Football-Data odds row matched FPL fixture Arsenal v Coventry City.",
+    "No Football-Data odds row matched FPL fixture Hull City v Man Utd.",
+    "No Football-Data odds row matched FPL fixture Everton v Crystal Palace.",
+    "No Football-Data odds row matched FPL fixture Ipswich Town v Sunderland.",
+    "No Football-Data odds row matched FPL fixture Nott'm Forest v Leeds.",
+    "No Football-Data odds row matched FPL fixture Brentford v Spurs.",
+    "No Football-Data odds row matched FPL fixture Brighton v Aston Villa.",
+    "No Football-Data odds row matched FPL fixture Man City v Bournemouth.",
+    "No Football-Data odds row matched FPL fixture Newcastle v Liverpool.",
+    "No Football-Data odds row matched FPL fixture Fulham v Chelsea.",
+    "Anytime scorer odds are not available from the Football-Data fixtures CSV.",
+    "Clean-sheet signals are derived from match odds and over/under 2.5 markets, not direct clean-sheet odds."
   ],
   "quality": {
     "isValid": true,
     "errors": [],
     "warnings": [
-      "Recommendation uses provisional data."
+      "Team 13 uses all 3 slots."
     ],
     "gates": [
       {
         "gate": "budget",
         "status": "pass",
-        "message": "Squad uses £99.5 with £0.5 bank."
+        "message": "Squad uses £100.0 with £0.0 bank."
       },
       {
         "gate": "position-counts",
@@ -25,8 +37,8 @@
       },
       {
         "gate": "club-exposure",
-        "status": "pass",
-        "message": "No club concentration warning."
+        "status": "warn",
+        "message": "Team 13 uses all 3 slots."
       },
       {
         "gate": "starter-minutes",
@@ -35,8 +47,8 @@
       },
       {
         "gate": "data-freshness",
-        "status": "warn",
-        "message": "Recommendation uses provisional data."
+        "status": "pass",
+        "message": "Recommendation uses official data mode."
       },
       {
         "gate": "captaincy-rationale",
@@ -57,6 +69,58 @@
         "gate": "what-would-change",
         "status": "pass",
         "message": "Change conditions are present."
+      },
+      {
+        "gate": "evidence-backed-decision",
+        "status": "pass",
+        "message": "Required recommendation evidence references are present."
+      }
+    ]
+  },
+  "strategyQuality": {
+    "isValid": true,
+    "errors": [],
+    "warnings": [],
+    "gates": [
+      {
+        "gate": "weekly-strategy",
+        "status": "pass",
+        "message": "Weekly strategy is agent-authored."
+      },
+      {
+        "gate": "weekly-thesis",
+        "status": "pass",
+        "message": "Weekly strategy thesis is present."
+      },
+      {
+        "gate": "strategy-captaincy",
+        "status": "pass",
+        "message": "Captaincy rationale is present in strategy and recommendation."
+      },
+      {
+        "gate": "strategy-chip",
+        "status": "pass",
+        "message": "Chip plan references season posture and matches recommendation."
+      },
+      {
+        "gate": "strategy-transfers",
+        "status": "pass",
+        "message": "Transfer plan follows configured risk profile."
+      },
+      {
+        "gate": "strategy-risks",
+        "status": "pass",
+        "message": "Weekly strategy risks are present."
+      },
+      {
+        "gate": "strategy-change-conditions",
+        "status": "pass",
+        "message": "Weekly strategy change conditions are present."
+      },
+      {
+        "gate": "season-strategy",
+        "status": "pass",
+        "message": "Season strategy file is present."
       }
     ]
   }

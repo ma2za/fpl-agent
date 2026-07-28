@@ -42,6 +42,38 @@ function lowMinutesStarters(recommendation: WeeklyRecommendation) {
     });
 }
 
+function evidenceReferenceErrors(recommendation: WeeklyRecommendation) {
+  const errors: string[] = [];
+  const requiredAreas = [
+    "squad",
+    "starting-xi",
+    "shortlist",
+    "captaincy",
+    "bench",
+    "chip",
+    "risks",
+    "change-conditions"
+  ];
+
+  if (recommendation.recommendedAction.type !== "roll" || recommendation.recommendedAction.transfers.length > 0) {
+    requiredAreas.push("transfers");
+  }
+
+  for (const area of requiredAreas) {
+    if (!recommendation.evidenceReferences.some((reference) => reference.area === area)) {
+      errors.push(`Evidence reference is required for ${area}.`);
+    }
+  }
+
+  for (const reference of recommendation.evidenceReferences) {
+    if (!hasText(reference.source) || !hasText(reference.reportPath) || !hasText(reference.note)) {
+      errors.push(`Evidence reference for ${reference.area} must include source, reportPath, and note.`);
+    }
+  }
+
+  return errors;
+}
+
 export function evaluateRecommendationQuality(recommendation: WeeklyRecommendation): RecommendationQualityReport {
   const gates: QualityGateResult[] = [];
   const errors: string[] = [];
@@ -123,6 +155,16 @@ export function evaluateRecommendationQuality(recommendation: WeeklyRecommendati
     addGate(gates, "what-would-change", "warn", "Recommendation should include what would change the decision.");
   } else {
     addGate(gates, "what-would-change", "pass", "Change conditions are present.");
+  }
+
+  const evidenceErrors = evidenceReferenceErrors(recommendation);
+
+  if (evidenceErrors.length > 0) {
+    for (const evidenceError of evidenceErrors) {
+      addGate(gates, "evidence-backed-decision", "fail", evidenceError);
+    }
+  } else {
+    addGate(gates, "evidence-backed-decision", "pass", "Required recommendation evidence references are present.");
   }
 
   for (const gate of gates) {

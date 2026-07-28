@@ -24,6 +24,23 @@ async function writeJson(filePath: string, data: unknown) {
   await writeFile(filePath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
 }
 
+function isWeeklyRecommendation(value: unknown): value is WeeklyRecommendation {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const recommendation = value as Partial<WeeklyRecommendation>;
+
+  return Array.isArray(recommendation.squadBefore?.players) &&
+    recommendation.pickTeam !== null &&
+    recommendation.pickTeam !== undefined &&
+    recommendation.captaincy !== null &&
+    recommendation.captaincy !== undefined &&
+    recommendation.chip !== null &&
+    recommendation.chip !== undefined &&
+    recommendation.manualExecutionRequired === true;
+}
+
 async function main() {
   const aPath = argValue("--a");
   const bPath = argValue("--b");
@@ -34,12 +51,21 @@ async function main() {
     return;
   }
 
+  const recommendationA = await readJson<unknown>(aPath);
+  const recommendationB = await readJson<unknown>(bPath);
+
+  if (!isWeeklyRecommendation(recommendationA) || !isWeeklyRecommendation(recommendationB)) {
+    console.error("Both --a and --b must point to agent-authored recommendation.json files.");
+    process.exitCode = 1;
+    return;
+  }
+
   const comparison = compareSquads({
     generatedAt: new Date().toISOString(),
     labelA: argValue("--label-a") ?? path.basename(path.dirname(aPath)),
     labelB: argValue("--label-b") ?? path.basename(path.dirname(bPath)),
-    recommendationA: await readJson<WeeklyRecommendation>(aPath),
-    recommendationB: await readJson<WeeklyRecommendation>(bPath)
+    recommendationA,
+    recommendationB
   });
   const markdown = renderSquadComparisonMarkdown(comparison);
   const outputDir = argValue("--out");

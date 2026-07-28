@@ -9,7 +9,7 @@ import {
   type ValidationResult
 } from "../../rules/src";
 import { evaluateRecommendationQuality } from "./quality";
-import type { RecommendationQualityReport, WeeklyRecommendation } from "./types";
+import type { RecommendationQualityReport, StrategyQualityReport, WeeklyRecommendation } from "./types";
 
 export type VerifyRecommendationOptions = {
   forceDeadline?: boolean;
@@ -17,6 +17,7 @@ export type VerifyRecommendationOptions = {
 
 export type VerifyRecommendationResult = ValidationResult & {
   quality: RecommendationQualityReport;
+  strategyQuality?: StrategyQualityReport;
 };
 
 function mergeResults(...results: ValidationResult[]): ValidationResult {

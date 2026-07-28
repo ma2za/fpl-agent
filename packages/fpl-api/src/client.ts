@@ -74,6 +74,10 @@ async function fetchJson(
     await writeJsonCache(cacheFile, parsed);
     return parsed;
   } catch (error) {
+    if (options.forceRefresh) {
+      throw error;
+    }
+
     try {
       return schema.parse(await readJsonCache(cacheFile));
     } catch {

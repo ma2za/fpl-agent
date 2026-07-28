@@ -112,6 +112,67 @@ p {
   margin-top: 36px;
 }
 
+.metrics {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-top: 36px;
+}
+
+.metric {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+}
+
+.metric span,
+.metric em {
+  color: var(--muted);
+  font-size: 13px;
+  font-style: normal;
+}
+
+.metric strong {
+  font-size: 22px;
+}
+
+.section {
+  margin-top: 36px;
+}
+
+.table-wrap {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+table {
+  background: var(--panel);
+  border-collapse: collapse;
+  min-width: 520px;
+  width: 100%;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--line);
+  padding: 12px 14px;
+  text-align: left;
+}
+
+th {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
 .card {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -140,6 +201,21 @@ p {
   color: var(--muted);
   line-height: 1.5;
   list-style-position: inside;
+}
+
+.compact {
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.fine {
+  font-size: 14px;
+  margin-top: 12px;
+}
+
+.stack {
+  display: grid;
+  gap: 12px;
 }
 
 .status {

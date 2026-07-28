@@ -65,6 +65,11 @@ pnpm install
 pnpm dev
 pnpm test
 pnpm fetch:data
+pnpm fetch:pl-fixtures -- --gw 1 --horizon 6
+pnpm evidence -- --gw 1
+pnpm odds -- --gw 1
+pnpm set-pieces -- --gw 1
+pnpm team-news -- --gw 1
 pnpm fixtures -- --gw 1 --horizon 6
 pnpm recommend -- --gw auto
 pnpm compare:squads -- --a path/to/a.json --b path/to/b.json
@@ -76,13 +81,23 @@ pnpm postmortem -- --gw 1
 
 `pnpm fetch:data` fetches public FPL API data, writes raw cache files, writes timestamped snapshots, and writes normalized player data.
 
+`pnpm fetch:pl-fixtures -- --gw {n} --horizon {n}` fetches the official Premier League fixture release and writes current-season fixture evidence. It does not provide FPL prices, player IDs, deadlines, or availability.
+
+`pnpm evidence -- --gw {n}` writes a compact evidence freshness report for current FPL data, fixtures, team news, set pieces, odds, and minutes evidence.
+
+`pnpm odds -- --gw {n}` fetches the public Football-Data fixtures CSV and writes an odds coverage report. It records match-level win/draw/loss and over/under evidence when rows are available, but it does not provide player anytime-scorer odds or direct clean-sheet markets.
+
+`pnpm set-pieces -- --gw {n}` writes an automated set-piece report from public FPL role-order fields. It does not select players.
+
+`pnpm team-news -- --gw {n}` writes an automated team-news report from public FPL availability fields. It does not scrape news sites or select players.
+
 `pnpm fixtures -- --gw {n} --horizon {n}` writes a fixture ticker for agent review. It does not alter recommendations.
 
 `pnpm recommend -- --gw {n}` prepares evidence for the coding agent. It does not select players or write a final recommendation.
 
 `pnpm compare:squads` compares two agent-authored recommendation files and prints or writes a decision report.
 
-`pnpm verify -- --gw {n}` re-validates an agent-authored recommendation, rewrites the legality report, and exits non-zero when the recommendation is missing, illegal, or missing required rationale.
+`pnpm verify -- --gw {n}` re-validates an agent-authored recommendation and weekly strategy, rewrites the legality report, and exits non-zero when the recommendation is missing, illegal, or missing required rationale.
 
 Postmortem commands are placeholders until later milestones implement those workflows.
 
@@ -138,7 +153,9 @@ Scripts must not choose the squad, starting XI, captain, vice-captain, bench ord
 
 Evidence includes `projection-summary.md`, `budget-tiers.json`, `club-exposure.json`, and `decision-prompts.md`.
 
-Fixture context is generated separately with `pnpm fixtures -- --gw {n} --horizon 6`.
+Fixture context is generated separately with `pnpm fixtures -- --gw {n} --horizon 6` for FPL API fixtures or `pnpm fetch:pl-fixtures -- --gw {n} --horizon 6` for official Premier League fixture-release evidence.
+
+Strategy context lives under `packages/content/strategy/`. `season-plan.md` sets season posture, while `weekly/gw-{n}.md` and `weekly/gw-{n}.json` hold the agent-authored weekly strategy checked by verification.
 
 Large derived evidence JSON files are ignored by git. Regenerate them locally with `pnpm recommend -- --gw {n}`.
 
@@ -148,11 +165,13 @@ Manual context notes live under:
 packages/content/context/
 ```
 
+Rules coverage and known gaps are tracked in `docs/rules-coverage.md`.
+
 ## Verification
 
 `pnpm verify -- --gw {n}` validates agent-authored recommendation files before a manual checklist is trusted.
 
-It checks squad legality, starting XI, formation, bench order, captaincy, chip availability, transfer cost, deadline status, the manual-execution safety flag, and quality gates for rationale and risk notes.
+It checks squad legality, starting XI, formation, bench order, captaincy, chip availability, transfer cost, deadline status, the manual-execution safety flag, quality gates for rationale and risk notes, and weekly strategy gates.
 
 Invalid recommendations fail loudly and update:
 
@@ -179,6 +198,8 @@ pnpm dev
 - The repo prepares deterministic evidence files from cached FPL data.
 - The repo validates squads, formations, captaincy, bench order, chips, deadlines, and transfer costs.
 - The repo can generate deterministic projections and player-pool evidence.
+- The repo can hold a season strategy and verify weekly strategy rationale.
+- Public odds coverage depends on Football-Data fixture rows being available for the target gameweek.
 - Player selection is intentionally agent-authored, not script-authored.
 - The repo does not ingest FPL news automatically.
 - Public manager endpoints exist in the API client but are not wired into recommendation flow yet.

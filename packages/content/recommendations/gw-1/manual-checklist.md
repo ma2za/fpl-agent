@@ -2,44 +2,46 @@
 
 ## Status
 
-Data mode: provisional old data
+Data mode: official
 
-Deadline in cached data: 2025-08-15T17:30:00Z
+Deadline: 2026-08-21T17:30:00Z
 
-Do not apply this as a real current-season GW1 squad without checking official FPL data first.
+Manual execution required: true
+
+Evidence-backed recommendation: yes
 
 ## Squad
 
-Budget used: £99.5
+Budget used: £100.0
 
-Bank: £0.5
+Bank: £0.0
 
 ### Goalkeepers
 
-- Bart Verbruggen (GKP, team 6, £4.6)
-- Mads Hermansen (GKP, team 19, £4.2)
+- Kelleher (GKP, Brentford, £5.0)
+- Dubravka (GKP, Spurs, £4.0)
 
 ### Defenders
 
-- Gabriel dos Santos Magalhães (DEF, team 1, £7.3)
-- Marcos Senesi Barón (DEF, team 4, £5.2)
-- Nordi Mukiele (DEF, team 17, £4.6)
-- Michael Keane (DEF, team 9, £4.5)
-- Harry Maguire (DEF, team 14, £4.4)
+- Gabriel (DEF, Arsenal, £8.0)
+- Keane (DEF, Everton, £5.0)
+- Digne (DEF, Aston Villa, £4.5)
+- Sessegnon (DEF, Fulham, £4.5)
+- Spence (DEF, Spurs, £4.5)
 
 ### Midfielders
 
-- Bruno Borges Fernandes (MID, team 14, £10.4)
-- Bukayo Saka (MID, team 1, £10.0)
-- Rayan Cherki (MID, team 13, £6.5)
-- Elliot Anderson (MID, team 16, £5.7)
-- Kiernan Dewsbury-Hall (MID, team 9, £5.3)
+- B.Fernandes (MID, Man Utd, £12.0)
+- Cherki (MID, Man City, £7.5)
+- Wilson (MID, Leeds, £6.5)
+- Okafor (MID, Leeds, £6.0)
+- Lewis-Potter (MID, Brentford, £5.5)
 
 ### Forwards
 
-- Erling Haaland (FWD, team 13, £14.7)
-- João Pedro Junqueira de Jesus (FWD, team 7, £7.4)
-- Junior Kroupi (FWD, team 4, £4.7)
+- Haaland (FWD, Man City, £15.5)
+- Calvert-Lewin (FWD, Leeds, £6.0)
+- Beto (FWD, Everton, £5.5)
 
 ## Pick Team
 
@@ -47,56 +49,50 @@ Formation: 3-4-3
 
 ### Starting XI
 
-- Bart Verbruggen
-- Gabriel dos Santos Magalhães
-- Marcos Senesi Barón
-- Nordi Mukiele
-- Bruno Borges Fernandes
-- Bukayo Saka
-- Rayan Cherki
-- Elliot Anderson
-- Erling Haaland
-- João Pedro Junqueira de Jesus
-- Junior Kroupi
+- Kelleher
+- Gabriel
+- Keane
+- Digne
+- B.Fernandes
+- Cherki
+- Wilson
+- Okafor
+- Haaland
+- Calvert-Lewin
+- Beto
 
 ## Captaincy
 
-Captain: Erling Haaland
+Captain: Haaland
 
-Vice-captain: Bruno Borges Fernandes
+Vice-captain: B.Fernandes
 
 ## Bench Order
 
-Bench GK: Mads Hermansen
+Bench GK: Dubravka
 
-1st bench: Kiernan Dewsbury-Hall
+1st bench: Lewis-Potter
 
-2nd bench: Michael Keane
+2nd bench: Sessegnon
 
-3rd bench: Harry Maguire
+3rd bench: Spence
 
 ## Chip
 
 Chip recommendation: none
 
-## Why This Draft
+## Evidence Used
 
-- Haaland is captain because he has the highest selected-player old-data projection.
-- Bruno is vice-captain because he is second in projection with strong minutes and set-piece profile.
-- Saka is included for premium Arsenal attacking exposure.
-- Gabriel is included for Arsenal defensive exposure and set-piece threat.
-- The previous Bournemouth triple-up is reduced to Senesi and Kroupi.
-- No club has more than two selected players.
-- No chip is recommended from stale data.
+- `evidence-report.md`: FPL data, fixtures, team news, set pieces, and the odds source fetch are fresh; minutes evidence is missing.
+- `projection-summary.md`: Haaland, Bruno, Gabriel, and Cherki are the four highest selected projections.
+- `fixture-ticker.md`: Arsenal have Coventry City at home in GW1; Man Utd have Hull City away; Man City have Bournemouth at home.
+- `team-news-report.md`: no selected player is currently flagged by FPL availability evidence.
+- `set-pieces-report.md`: Haaland, Bruno, and Calvert-Lewin are high-confidence first penalty takers; Cherki and Bruno have high-confidence first direct-free-kick roles.
+- `odds-report.md`: Football-Data currently has no matched GW1 Premier League market rows, so market evidence is not yet usable.
 
-## Final Human Confirmation
+## Do Not Apply Without Checking
 
-Before applying manually, check:
-
-- Official prices and player IDs
-- Current clubs and positions
-- GW1 fixtures
-- Injury and suspension news
-- Starting role risk
-- Deadline has not passed
-- Squad is still legal under current FPL rules
+- Odds report has no matched GW1 market rows.
+- Minutes and predicted-lineup report is still missing.
+- Saka omission is intentional but should be reviewed if a legal Saka variant keeps Haaland, Bruno, Gabriel, and bench cover.
+- Any refreshed FPL team-news flag on a selected player should trigger a review.

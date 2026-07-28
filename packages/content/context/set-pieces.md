@@ -1,8 +1,17 @@
 # Set Pieces
 
-Use this file for manually reviewed penalty, free-kick, and corner-taking notes.
+Reviewed: no
+
+Use this file for manually reviewed penalty, free-kick, and corner-taking notes. Change `Reviewed: no` to `Reviewed: yes` only after the notes have been checked for the active gameweek.
 
 ## Notes
 
-- No current set-piece notes have been reviewed yet.
-- Confirm penalty and set-piece roles before final captaincy or premium-midfield calls.
+- [ ] Penalties checked
+- [ ] Direct free kicks checked
+- [ ] Corners checked
+- [ ] Indirect free kicks checked
+- [ ] Role changes checked
+
+## Player Notes
+
+- None yet.

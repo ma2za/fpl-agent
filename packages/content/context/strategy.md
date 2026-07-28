@@ -7,3 +7,4 @@ Use this file for manager preference and season-opening strategy notes.
 - Prefer legal, robust squads over aggressive punts.
 - Avoid early chips unless there is a clear fixture-driven reason.
 - Treat provisional or stale data as low-confidence evidence.
+- Read `packages/content/context/strategy-evidence.md` before authoring season or weekly strategy.

@@ -68,7 +68,8 @@ describe("buildEvidencePack", () => {
         teamNews: "",
         setPieces: "",
         watchlist: "",
-        strategy: ""
+        strategy: "",
+        strategyEvidence: ""
       },
       warnings: ["Fixture test warning."],
       players,

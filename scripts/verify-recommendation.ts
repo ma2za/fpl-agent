@@ -1,6 +1,23 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { verifyRecommendation, type VerifyRecommendationResult, type WeeklyRecommendation } from "../packages/agent/src";
+import {
+  buildSquadRiskReport,
+  evaluateWeeklyStrategyQuality,
+  renderEvidenceReportMarkdown,
+  renderSquadRiskReportMarkdown,
+  verifyRecommendation,
+  type FixtureTicker,
+  type OddsReport,
+  type SetPieceReport,
+  type SquadRiskReport,
+  type StrategyQualityReport,
+  type TeamNewsReport,
+  type VerifyRecommendationResult,
+  type WeeklyRecommendation,
+  type WeeklyStrategy
+} from "../packages/agent/src";
+import { RISK_PROFILE } from "../config/risk-profile";
+import { buildLocalEvidenceReport } from "./evidence-sources";
 
 function argValue(name: string) {
   const index = process.argv.indexOf(name);
@@ -14,6 +31,30 @@ function argValue(name: string) {
 
 async function readJson<T>(filePath: string) {
   return JSON.parse(await readFile(filePath, "utf8")) as T;
+}
+
+async function readJsonIfExists<T>(filePath: string) {
+  try {
+    return JSON.parse(await readFile(filePath, "utf8")) as T;
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+async function readTextIfExists(filePath: string) {
+  try {
+    return await readFile(filePath, "utf8");
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 function isWeeklyRecommendation(value: unknown): value is WeeklyRecommendation {
@@ -47,7 +88,13 @@ async function main() {
   const outputDir = path.join("packages", "content", "recommendations", `gw-${gameweek}`);
   const recommendationPath = path.join(outputDir, "recommendation.json");
   const legalityPath = path.join(outputDir, "legality-report.json");
+  const evidenceReportJsonPath = path.join(outputDir, "evidence-report.json");
+  const evidenceReportMarkdownPath = path.join(outputDir, "evidence-report.md");
+  const riskReportJsonPath = path.join(outputDir, "risk-report.json");
+  const riskReportMarkdownPath = path.join(outputDir, "risk-report.md");
   const recommendation = await readJson<unknown>(recommendationPath);
+  const seasonPlanPath = path.join("packages", "content", "strategy", "season-plan.md");
+  const weeklyStrategyPath = path.join("packages", "content", "strategy", "weekly", `gw-${gameweek}.json`);
   const legality: VerifyRecommendationResult = isWeeklyRecommendation(recommendation)
     ? verifyRecommendation(recommendation, {
       forceDeadline: process.argv.includes("--force-deadline")
@@ -69,6 +116,51 @@ async function main() {
         ]
       }
     };
+
+  if (isWeeklyRecommendation(recommendation)) {
+    const weeklyStrategy = await readJsonIfExists<WeeklyStrategy>(weeklyStrategyPath);
+    const seasonPlanText = await readTextIfExists(seasonPlanPath);
+    const dataStatus = await readJsonIfExists<{ dataMode?: "official" | "provisional" }>(
+      path.join(outputDir, "data-status.json")
+    );
+    const fixtureTicker = await readJsonIfExists<FixtureTicker>(path.join(outputDir, "fixture-ticker.json"));
+    const teamNewsReport = await readJsonIfExists<TeamNewsReport>(path.join(outputDir, "team-news-report.json"));
+    const setPieceReport = await readJsonIfExists<SetPieceReport>(path.join(outputDir, "set-pieces-report.json"));
+    const oddsReport = await readJsonIfExists<OddsReport>(path.join(outputDir, "odds-report.json"));
+    const riskReport: SquadRiskReport = buildSquadRiskReport({
+      generatedAt: new Date().toISOString(),
+      recommendation,
+      dataStatus,
+      fixtureTicker,
+      teamNewsReport,
+      setPieceReport,
+      oddsReport,
+      contextNotes: {
+        teamNews: await readTextIfExists(path.join("packages", "content", "context", "team-news.md")) ?? "",
+        setPieces: await readTextIfExists(path.join("packages", "content", "context", "set-pieces.md")) ?? "",
+        watchlist: await readTextIfExists(path.join("packages", "content", "context", "watchlist.md")) ?? ""
+      }
+    });
+    const evidenceReport = await buildLocalEvidenceReport({
+      gameweek: Number(gameweek),
+      generatedAt: new Date().toISOString()
+    });
+    const strategyQuality: StrategyQualityReport = evaluateWeeklyStrategyQuality({
+      weeklyStrategy,
+      recommendation,
+      seasonPlanText,
+      riskProfile: RISK_PROFILE
+    });
+
+    await writeFile(evidenceReportJsonPath, `${JSON.stringify(evidenceReport, null, 2)}\n`, "utf8");
+    await writeFile(evidenceReportMarkdownPath, renderEvidenceReportMarkdown(evidenceReport), "utf8");
+    await writeFile(riskReportJsonPath, `${JSON.stringify(riskReport, null, 2)}\n`, "utf8");
+    await writeFile(riskReportMarkdownPath, renderSquadRiskReportMarkdown(riskReport), "utf8");
+    legality.strategyQuality = strategyQuality;
+    legality.isValid = legality.isValid && strategyQuality.isValid;
+    legality.errors = [...legality.errors, ...strategyQuality.errors];
+    legality.warnings = [...legality.warnings, ...strategyQuality.warnings, ...evidenceReport.warnings, ...(oddsReport?.warnings ?? [])];
+  }
 
   await writeFile(legalityPath, `${JSON.stringify(legality, null, 2)}\n`, "utf8");
 

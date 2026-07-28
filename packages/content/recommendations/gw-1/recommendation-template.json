@@ -2,9 +2,9 @@
   "status": "agent_decision_required",
   "gameweek": 1,
   "createdAt": null,
-  "deadline": "2025-08-15T17:30:00Z",
-  "deadlineStatus": "unknown",
-  "dataMode": "provisional",
+  "deadline": "2026-08-21T17:30:00Z",
+  "deadlineStatus": "open",
+  "dataMode": "official",
   "squadBefore": {
     "players": [],
     "bank": null,
@@ -21,6 +21,7 @@
   "captaincy": null,
   "chip": null,
   "confidence": null,
+  "evidenceReferences": [],
   "risks": [],
   "whatWouldChangeMyMind": [],
   "manualExecutionRequired": true

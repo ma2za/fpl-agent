@@ -1,0 +1,186 @@
+{
+  "generatedAt": "2026-07-28T18:26:42.239Z",
+  "gameweek": 1,
+  "summary": {
+    "fresh": 5,
+    "stale": 0,
+    "missing": 1,
+    "requiredMissing": 1,
+    "requiredStale": 0
+  },
+  "sources": [
+    {
+      "id": "fpl-data",
+      "label": "FPL data",
+      "provider": "Fantasy Premier League public API cache",
+      "url": null,
+      "rawPath": "data\\raw\\bootstrap-static.json",
+      "reportPath": "packages\\content\\recommendations\\gw-1\\data-status.json",
+      "required": true,
+      "confidence": "high",
+      "freshness": {
+        "status": "fresh",
+        "checkedAt": "2026-07-28T18:26:42.239Z",
+        "fetchedAt": "2026-07-28T18:20:28.612Z",
+        "ageHours": 0.1,
+        "maxAgeHours": 24,
+        "message": "FPL data is fresh."
+      }
+    },
+    {
+      "id": "fixtures",
+      "label": "Fixture evidence",
+      "provider": "FPL fixtures and Premier League fixture release",
+      "url": null,
+      "rawPath": "data\\raw\\fixtures.json",
+      "reportPath": "packages\\content\\recommendations\\gw-1\\fixture-ticker.json",
+      "required": true,
+      "confidence": "high",
+      "freshness": {
+        "status": "fresh",
+        "checkedAt": "2026-07-28T18:26:42.239Z",
+        "fetchedAt": "2026-07-28T18:20:28.481Z",
+        "ageHours": 0.1,
+        "maxAgeHours": 168,
+        "message": "Fixture evidence is fresh."
+      }
+    },
+    {
+      "id": "team-news",
+      "label": "Team news",
+      "provider": "Automated public team-news evidence",
+      "url": null,
+      "rawPath": null,
+      "reportPath": "packages\\content\\recommendations\\gw-1\\team-news-report.json",
+      "required": true,
+      "confidence": "medium",
+      "freshness": {
+        "status": "fresh",
+        "checkedAt": "2026-07-28T18:26:42.239Z",
+        "fetchedAt": "2026-07-28T18:26:23.676Z",
+        "ageHours": 0,
+        "maxAgeHours": 24,
+        "message": "Team news is fresh."
+      }
+    },
+    {
+      "id": "set-pieces",
+      "label": "Set pieces",
+      "provider": "Automated public set-piece evidence",
+      "url": null,
+      "rawPath": null,
+      "reportPath": "packages\\content\\recommendations\\gw-1\\set-pieces-report.json",
+      "required": true,
+      "confidence": "medium",
+      "freshness": {
+        "status": "fresh",
+        "checkedAt": "2026-07-28T18:26:42.239Z",
+        "fetchedAt": "2026-07-28T18:26:23.709Z",
+        "ageHours": 0,
+        "maxAgeHours": 168,
+        "message": "Set pieces is fresh."
+      }
+    },
+    {
+      "id": "odds",
+      "label": "Odds evidence",
+      "provider": "Automated public odds evidence",
+      "url": null,
+      "rawPath": null,
+      "reportPath": "packages\\content\\recommendations\\gw-1\\odds-report.json",
+      "required": true,
+      "confidence": "medium",
+      "freshness": {
+        "status": "fresh",
+        "checkedAt": "2026-07-28T18:26:42.239Z",
+        "fetchedAt": "2026-07-28T18:26:35.449Z",
+        "ageHours": 0,
+        "maxAgeHours": 12,
+        "message": "Odds evidence is fresh."
+      }
+    },
+    {
+      "id": "minutes",
+      "label": "Minutes evidence",
+      "provider": "Automated minutes and predicted-lineup evidence",
+      "url": null,
+      "rawPath": null,
+      "reportPath": "packages\\content\\recommendations\\gw-1\\minutes-risk-report.json",
+      "required": true,
+      "confidence": "medium",
+      "freshness": {
+        "status": "missing",
+        "checkedAt": "2026-07-28T18:26:42.239Z",
+        "fetchedAt": null,
+        "ageHours": null,
+        "maxAgeHours": 24,
+        "message": "Automated minutes evidence is missing."
+      }
+    }
+  ],
+  "items": [
+    {
+      "sourceId": "fpl-data",
+      "area": "fpl-data",
+      "subject": "FPL data",
+      "severity": "info",
+      "summary": "FPL data is fresh.",
+      "confidence": "high",
+      "fetchedAt": "2026-07-28T18:20:28.612Z",
+      "url": null
+    },
+    {
+      "sourceId": "fixtures",
+      "area": "fixtures",
+      "subject": "Fixture evidence",
+      "severity": "info",
+      "summary": "Fixture evidence is fresh.",
+      "confidence": "high",
+      "fetchedAt": "2026-07-28T18:20:28.481Z",
+      "url": null
+    },
+    {
+      "sourceId": "team-news",
+      "area": "team-news",
+      "subject": "Team news",
+      "severity": "info",
+      "summary": "Team news is fresh.",
+      "confidence": "medium",
+      "fetchedAt": "2026-07-28T18:26:23.676Z",
+      "url": null
+    },
+    {
+      "sourceId": "set-pieces",
+      "area": "set-pieces",
+      "subject": "Set pieces",
+      "severity": "info",
+      "summary": "Set pieces is fresh.",
+      "confidence": "medium",
+      "fetchedAt": "2026-07-28T18:26:23.709Z",
+      "url": null
+    },
+    {
+      "sourceId": "odds",
+      "area": "odds",
+      "subject": "Odds evidence",
+      "severity": "info",
+      "summary": "Odds evidence is fresh.",
+      "confidence": "medium",
+      "fetchedAt": "2026-07-28T18:26:35.449Z",
+      "url": null
+    },
+    {
+      "sourceId": "minutes",
+      "area": "minutes",
+      "subject": "Minutes evidence",
+      "severity": "missing",
+      "summary": "Automated minutes evidence is missing.",
+      "confidence": "medium",
+      "fetchedAt": null,
+      "url": null
+    }
+  ],
+  "warnings": [
+    "Automated minutes evidence is missing."
+  ]
+}

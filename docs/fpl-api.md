@@ -2,6 +2,8 @@
 
 `packages/fpl-api` uses public Fantasy Premier League API endpoints as the source of truth.
 
+Premier League fixture-release pages can be used as separate read-only fixture evidence before Fantasy Premier League exposes current-season events. They do not replace FPL as the source for player IDs, prices, positions, deadlines, or availability.
+
 ## Required Public Endpoints
 
 ```txt

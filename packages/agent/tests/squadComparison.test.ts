@@ -62,6 +62,16 @@ const recommendation: WeeklyRecommendation = {
     label: "medium",
     explanation: "Confidence."
   },
+  evidenceReferences: [
+    { area: "squad", source: "test", reportPath: "test.md", note: "Squad evidence." },
+    { area: "starting-xi", source: "test", reportPath: "test.md", note: "XI evidence." },
+    { area: "shortlist", source: "test", reportPath: "test.md", note: "Shortlist evidence." },
+    { area: "captaincy", source: "test", reportPath: "test.md", note: "Captaincy evidence." },
+    { area: "bench", source: "test", reportPath: "test.md", note: "Bench evidence." },
+    { area: "chip", source: "test", reportPath: "test.md", note: "Chip evidence." },
+    { area: "risks", source: "test", reportPath: "test.md", note: "Risk evidence." },
+    { area: "change-conditions", source: "test", reportPath: "test.md", note: "Change evidence." }
+  ],
   risks: ["Risk."],
   whatWouldChangeMyMind: ["Condition."],
   legality: {
@@ -74,22 +84,39 @@ const recommendation: WeeklyRecommendation = {
 
 describe("compareSquads", () => {
   it("compares two authored recommendations", () => {
+    const alternate: WeeklyRecommendation = {
+      ...recommendation,
+      squadBefore: {
+        ...recommendation.squadBefore,
+        bank: 0,
+        players: recommendation.squadBefore.players.map((player) =>
+          player.id === 15
+            ? { id: 16, name: "Forward 4", position: "FWD", teamId: 9, price: 7.5, nowCost: 75, status: "a", minutes: 1400 }
+            : player
+        )
+      },
+      pickTeam: {
+        ...recommendation.pickTeam,
+        projectedPoints: 62,
+        startingXI: recommendation.pickTeam.startingXI.map((playerId) => playerId === 15 ? 16 : playerId)
+      }
+    };
     const comparison = compareSquads({
       generatedAt: "2026-07-04T00:00:00.000Z",
       labelA: "A",
       labelB: "B",
       recommendationA: recommendation,
-      recommendationB: {
-        ...recommendation,
-        pickTeam: {
-          ...recommendation.pickTeam,
-          projectedPoints: 62
-        }
-      }
+      recommendationB: alternate
     });
 
-    expect(comparison.sharedPlayerIds).toHaveLength(15);
+    expect(comparison.sharedPlayerIds).toHaveLength(14);
+    expect(comparison.positionChanges.FWD.onlyAPlayerIds).toEqual([15]);
+    expect(comparison.positionChanges.FWD.onlyBPlayerIds).toEqual([16]);
+    expect(comparison.summary.budgetDelta).toBe(1);
+    expect(comparison.summary.projectedPointsDelta).toBe(2);
+    expect(comparison.b.riskSummary.medium).toBeGreaterThan(0);
     expect(comparison.notes).toContain("B projected XI delta: +2.0.");
-    expect(renderSquadComparisonMarkdown(comparison)).toContain("Squad Comparison");
+    expect(renderSquadComparisonMarkdown(comparison)).toContain("Position Changes");
+    expect(renderSquadComparisonMarkdown(comparison)).toContain("Risk Summary");
   });
 });

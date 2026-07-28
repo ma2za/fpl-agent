@@ -1,163 +1,163 @@
 {
   "gameweek": 1,
-  "createdAt": "2026-07-04T15:59:10.4060362Z",
-  "deadline": "2025-08-15T17:30:00Z",
-  "deadlineStatus": "unknown",
-  "dataMode": "provisional",
+  "createdAt": "2026-07-28T18:30:00.000Z",
+  "deadline": "2026-08-21T17:30:00Z",
+  "deadlineStatus": "open",
+  "dataMode": "official",
   "squadBefore": {
     "players": [
       {
-        "id": 139,
-        "name": "Bart Verbruggen",
+        "id": 82,
+        "name": "Caoimhín Kelleher",
         "position": "GKP",
-        "teamId": 6,
-        "price": 4.6,
-        "nowCost": 46,
+        "teamId": 4,
+        "price": 5,
+        "nowCost": 50,
         "status": "a",
-        "minutes": 3420
+        "minutes": 3330
       },
       {
-        "id": 679,
-        "name": "Mads Hermansen",
+        "id": 497,
+        "name": "Martin Dubravka",
         "position": "GKP",
         "teamId": 19,
-        "price": 4.2,
-        "nowCost": 42,
+        "price": 4,
+        "nowCost": 40,
         "status": "a",
-        "minutes": 1620
+        "minutes": 3150
       },
       {
-        "id": 5,
+        "id": 4,
         "name": "Gabriel dos Santos Magalhães",
         "position": "DEF",
         "teamId": 1,
-        "price": 7.3,
-        "nowCost": 73,
+        "price": 8,
+        "nowCost": 80,
         "status": "a",
         "minutes": 2750
       },
       {
-        "id": 72,
-        "name": "Marcos Senesi Barón",
-        "position": "DEF",
-        "teamId": 4,
-        "price": 5.2,
-        "nowCost": 52,
-        "status": "a",
-        "minutes": 3288
-      },
-      {
-        "id": 694,
-        "name": "Nordi Mukiele",
-        "position": "DEF",
-        "teamId": 17,
-        "price": 4.6,
-        "nowCost": 46,
-        "status": "a",
-        "minutes": 2784
-      },
-      {
-        "id": 295,
+        "id": 231,
         "name": "Michael Keane",
         "position": "DEF",
         "teamId": 9,
-        "price": 4.5,
-        "nowCost": 45,
+        "price": 5,
+        "nowCost": 50,
         "status": "a",
         "minutes": 2588
       },
       {
-        "id": 442,
-        "name": "Harry Maguire",
+        "id": 30,
+        "name": "Lucas Digne",
         "position": "DEF",
-        "teamId": 14,
-        "price": 4.4,
-        "nowCost": 44,
+        "teamId": 2,
+        "price": 4.5,
+        "nowCost": 45,
         "status": "a",
-        "minutes": 1649
+        "minutes": 1842
       },
       {
-        "id": 449,
+        "id": 269,
+        "name": "Ryan Sessegnon",
+        "position": "DEF",
+        "teamId": 10,
+        "price": 4.5,
+        "nowCost": 45,
+        "status": "a",
+        "minutes": 1816
+      },
+      {
+        "id": 505,
+        "name": "Djed Spence",
+        "position": "DEF",
+        "teamId": 19,
+        "price": 4.5,
+        "nowCost": 45,
+        "status": "a",
+        "minutes": 2049
+      },
+      {
+        "id": 426,
         "name": "Bruno Borges Fernandes",
         "position": "MID",
-        "teamId": 14,
-        "price": 10.4,
-        "nowCost": 104,
+        "teamId": 16,
+        "price": 12,
+        "nowCost": 120,
         "status": "a",
         "minutes": 3065
       },
       {
-        "id": 16,
-        "name": "Bukayo Saka",
+        "id": 399,
+        "name": "Rayan Cherki",
         "position": "MID",
-        "teamId": 1,
-        "price": 10,
-        "nowCost": 100,
+        "teamId": 15,
+        "price": 7.5,
+        "nowCost": 75,
         "status": "a",
-        "minutes": 2218
+        "minutes": 1772
       },
       {
-        "id": 417,
-        "name": "Rayan Cherki",
+        "id": 260,
+        "name": "Harry Wilson",
         "position": "MID",
         "teamId": 13,
         "price": 6.5,
         "nowCost": 65,
         "status": "a",
-        "minutes": 1772
+        "minutes": 2674
       },
       {
-        "id": 517,
-        "name": "Elliot Anderson",
+        "id": 336,
+        "name": "Noah Okafor",
         "position": "MID",
-        "teamId": 16,
-        "price": 5.7,
-        "nowCost": 57,
+        "teamId": 13,
+        "price": 6,
+        "nowCost": 60,
         "status": "a",
-        "minutes": 3332
+        "minutes": 1553
       },
       {
-        "id": 242,
-        "name": "Kiernan Dewsbury-Hall",
+        "id": 86,
+        "name": "Keane Lewis-Potter",
         "position": "MID",
-        "teamId": 9,
-        "price": 5.3,
-        "nowCost": 53,
+        "teamId": 4,
+        "price": 5.5,
+        "nowCost": 55,
         "status": "a",
-        "minutes": 2629
+        "minutes": 1960
       },
       {
-        "id": 430,
+        "id": 411,
         "name": "Erling Haaland",
         "position": "FWD",
-        "teamId": 13,
-        "price": 14.7,
-        "nowCost": 147,
+        "teamId": 15,
+        "price": 15.5,
+        "nowCost": 155,
         "status": "a",
         "minutes": 2953
       },
       {
-        "id": 249,
-        "name": "João Pedro Junqueira de Jesus",
+        "id": 346,
+        "name": "Dominic Calvert-Lewin",
         "position": "FWD",
-        "teamId": 7,
-        "price": 7.4,
-        "nowCost": 74,
+        "teamId": 13,
+        "price": 6,
+        "nowCost": 60,
         "status": "a",
-        "minutes": 2658
+        "minutes": 2721
       },
       {
-        "id": 100,
-        "name": "Junior Kroupi",
+        "id": 248,
+        "name": "Norberto Bercique Gomes Betuncal",
         "position": "FWD",
-        "teamId": 4,
-        "price": 4.7,
-        "nowCost": 47,
+        "teamId": 9,
+        "price": 5.5,
+        "nowCost": 55,
         "status": "a",
-        "minutes": 1663
+        "minutes": 1551
       }
     ],
-    "bank": 0.5,
+    "bank": 0,
     "freeTransfers": 1,
     "chipsAvailable": [
       "wildcard",
@@ -170,100 +170,90 @@
     "type": "roll",
     "transfers": [],
     "transferCost": 0,
-    "bankAfter": 0.5,
-    "explanation": "Initial old-data draft squad. No transfer action applies because this is a from-scratch provisional squad."
+    "bankAfter": 0,
+    "explanation": "From-scratch GW1 squad. No transfer action applies until a real squad exists."
   },
   "pickTeam": {
     "formation": "3-4-3",
     "startingXI": [
-      139,
-      5,
-      72,
-      694,
-      449,
-      16,
-      417,
-      517,
-      430,
-      249,
-      100
+      82,
+      4,
+      231,
+      30,
+      426,
+      399,
+      260,
+      336,
+      411,
+      346,
+      248
     ],
     "benchOrder": [
-      679,
-      242,
-      295,
-      442
+      497,
+      86,
+      269,
+      505
     ],
-    "projectedPoints": 52.7,
-    "explanation": "Agent-authored 3-4-3 using old-data projections. This version keeps premium attackers while reducing club concentration from the earlier draft."
+    "projectedPoints": 51.8,
+    "explanation": "Start the highest evidence-backed XI while keeping Lewis-Potter as first outfield bench cover. Gabriel starts for the top defensive projection and Arsenal's Coventry City home fixture. Calvert-Lewin starts over Lewis-Potter because set-piece evidence lists him as Leeds' high-confidence first penalty taker."
   },
   "captaincy": {
-    "captainPlayerId": 430,
-    "viceCaptainPlayerId": 449,
+    "captainPlayerId": 411,
+    "viceCaptainPlayerId": 426,
     "alternatives": [
       {
-        "playerId": 430,
+        "playerId": 411,
         "projectedPoints": 6.2,
         "expectedMinutes": 85,
-        "fixtureSummary": "Old-data projection only",
+        "fixtureSummary": "Man City v Bournemouth, FDR 3",
         "risk": "low",
-        "upsideCase": "Best projection in this selected squad and elite goal volume profile.",
-        "downsideCase": "Stale fixture and price data may not reflect real GW1 context."
+        "upsideCase": "Highest selected projection, strong historical minutes, no FPL team-news flag, and high-confidence first penalty role.",
+        "downsideCase": "Odds report has no matched GW1 market rows, so the captaincy case is not market-checked."
       },
       {
-        "playerId": 449,
+        "playerId": 426,
         "projectedPoints": 5.9,
         "expectedMinutes": 85,
-        "fixtureSummary": "Old-data projection only",
+        "fixtureSummary": "Man Utd away to Hull City, FDR 2",
         "risk": "low",
-        "upsideCase": "High minutes, set-piece involvement, and second-best squad projection.",
-        "downsideCase": "Old team and fixture context may be wrong."
+        "upsideCase": "Second-highest selected projection, favorable GW1 fixture, no FPL team-news flag, and high-confidence first penalty and direct-free-kick roles.",
+        "downsideCase": "Odds report has no matched GW1 market rows and minutes evidence is still missing."
       },
       {
-        "playerId": 5,
+        "playerId": 4,
         "projectedPoints": 5.8,
         "expectedMinutes": 85,
-        "fixtureSummary": "Old-data projection only",
-        "risk": "low",
-        "upsideCase": "Strong defensive projection with set-piece threat.",
-        "downsideCase": "Defender captaincy has lower ceiling than premium attackers."
+        "fixtureSummary": "Arsenal v Coventry City, FDR 2",
+        "risk": "medium",
+        "upsideCase": "Top defensive projection in the evidence pack, strong minutes, and the best GW1 defensive fixture among selected players.",
+        "downsideCase": "Defender captaincy has lower goal involvement and no direct market confirmation from the odds report."
       },
       {
-        "playerId": 249,
+        "playerId": 399,
         "projectedPoints": 5.1,
-        "expectedMinutes": 85,
-        "fixtureSummary": "Old-data projection only",
-        "risk": "medium",
-        "upsideCase": "Forward slot with good old-data projection at mid-price.",
-        "downsideCase": "Role and minutes need current confirmation."
-      },
-      {
-        "playerId": 16,
-        "projectedPoints": 4.8,
         "expectedMinutes": 75,
-        "fixtureSummary": "Old-data projection only",
+        "fixtureSummary": "Man City v Bournemouth, FDR 3",
         "risk": "medium",
-        "upsideCase": "Premium midfielder profile and Arsenal attacking exposure.",
-        "downsideCase": "Projection trails Haaland and Bruno in the stale data."
+        "upsideCase": "Mid-priced Man City attacker with high-confidence first direct-free-kick role.",
+        "downsideCase": "Lower expected minutes than Haaland and Bruno, and no matched GW1 odds rows."
       }
     ],
-    "explanation": "Captain Haaland because he has the highest old-data projection and best explosive scoring profile. Vice Bruno because he is second in projection and a reliable minutes/set-piece option."
+    "explanation": "Captain Haaland because projection-summary ranks him first among selected players and set-pieces-report lists him as Man City's high-confidence first penalty taker. Vice Bruno because projection-summary ranks him second, fixture-ticker gives Man Utd a Hull City FDR 2 opener, and set-pieces-report lists him first for penalties and direct free kicks."
   },
   "chip": {
     "chip": "none",
     "confidence": "high",
     "expectedGain": 0,
     "reasons": [
-      "No GW1 chip should be used from stale data.",
-      "Bench boost and triple captain require current fixtures and team news."
+      "Season strategy says save chips for doubles, blanks, or exceptional captaincy edges.",
+      "GW1 is a from-scratch squad structure week.",
+      "Odds-report has no matched GW1 market rows and minutes evidence is missing, so there is no evidence-backed chip edge."
     ],
-    "warnings": [
-      "Human manager must confirm any chip manually in the official FPL interface."
-    ]
+    "warnings": []
   },
   "topTransferCandidates": [
     {
-      "id": "initial-draft",
+      "id": "initial-gw1-draft",
       "type": "roll",
       "moves": [],
       "transferCost": 0,
@@ -272,39 +262,143 @@
       "expectedGain5GW": 0,
       "risk": "low",
       "reasons": [
-        "This is an initial squad draft, not a transfer plan."
+        "This is a from-scratch initial squad, not a transfer plan.",
+        "No configured squad exists to sell from."
       ],
       "concerns": [
-        "Official current-season data is not live in the public FPL API."
+        "Final player choices still need matched GW1 odds rows and predicted-lineup evidence before deadline."
       ],
       "isLegal": true,
       "legalityErrors": []
     }
   ],
   "confidence": {
-    "score": 0.28,
-    "label": "low",
-    "explanation": "Low confidence because this is explicitly based on stale public FPL data, but this version improves club-risk balance."
+    "score": 0.64,
+    "label": "medium",
+    "explanation": "Medium confidence because FPL data, fixture evidence, team-news evidence, set-piece evidence, and the odds source fetch are fresh. Confidence is capped because odds-report has no matched GW1 market rows and automated minutes/predicted-lineup evidence is missing."
   },
+  "evidenceReferences": [
+    {
+      "area": "squad",
+      "source": "Projection summary, player pool, fixture ticker, team-news report, set-pieces report",
+      "reportPath": "packages/content/recommendations/gw-1/projection-summary.md",
+      "note": "Squad is built around the top selected projections that fit the legal £100.0m structure, while avoiding FPL team-news flags and preserving playable bench minutes.",
+      "playerIds": [
+        82,
+        497,
+        4,
+        231,
+        30,
+        269,
+        505,
+        426,
+        399,
+        260,
+        336,
+        86,
+        411,
+        346,
+        248
+      ]
+    },
+    {
+      "area": "starting-xi",
+      "source": "Projection summary, fixture ticker, set-pieces report",
+      "reportPath": "packages/content/recommendations/gw-1/projection-summary.md",
+      "note": "Starting XI favors Gabriel's Arsenal fixture, Haaland/Bruno/Cherki projection strength, Leeds attacking value, and Calvert-Lewin's first penalty role.",
+      "playerIds": [
+        82,
+        4,
+        231,
+        30,
+        426,
+        399,
+        260,
+        336,
+        411,
+        346,
+        248
+      ]
+    },
+    {
+      "area": "shortlist",
+      "source": "Player pool, projection summary, team-news report, set-pieces report, odds report",
+      "reportPath": "packages/content/recommendations/gw-1/player-pool.json",
+      "note": "Shortlist considered Saka, O'Reilly, João Pedro, Wilson, Okafor, and Gabriel. Gabriel was prioritized over Saka because the budget could not keep both without weakening the playable bench or dropping Bruno/Haaland.",
+      "playerIds": [
+        12,
+        387,
+        165,
+        260,
+        336,
+        4
+      ]
+    },
+    {
+      "area": "transfers",
+      "source": "Weekly strategy and recommendation template",
+      "reportPath": "packages/content/strategy/weekly/gw-1.json",
+      "note": "No transfer action applies because the current setup is a from-scratch GW1 squad."
+    },
+    {
+      "area": "captaincy",
+      "source": "Projection summary, fixture ticker, team-news report, set-pieces report, odds report",
+      "reportPath": "packages/content/recommendations/gw-1/set-pieces-report.md",
+      "note": "Haaland and Bruno are the top two selected projections, have no FPL team-news flags, and both have high-confidence first penalty roles.",
+      "playerIds": [
+        411,
+        426
+      ]
+    },
+    {
+      "area": "bench",
+      "source": "Projection summary and FPL player metadata",
+      "reportPath": "packages/content/recommendations/gw-1/projection-summary.md",
+      "note": "Bench order keeps the playing goalkeeper first, then Lewis-Potter as first outfield cover ahead of Sessegnon and Spence based on projected points.",
+      "playerIds": [
+        497,
+        86,
+        269,
+        505
+      ]
+    },
+    {
+      "area": "chip",
+      "source": "Season strategy, weekly strategy, evidence report, odds report",
+      "reportPath": "packages/content/strategy/season-plan.md",
+      "note": "No chip because season posture saves chips and the evidence pack lacks matched GW1 odds rows or predicted-lineup evidence for a chip edge."
+    },
+    {
+      "area": "risks",
+      "source": "Evidence report, risk report, team-news report, set-pieces report, odds report",
+      "reportPath": "packages/content/recommendations/gw-1/evidence-report.md",
+      "note": "Risks come from missing minutes evidence, odds-report coverage gaps, full-budget structure, triple Leeds exposure, and the conscious Saka omission."
+    },
+    {
+      "area": "change-conditions",
+      "source": "Evidence report, team-news report, odds report, fixture ticker",
+      "reportPath": "packages/content/recommendations/gw-1/evidence-report.md",
+      "note": "Change conditions are tied to refreshed odds coverage, predicted-lineup evidence, FPL team-news flags, or a legal variant that restores Saka without weakening the core."
+    }
+  ],
   "risks": [
-    "Official current-season FPL prices, player IDs, positions, clubs, fixtures, and flags may differ.",
-    "The public API data currently points to completed 2025/26 gameweek data.",
-    "No current injury, suspension, transfer, or predicted-lineup news has been ingested.",
-    "This should be replaced once official current-season FPL data is live."
+    "Automated minutes and predicted-lineup evidence is missing, so starter security is approximated from historical minutes and FPL availability flags.",
+    "Odds-report has no matched GW1 Premier League market rows, so clean-sheet and scoring assumptions are not market-checked.",
+    "The squad spends the full £100.0m budget, leaving no immediate upgrade buffer.",
+    "The squad uses all three Leeds slots through Wilson, Okafor, and Calvert-Lewin.",
+    "Saka is omitted despite Arsenal having Coventry City at home and Saka owning a high-confidence first penalty role."
   ],
   "whatWouldChangeMyMind": [
-    "Official FPL launch data changes prices, positions, or clubs.",
-    "GW1 fixtures make a premium attacker or defender clearly better.",
-    "Team news changes expected minutes for Cherki, Kroupi, João Pedro, or the defensive picks.",
-    "A current squad is supplied in config/squad.ts."
+    "Any selected player appears as watch, risk, or avoid in a refreshed team-news report.",
+    "Matched GW1 odds rows strongly favor an Arsenal attacking double-up or weaken Man City captaincy.",
+    "Predicted-lineup evidence weakens Cherki, Okafor, Wilson, Calvert-Lewin, Beto, Digne, or Keane.",
+    "A legal Saka variant keeps Haaland, Bruno, Gabriel, a playable first bench, and avoids dead low-minute enablers.",
+    "Late FPL price, position, or availability changes alter the £100.0m structure."
   ],
   "legality": {
     "isValid": true,
     "errors": [],
-    "warnings": [
-      "Deadline status is unknown.",
-      "Old-data provisional draft only."
-    ]
+    "warnings": []
   },
   "manualExecutionRequired": true
 }

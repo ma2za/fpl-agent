@@ -62,6 +62,16 @@ const recommendation: WeeklyRecommendation = {
     label: "medium",
     explanation: "Fixture test confidence."
   },
+  evidenceReferences: [
+    { area: "squad", source: "test", reportPath: "test.md", note: "Squad evidence." },
+    { area: "starting-xi", source: "test", reportPath: "test.md", note: "XI evidence." },
+    { area: "shortlist", source: "test", reportPath: "test.md", note: "Shortlist evidence." },
+    { area: "captaincy", source: "test", reportPath: "test.md", note: "Captaincy evidence." },
+    { area: "bench", source: "test", reportPath: "test.md", note: "Bench evidence." },
+    { area: "chip", source: "test", reportPath: "test.md", note: "Chip evidence." },
+    { area: "risks", source: "test", reportPath: "test.md", note: "Risk evidence." },
+    { area: "change-conditions", source: "test", reportPath: "test.md", note: "Change evidence." }
+  ],
   risks: [],
   whatWouldChangeMyMind: [],
   legality: {

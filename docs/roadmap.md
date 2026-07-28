@@ -1,5 +1,7 @@
 # Roadmap
 
+See `docs/evidence-release-plan.md` for the evidence automation release plan that follows the initial agent decision toolkit.
+
 ## Milestone 1: Repo Skeleton
 
 - pnpm workspace

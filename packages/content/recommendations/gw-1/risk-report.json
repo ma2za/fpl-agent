@@ -1,0 +1,93 @@
+{
+  "generatedAt": "2026-07-28T18:26:42.222Z",
+  "gameweek": 1,
+  "dataMode": "official",
+  "summary": {
+    "high": 0,
+    "medium": 4,
+    "low": 5,
+    "evidenceGaps": 1
+  },
+  "playerRisks": [
+    {
+      "playerId": 269,
+      "name": "Ryan Sessegnon",
+      "position": "DEF",
+      "teamId": 10,
+      "level": "low",
+      "starting": false,
+      "benchPosition": 2,
+      "reasons": [
+        "High immediate fixture difficulty: FDR 4."
+      ]
+    }
+  ],
+  "structureRisks": [
+    {
+      "risk": "budget-flexibility",
+      "level": "medium",
+      "message": "Squad uses £100.0 with £0.0 bank, leaving no immediate upgrade buffer."
+    },
+    {
+      "risk": "captaincy-dependency",
+      "level": "medium",
+      "message": "Captain Erling Haaland costs £15.5, so captaincy failure has a large structure cost."
+    },
+    {
+      "risk": "max-club-exposure",
+      "level": "medium",
+      "message": "Team 13 uses all 3 squad slots."
+    },
+    {
+      "risk": "odds-coverage",
+      "level": "medium",
+      "message": "Odds report exists, but no GW fixtures were matched to market rows."
+    },
+    {
+      "risk": "budget-def",
+      "level": "low",
+      "message": "DEF spend is £26.5."
+    },
+    {
+      "risk": "budget-fwd",
+      "level": "low",
+      "message": "FWD spend is £27.0."
+    },
+    {
+      "risk": "budget-gkp",
+      "level": "low",
+      "message": "GKP spend is £9.0."
+    },
+    {
+      "risk": "budget-mid",
+      "level": "low",
+      "message": "MID spend is £37.5."
+    }
+  ],
+  "evidenceGaps": [
+    {
+      "area": "team-news",
+      "status": "reviewed",
+      "message": "Automated team-news report is available."
+    },
+    {
+      "area": "set-pieces",
+      "status": "reviewed",
+      "message": "Automated set-piece report is available."
+    },
+    {
+      "area": "odds",
+      "status": "reviewed",
+      "message": "Automated odds report is available."
+    },
+    {
+      "area": "watchlist",
+      "status": "missing",
+      "message": "Watchlist context has not been reviewed."
+    }
+  ],
+  "notes": [
+    "Risk report is evidence-only and does not choose alternatives.",
+    "1 player risks, 8 structure risks, 1 evidence gaps."
+  ]
+}

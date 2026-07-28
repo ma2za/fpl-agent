@@ -28,7 +28,7 @@ describe("createFplApiClient", () => {
     expect(cached.elements).toHaveLength(2);
   });
 
-  it("falls back to cache when refresh fails", async () => {
+  it("fails instead of falling back to stale cache when forced refresh fails", async () => {
     const cacheDir = await mkdtemp(path.join(tmpdir(), "fpl-agent-"));
     const seededClient = createFplApiClient({
       cacheDir,
@@ -45,8 +45,6 @@ describe("createFplApiClient", () => {
       forceRefresh: true
     });
 
-    const data = await fallbackClient.getBootstrapStatic();
-
-    expect(data.elements[0].web_name).toBe("Raya");
+    await expect(fallbackClient.getBootstrapStatic()).rejects.toThrow("offline");
   });
 });

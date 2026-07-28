@@ -1,8 +1,17 @@
 # Team News
 
-Use this file for manually reviewed injury, suspension, transfer, and predicted-lineup notes.
+Reviewed: no
+
+Use this file for manually reviewed injury, suspension, transfer, and predicted-lineup notes. Change `Reviewed: no` to `Reviewed: yes` only after the notes have been checked for the active gameweek.
 
 ## Notes
 
-- No current team-news notes have been reviewed yet.
-- Confirm expected starters before trusting any provisional recommendation.
+- [ ] Injuries checked
+- [ ] Suspensions checked
+- [ ] Late transfers checked
+- [ ] Predicted lineups checked
+- [ ] Minutes risks checked
+
+## Player Notes
+
+- None yet.
