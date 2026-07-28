@@ -197,6 +197,7 @@ The coding agent must read the evidence files, reason from current public inform
 - Select a legal 15-player squad within £${DEFAULT_STARTING_BUDGET.toFixed(1)}m.
 - Cite evidence for every squad, shortlist, starting XI, captaincy, bench, chip, risk, and change-condition decision.
 - Fill evidenceReferences with source, reportPath, note, and relevant player IDs where applicable.
+- Fill decisionAnalysis with why every selected player was picked, why named alternatives were rejected, captaincy comparisons, key omissions, and evidence paths.
 - Keep exactly ${REQUIRED_SQUAD_COUNTS.GKP} GKP, ${REQUIRED_SQUAD_COUNTS.DEF} DEF, ${REQUIRED_SQUAD_COUNTS.MID} MID, and ${REQUIRED_SQUAD_COUNTS.FWD} FWD.
 - Keep no more than 3 players from one club.
 - Choose starting XI, captain, vice-captain, bench order, and chip.

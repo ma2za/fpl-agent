@@ -1,14 +1,86 @@
 {
-  "generatedAt": "2026-07-28T18:26:42.222Z",
+  "generatedAt": "2026-07-28T22:10:09.925Z",
   "gameweek": 1,
   "dataMode": "official",
   "summary": {
     "high": 0,
-    "medium": 4,
-    "low": 5,
-    "evidenceGaps": 1
+    "medium": 7,
+    "low": 7,
+    "evidenceGaps": 0
   },
   "playerRisks": [
+    {
+      "playerId": 12,
+      "name": "Saka",
+      "position": "MID",
+      "teamId": 1,
+      "level": "medium",
+      "starting": true,
+      "benchPosition": null,
+      "reasons": [
+        "Minutes risk is watch: Saka: watch minutes risk, medium historical confidence, predicted-lineup confidence unavailable."
+      ]
+    },
+    {
+      "playerId": 30,
+      "name": "Digne",
+      "position": "DEF",
+      "teamId": 2,
+      "level": "medium",
+      "starting": true,
+      "benchPosition": null,
+      "reasons": [
+        "Minutes risk is watch: Digne: watch minutes risk, medium historical confidence, predicted-lineup confidence unavailable."
+      ]
+    },
+    {
+      "playerId": 248,
+      "name": "Beto",
+      "position": "FWD",
+      "teamId": 9,
+      "level": "medium",
+      "starting": true,
+      "benchPosition": null,
+      "reasons": [
+        "Minutes risk is watch: Beto: watch minutes risk, medium historical confidence, predicted-lineup confidence unavailable."
+      ]
+    },
+    {
+      "playerId": 336,
+      "name": "Okafor",
+      "position": "MID",
+      "teamId": 13,
+      "level": "medium",
+      "starting": true,
+      "benchPosition": null,
+      "reasons": [
+        "Minutes risk is watch: Okafor: watch minutes risk, medium historical confidence, predicted-lineup confidence unavailable."
+      ]
+    },
+    {
+      "playerId": 399,
+      "name": "Cherki",
+      "position": "MID",
+      "teamId": 15,
+      "level": "medium",
+      "starting": true,
+      "benchPosition": null,
+      "reasons": [
+        "Minutes risk is watch: Cherki: watch minutes risk, medium historical confidence, predicted-lineup confidence unavailable."
+      ]
+    },
+    {
+      "playerId": 86,
+      "name": "Lewis-Potter",
+      "position": "MID",
+      "teamId": 4,
+      "level": "low",
+      "starting": false,
+      "benchPosition": 1,
+      "reasons": [
+        "Minutes risk is watch: Lewis-Potter: watch minutes risk, medium historical confidence, predicted-lineup confidence unavailable."
+      ]
+    },
     {
       "playerId": 269,
       "name": "Ryan Sessegnon",
@@ -18,25 +90,28 @@
       "starting": false,
       "benchPosition": 2,
       "reasons": [
-        "High immediate fixture difficulty: FDR 4."
+        "High immediate fixture difficulty: FDR 4.",
+        "Minutes risk is watch: Sessegnon: watch minutes risk, medium historical confidence, predicted-lineup confidence unavailable."
+      ]
+    },
+    {
+      "playerId": 505,
+      "name": "Spence",
+      "position": "DEF",
+      "teamId": 19,
+      "level": "low",
+      "starting": false,
+      "benchPosition": 3,
+      "reasons": [
+        "Minutes risk is watch: Spence: watch minutes risk, medium historical confidence, predicted-lineup confidence unavailable."
       ]
     }
   ],
   "structureRisks": [
     {
-      "risk": "budget-flexibility",
-      "level": "medium",
-      "message": "Squad uses £100.0 with £0.0 bank, leaving no immediate upgrade buffer."
-    },
-    {
       "risk": "captaincy-dependency",
       "level": "medium",
       "message": "Captain Erling Haaland costs £15.5, so captaincy failure has a large structure cost."
-    },
-    {
-      "risk": "max-club-exposure",
-      "level": "medium",
-      "message": "Team 13 uses all 3 squad slots."
     },
     {
       "risk": "odds-coverage",
@@ -51,7 +126,7 @@
     {
       "risk": "budget-fwd",
       "level": "low",
-      "message": "FWD spend is £27.0."
+      "message": "FWD spend is £28.5."
     },
     {
       "risk": "budget-gkp",
@@ -61,7 +136,7 @@
     {
       "risk": "budget-mid",
       "level": "low",
-      "message": "MID spend is £37.5."
+      "message": "MID spend is £35.0."
     }
   ],
   "evidenceGaps": [
@@ -81,13 +156,23 @@
       "message": "Automated odds report is available."
     },
     {
+      "area": "minutes",
+      "status": "reviewed",
+      "message": "Automated minutes risk report is available."
+    },
+    {
+      "area": "public-evidence",
+      "status": "reviewed",
+      "message": "Public browser evidence report is available."
+    },
+    {
       "area": "watchlist",
-      "status": "missing",
-      "message": "Watchlist context has not been reviewed."
+      "status": "reviewed",
+      "message": "Manual watchlist is optional because public evidence report is available."
     }
   ],
   "notes": [
     "Risk report is evidence-only and does not choose alternatives.",
-    "1 player risks, 8 structure risks, 1 evidence gaps."
+    "8 player risks, 6 structure risks, 0 evidence gaps."
   ]
 }

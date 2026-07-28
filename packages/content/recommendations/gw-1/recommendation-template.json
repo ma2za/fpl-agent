@@ -21,6 +21,46 @@
   "captaincy": null,
   "chip": null,
   "confidence": null,
+  "decisionAnalysis": {
+    "summary": null,
+    "squadStructure": [],
+    "playerDecisions": [
+      {
+        "playerId": null,
+        "role": "starter | bench | squad",
+        "whyPicked": [],
+        "comparedAgainst": [
+          {
+            "playerId": null,
+            "name": null,
+            "whyNot": []
+          }
+        ],
+        "evidence": []
+      }
+    ],
+    "captaincy": {
+      "captainPlayerId": null,
+      "whyCaptain": [],
+      "comparedAgainst": [
+        {
+          "playerId": null,
+          "name": null,
+          "whyNot": []
+        }
+      ],
+      "evidence": []
+    },
+    "keyOmissions": [
+      {
+        "playerId": null,
+        "name": null,
+        "whyOmitted": [],
+        "wouldReconsiderIf": [],
+        "evidence": []
+      }
+    ]
+  },
   "evidenceReferences": [],
   "risks": [],
   "whatWouldChangeMyMind": [],

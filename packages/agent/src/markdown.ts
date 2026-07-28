@@ -14,6 +14,50 @@ function playerLine(recommendation: WeeklyRecommendation, playerId: number) {
   return `${player.name} (${player.position}, team ${player.teamId}, £${player.price.toFixed(1)})`;
 }
 
+function renderDecisionAnalysis(recommendation: WeeklyRecommendation) {
+  const analysis = recommendation.decisionAnalysis;
+
+  if (!analysis) {
+    return "Decision analysis is missing.";
+  }
+
+  return `## Decision Analysis
+
+${analysis.summary}
+
+### Squad Structure
+
+${analysis.squadStructure.map((item) => `- ${item}`).join("\n")}
+
+### Player Picks And Alternatives
+
+${analysis.playerDecisions.map((decision) => `#### ${playerLine(recommendation, decision.playerId)}
+
+Why picked:
+${decision.whyPicked.map((reason) => `- ${reason}`).join("\n")}
+
+Why not alternatives:
+${decision.comparedAgainst.map((alternative) => `- ${alternative.name}: ${alternative.whyNot.join(" ")}`).join("\n")}
+
+Evidence:
+${decision.evidence.map((item) => `- ${item}`).join("\n")}`).join("\n\n")}
+
+### Captaincy Comparison
+
+Why captain:
+${analysis.captaincy.whyCaptain.map((reason) => `- ${reason}`).join("\n")}
+
+Why not alternatives:
+${analysis.captaincy.comparedAgainst.map((alternative) => `- ${alternative.name}: ${alternative.whyNot.join(" ")}`).join("\n")}
+
+Evidence:
+${analysis.captaincy.evidence.map((item) => `- ${item}`).join("\n")}
+
+### Key Omissions
+
+${analysis.keyOmissions.map((omission) => `- ${omission.name}: ${omission.whyOmitted.join(" ")} Reconsider if: ${omission.wouldReconsiderIf.join(" ")}`).join("\n")}`;
+}
+
 export function renderRecommendationMarkdown(recommendation: WeeklyRecommendation) {
   return `# FPL Agent Recommendation: GW${recommendation.gameweek}
 
@@ -40,6 +84,8 @@ Captain: ${playerName(recommendation, recommendation.captaincy.captainPlayerId)}
 Vice-captain: ${playerName(recommendation, recommendation.captaincy.viceCaptainPlayerId)}
 
 ${recommendation.captaincy.explanation}
+
+${renderDecisionAnalysis(recommendation)}
 
 ## Chip
 
@@ -109,6 +155,8 @@ Only activate this chip if you agree with the recommendation.
 
 ${recommendation.risks.map((risk) => `- ${risk}`).join("\n")}
 
+${renderDecisionAnalysis(recommendation)}
+
 ## What Would Change This Recommendation
 
 ${recommendation.whatWouldChangeMyMind.map((condition) => `- ${condition}`).join("\n")}
@@ -170,6 +218,8 @@ Manual execution required: ${recommendation.manualExecutionRequired}
 ## Risks
 
 ${recommendation.risks.map((risk) => `- ${risk}`).join("\n")}
+
+${renderDecisionAnalysis(recommendation)}
 
 ## What Would Change This Recommendation
 

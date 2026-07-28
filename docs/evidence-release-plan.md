@@ -18,14 +18,15 @@ Priority order:
 
 1. Release 0.5: Minutes And Predicted Lineup Evidence.
 2. Release 0.6: Improved Odds Evidence.
-3. Release 0.7: Authored Variant Workflow.
-4. Release 0.8: Fixture Horizon Engine.
-5. Release 0.9: Player Role Evidence.
-6. Release 0.10: Public News Evidence.
-7. Release 0.11: Price And Ownership Risk.
-8. Release 0.12: App Final Selection Flow.
-9. Release 0.13: Postmortem And Learning Loop.
-10. Release 1.0: Recommendation-Ready Workflow.
+3. Release 0.7: Public Evidence Browser.
+4. Release 0.8: Authored Variant Workflow.
+5. Release 0.9: Fixture Horizon Engine.
+6. Release 0.10: Player Role Evidence.
+7. Release 0.11: Public News Evidence.
+8. Release 0.12: Price And Ownership Risk.
+9. Release 0.13: App Final Selection Flow.
+10. Release 0.14: Postmortem And Learning Loop.
+11. Release 1.0: Recommendation-Ready Workflow.
 
 ## Release 0.1: Evidence Source Framework
 
@@ -51,6 +52,7 @@ Acceptance:
 - Reports never select final players.
 - Every evidence item includes source, timestamp, and confidence.
 - Missing critical evidence lowers confidence or creates a warning.
+- Authored recommendations must include player-by-player pick-versus-alternative analysis.
 
 ## Release 0.2: Team News Evidence
 
@@ -107,15 +109,18 @@ Acceptance:
 
 ## Release 0.5: Minutes And Predicted Lineup Evidence
 
+Status: partially implemented from official FPL historical minutes and availability fields; public predicted-lineup adapters remain future work.
+
 Goal: reduce bad picks caused by non-starters and rotation.
 
-- Add `minutes-risk-report.json` and `minutes-risk-report.md`.
-- Combine historical minutes, current flags, public predicted-lineup evidence, recent starts, transfer notes, and rotation notes.
-- Classify selected players as `secure`, `watch`, `risky`, or `unknown`.
-- Add minutes confidence for every selected player.
-- Flag likely non-starters, low-minute starters, low-minute first bench, and unknown-role enablers.
-- Distinguish historical-minute confidence from current predicted-lineup confidence.
-- Add specific starter and bench-cover warnings to `verify`.
+- Add `minutes-risk-report.json` and `minutes-risk-report.md`: done.
+- Combine historical minutes and current FPL availability flags: done.
+- Add public predicted-lineup evidence, recent starts, transfer notes, and rotation notes: future work.
+- Classify selected players as `secure`, `watch`, `risky`, or `unknown`: done.
+- Add minutes confidence for every selected player: done.
+- Flag likely non-starters, low-minute starters, low-minute first bench, and unknown-role enablers: partially done from historical minutes.
+- Distinguish historical-minute confidence from current predicted-lineup confidence: done; predicted-lineup confidence is currently `unavailable`.
+- Add specific starter and bench-cover warnings to `verify`: done.
 - Show minutes risk in the web recommendation page.
 
 Acceptance:
@@ -126,6 +131,8 @@ Acceptance:
 - Reports do not propose replacement players.
 
 ## Release 0.6: Improved Odds Evidence
+
+Status: partially implemented with market coverage labels and local public snapshot support in the report model.
 
 Goal: make market evidence useful for captaincy, defensive picks, and high-level team attacking expectations.
 
@@ -140,7 +147,7 @@ Goal: make market evidence useful for captaincy, defensive picks, and high-level
   - clean sheet
   - anytime scorer
 - Keep derived signals clearly labelled when direct markets are unavailable.
-- Write source coverage warnings into `odds-report.md`, `risk-report.md`, and `legality-report.json`.
+- Write source coverage warnings into `odds-report.md`, `risk-report.md`, and `legality-report.json`: partially done.
 - Do not select players or rank replacements.
 
 Acceptance:
@@ -150,7 +157,35 @@ Acceptance:
 - A missing market is reported as a coverage gap, not hidden behind a fresh source timestamp.
 - Reports show source timestamps and never require private accounts.
 
-## Release 0.7: Authored Variant Workflow
+## Release 0.7: Public Evidence Browser
+
+Status: implemented as a read-only public page collector with Playwright support and HTTP fallback.
+
+Goal: capture source-backed public evidence without API keys, private accounts, login, or manual user work.
+
+- Add `public-evidence-report.json` and `public-evidence-report.md`: done.
+- Capture public pages for fixtures, player news, predicted lineups, and price context: done.
+- Use Playwright when available for rendered pages; fall back to plain public HTTP when Playwright is unavailable: done.
+- Store raw text snapshots under ignored `raw-sources/public-evidence/`: done.
+- Normalize each page into evidence signals with source URL, provider, timestamp, confidence, and severity: done.
+- Add public evidence freshness to `pnpm evidence` and `pnpm verify`: done.
+- Keep the safety boundary: no login, no persisted cookies, no FPL management pages, no final player selection.
+
+Commands:
+
+```bash
+pnpm public-evidence -- --gw 1
+pnpm public-evidence -- --gw 1 --mode browser
+pnpm public-evidence -- --gw 1 --mode fetch
+```
+
+Acceptance:
+
+- Every captured source has URL, provider, timestamp, and capture mode.
+- Failed or low-text captures are visible warnings, not silent gaps.
+- The report does not propose transfer targets, captains, squads, or replacement players.
+
+## Release 0.8: Authored Variant Workflow
 
 Goal: let the coding agent author multiple legal squads and compare them before choosing a final recommendation.
 
@@ -172,7 +207,7 @@ Acceptance:
 - Comparison reports never declare a winner automatically.
 - The final recommendation can cite why one authored variant was preferred.
 
-## Release 0.8: Fixture Horizon Engine
+## Release 0.9: Fixture Horizon Engine
 
 Goal: improve fixture evidence for season and weekly strategy.
 
@@ -187,7 +222,7 @@ Acceptance:
 - The agent can compare short-term captaincy, medium-term transfers, and 6GW squad structure from one report.
 - High fixture-difficulty clusters are visible for selected squads and variants.
 
-## Release 0.9: Player Role Evidence
+## Release 0.10: Player Role Evidence
 
 Goal: capture player role quality beyond projections, set pieces, and raw minutes.
 
@@ -213,7 +248,7 @@ Acceptance:
 - Players like Cherki, Wilson, Okafor, Beto, Calvert-Lewin, and Lewis-Potter can be reviewed for role risk before deadline.
 - Role-risk warnings appear in `risk-report.md` and the web recommendation view.
 
-## Release 0.10: Public News Evidence
+## Release 0.11: Public News Evidence
 
 Goal: gather source-backed team and player news without login, scraping private content, or requiring manual user work.
 
@@ -230,7 +265,7 @@ Goal: gather source-backed team and player news without login, scraping private 
 - De-duplicate notes across sources.
 - Keep excerpts short and source-linked.
 - Feed selected-player risks into `team-news-report.md` or a combined availability/news view.
-- Do not use browser automation, login, cookies, or aggressive scraping.
+- Do not use login, cookies, authenticated pages, or aggressive scraping. Read-only Playwright capture is allowed for public rendered pages.
 
 Acceptance:
 
@@ -238,7 +273,7 @@ Acceptance:
 - Every news item has a URL, source name, timestamp, and confidence.
 - The agent can cite current news evidence in `recommendation.json`.
 
-## Release 0.11: Price And Ownership Risk
+## Release 0.12: Price And Ownership Risk
 
 Goal: expose early-season price and ownership pressure so full-budget structures and bandwagon risks are clearer.
 
@@ -259,7 +294,7 @@ Acceptance:
 - Major omissions such as Saka can be described in risk terms.
 - The report helps the agent decide whether a structure is too rigid before the human applies it.
 
-## Release 0.12: App Final Selection Flow
+## Release 0.13: App Final Selection Flow
 
 Goal: let the user choose the final squad in the app from authored recommendations.
 
@@ -274,7 +309,7 @@ Acceptance:
 - User can inspect evidence, compare variants, and mark one recommendation as final locally.
 - The final screen is a manual checklist for applying changes in FPL.
 
-## Release 0.13: Postmortem And Learning Loop
+## Release 0.14: Postmortem And Learning Loop
 
 Goal: measure recommendation quality after each gameweek.
 

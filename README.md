@@ -18,7 +18,7 @@ The repo is designed so Codex, Claude Code, or a developer can read the squad co
 
 - It is not an FPL bot that submits changes.
 - It does not log into Fantasy Premier League.
-- It does not use browser automation.
+- It does not use browser automation for authenticated FPL management pages.
 - It does not submit transfers, captaincy, bench order, chips, or team selection.
 - It does not require OpenAI, Claude, or any provider API key.
 
@@ -32,7 +32,7 @@ The project must never implement:
 - Session cookies
 - Authenticated FPL actions
 - POST requests that change an FPL team
-- Playwright or Selenium automation against FPL
+- Playwright or Selenium automation against authenticated FPL management pages
 - Automatic transfer submission
 - Automatic team-selection submission
 
@@ -70,6 +70,8 @@ pnpm evidence -- --gw 1
 pnpm odds -- --gw 1
 pnpm set-pieces -- --gw 1
 pnpm team-news -- --gw 1
+pnpm minutes -- --gw 1
+pnpm public-evidence -- --gw 1
 pnpm fixtures -- --gw 1 --horizon 6
 pnpm recommend -- --gw auto
 pnpm compare:squads -- --a path/to/a.json --b path/to/b.json
@@ -83,7 +85,7 @@ pnpm postmortem -- --gw 1
 
 `pnpm fetch:pl-fixtures -- --gw {n} --horizon {n}` fetches the official Premier League fixture release and writes current-season fixture evidence. It does not provide FPL prices, player IDs, deadlines, or availability.
 
-`pnpm evidence -- --gw {n}` writes a compact evidence freshness report for current FPL data, fixtures, team news, set pieces, odds, and minutes evidence.
+`pnpm evidence -- --gw {n}` writes a compact evidence freshness report for current FPL data, fixtures, team news, set pieces, odds, minutes evidence, and public browser evidence.
 
 `pnpm odds -- --gw {n}` fetches the public Football-Data fixtures CSV and writes an odds coverage report. It records match-level win/draw/loss and over/under evidence when rows are available, but it does not provide player anytime-scorer odds or direct clean-sheet markets.
 
@@ -91,13 +93,19 @@ pnpm postmortem -- --gw 1
 
 `pnpm team-news -- --gw {n}` writes an automated team-news report from public FPL availability fields. It does not scrape news sites or select players.
 
+`pnpm minutes -- --gw {n}` writes a minutes risk report from public FPL historical minutes and availability fields. Predicted-lineup coverage is marked unavailable until a public source adapter is added.
+
+`pnpm public-evidence -- --gw {n}` captures read-only public evidence pages for fixtures, player news, predicted lineups, and price-risk context. It uses Playwright when available and otherwise falls back to plain public HTTP. It does not log in, persist cookies, click FPL management controls, or select players.
+
+For rendered-page capture, install the browser once with `corepack pnpm exec playwright install chromium`, then run `pnpm public-evidence -- --gw {n} --mode browser`.
+
 `pnpm fixtures -- --gw {n} --horizon {n}` writes a fixture ticker for agent review. It does not alter recommendations.
 
 `pnpm recommend -- --gw {n}` prepares evidence for the coding agent. It does not select players or write a final recommendation.
 
 `pnpm compare:squads` compares two agent-authored recommendation files and prints or writes a decision report.
 
-`pnpm verify -- --gw {n}` re-validates an agent-authored recommendation and weekly strategy, rewrites the legality report, and exits non-zero when the recommendation is missing, illegal, or missing required rationale.
+`pnpm verify -- --gw {n}` re-validates an agent-authored recommendation and weekly strategy, rewrites the legality report, brief, checklist, and risk report, and exits non-zero when the recommendation is missing, illegal, missing required rationale, or missing pick-versus-alternative analysis.
 
 Postmortem commands are placeholders until later milestones implement those workflows.
 
@@ -151,6 +159,8 @@ For coding-agent review, start with `agent-brief.md`. It lists the evidence file
 
 Scripts must not choose the squad, starting XI, captain, vice-captain, bench order, transfers, or chips. Those decisions belong to Codex, Claude Code, or a human developer after reviewing the evidence.
 
+Every authored recommendation must include `decisionAnalysis`: why each selected player was picked, which alternatives were rejected, why those alternatives lost, captaincy comparisons, and key omissions. `pnpm verify` fails recommendations that do not include this analysis.
+
 Evidence includes `projection-summary.md`, `budget-tiers.json`, `club-exposure.json`, and `decision-prompts.md`.
 
 Fixture context is generated separately with `pnpm fixtures -- --gw {n} --horizon 6` for FPL API fixtures or `pnpm fetch:pl-fixtures -- --gw {n} --horizon 6` for official Premier League fixture-release evidence.
@@ -171,7 +181,7 @@ Rules coverage and known gaps are tracked in `docs/rules-coverage.md`.
 
 `pnpm verify -- --gw {n}` validates agent-authored recommendation files before a manual checklist is trusted.
 
-It checks squad legality, starting XI, formation, bench order, captaincy, chip availability, transfer cost, deadline status, the manual-execution safety flag, quality gates for rationale and risk notes, and weekly strategy gates.
+It checks squad legality, starting XI, formation, bench order, captaincy, chip availability, transfer cost, deadline status, the manual-execution safety flag, quality gates for rationale and risk notes, pick-versus-alternative analysis, and weekly strategy gates.
 
 Invalid recommendations fail loudly and update:
 

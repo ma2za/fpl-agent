@@ -1,14 +1,14 @@
 # Team News Report: GW1
 
-Generated: 2026-07-28T18:26:23.661Z
+Generated: 2026-07-28T21:56:20.543Z
 
 Source: FPL availability
 
 ## Summary
 
-- Flagged players: 48
+- Flagged players: 50
 - Selected flagged players: 0
-- Avoid: 28
+- Avoid: 30
 - Risk: 0
 - Watch: 18
 - Info: 2
@@ -29,10 +29,12 @@ Source: FPL availability
 - Ferguson (Brighton, FWD): avoid - Ankle injury - Expected back 10 Oct
 - Mitoma (Brighton, MID): avoid - Hamstring injury - Unknown return date
 - Fofana (Chelsea, DEF): avoid - Suspended until 6 Sep
+- Bassette (Coventry City, FWD): avoid - Has joined KVC Westerlo on loan for the rest of the season
 - Uche (Crystal Palace, FWD): avoid - has returned to Getafe CF
 - Garner (Everton, MID): avoid - Groin injury - Expected back 22 Aug
 - Andersen (Fulham, DEF): avoid - Suspended until 29 Aug
 - Matazo (Hull City, MID): avoid - Knee injury - Unknown return date
+- Harrison (Leeds, MID): avoid - Has joined New England Revolution permanently
 - Bajcetic (Liverpool, MID): avoid - Hamstring injury - Expected back 23 Aug
 - Bradley (Liverpool, DEF): avoid - Knee injury - Unknown return date
 - Danns (Liverpool, FWD): avoid - Unspecified injury - Unknown return date

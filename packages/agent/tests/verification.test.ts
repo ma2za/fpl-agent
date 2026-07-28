@@ -62,6 +62,57 @@ const recommendation: WeeklyRecommendation = {
     label: "medium",
     explanation: "Fixture test confidence."
   },
+  decisionAnalysis: {
+    summary: "Test recommendation includes explicit player-pick comparisons.",
+    squadStructure: [
+      "Balanced 3-4-3 test structure.",
+      "Keeps enough bank while covering every required position."
+    ],
+    playerDecisions: Array.from({ length: 15 }, (_, index) => ({
+      playerId: index + 1,
+      role: "squad",
+      whyPicked: [
+        `Player ${index + 1} fits the legal test squad structure.`,
+        `Player ${index + 1} keeps the fixture test recommendation complete.`
+      ],
+      comparedAgainst: [
+        {
+          name: `Alternative ${index + 1}`,
+          whyNot: [`Alternative ${index + 1} is not needed for the fixture test structure.`]
+        }
+      ],
+      evidence: ["test.md"]
+    })),
+    captaincy: {
+      captainPlayerId: 8,
+      whyCaptain: [
+        "Midfielder 1 is the test captain.",
+        "Midfielder 1 is in the starting XI."
+      ],
+      comparedAgainst: [
+        {
+          playerId: 13,
+          name: "Forward 1",
+          whyNot: ["Forward 1 is kept as vice-captain in the test recommendation."]
+        }
+      ],
+      evidence: ["test.md"]
+    },
+    keyOmissions: [
+      {
+        name: "Omitted Player 1",
+        whyOmitted: ["Omitted Player 1 is outside the test squad."],
+        wouldReconsiderIf: ["The test structure changes."],
+        evidence: ["test.md"]
+      },
+      {
+        name: "Omitted Player 2",
+        whyOmitted: ["Omitted Player 2 is outside the test squad."],
+        wouldReconsiderIf: ["The test structure changes."],
+        evidence: ["test.md"]
+      }
+    ]
+  },
   evidenceReferences: [
     { area: "squad", source: "test", reportPath: "test.md", note: "Squad evidence." },
     { area: "starting-xi", source: "test", reportPath: "test.md", note: "XI evidence." },

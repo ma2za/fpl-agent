@@ -3,7 +3,9 @@ import {
   buildSquadRiskReport,
   renderSquadRiskReportMarkdown,
   type FixtureTicker,
+  type MinutesRiskReport,
   type OddsReport,
+  type PublicEvidenceReport,
   type SetPieceReport,
   type TeamNewsReport,
   type WeeklyRecommendation
@@ -123,7 +125,15 @@ const oddsReport: OddsReport = {
     gameweekFixtures: 1,
     matchedFixtures: 1,
     unmatchedFixtures: 0,
-    selectedTeamsCovered: 1
+    selectedTeamsCovered: 1,
+    coverageStatus: "partial",
+    marketCoverage: {
+      matchOdds: "covered",
+      overUnder: "covered",
+      cleanSheet: "missing",
+      anytimeScorer: "missing",
+      teamGoals: "missing"
+    }
   },
   matches: [],
   teamSignals: [
@@ -140,10 +150,93 @@ const oddsReport: OddsReport = {
       lossProbability: 0.15,
       over25Probability: 0.55,
       under25Probability: 0.45,
+      cleanSheetProbability: null,
+      teamGoalsExpected: null,
       attackSignal: "high",
       cleanSheetSignal: "high",
+      attackSignalSource: "derived",
+      cleanSheetSignalSource: "derived",
       selectedPlayerIds: [8],
       summary: "Team 3 market signal."
+    }
+  ],
+  playerSignals: [],
+  warnings: []
+};
+
+const minutesRiskReport: MinutesRiskReport = {
+  generatedAt: "2026-07-04T00:00:00.000Z",
+  gameweek: 1,
+  source: {
+    id: "minutes",
+    label: "FPL historical minutes",
+    provider: "FPL",
+    url: null,
+    rawPath: null,
+    reportPath: null,
+    required: true,
+    confidence: "medium",
+    freshness: {
+      status: "fresh",
+      checkedAt: "2026-07-04T00:00:00.000Z",
+      fetchedAt: "2026-07-04T00:00:00.000Z",
+      ageHours: 0,
+      maxAgeHours: 24,
+      message: "Fresh."
+    }
+  },
+  summary: {
+    playersReviewed: 15,
+    selectedPlayers: 15,
+    selectedStarters: 11,
+    secure: 15,
+    watch: 0,
+    risky: 0,
+    unknown: 0,
+    selectedWatchOrWorse: 0,
+    starterWatchOrWorse: 0
+  },
+  items: [],
+  warnings: []
+};
+
+const publicEvidenceReport: PublicEvidenceReport = {
+  generatedAt: "2026-07-04T00:00:00.000Z",
+  gameweek: 1,
+  summary: {
+    configuredSources: 1,
+    capturedPages: 1,
+    failedPages: 0,
+    playwrightPages: 1,
+    fetchPages: 0,
+    signals: 1
+  },
+  pages: [
+    {
+      sourceId: "lineups",
+      label: "Lineups",
+      provider: "Public Source",
+      url: "https://example.com",
+      area: "predicted-lineups",
+      capturedAt: "2026-07-04T00:00:00.000Z",
+      captureMode: "playwright",
+      title: "Lineups",
+      textExcerpt: "Predicted lineups.",
+      wordCount: 100,
+      rawPath: "raw.txt",
+      error: null,
+      confidence: "medium"
+    }
+  ],
+  signals: [
+    {
+      sourceId: "lineups",
+      area: "predicted-lineups",
+      severity: "watch",
+      subject: "Lineups",
+      summary: "Predicted lineups.",
+      url: "https://example.com",
+      confidence: "medium"
     }
   ],
   warnings: []
@@ -159,6 +252,8 @@ function report(overrides: Partial<WeeklyRecommendation> = {}) {
     dataStatus: { dataMode: overrides.dataMode ?? recommendation.dataMode },
     fixtureTicker: null,
     oddsReport,
+    minutesRiskReport,
+    publicEvidenceReport,
     contextNotes: reviewedContext
   });
 }
@@ -213,7 +308,7 @@ describe("buildSquadRiskReport", () => {
       }
     });
 
-    expect(result.summary.evidenceGaps).toBe(4);
+    expect(result.summary.evidenceGaps).toBe(6);
   });
 
   it("uses automated team-news report instead of manual team-news context", () => {
@@ -375,6 +470,42 @@ describe("buildSquadRiskReport", () => {
 
     expect(result.structureRisks.find((risk) => risk.risk === "odds-coverage")?.level).toBe("medium");
     expect(result.evidenceGaps.find((gap) => gap.area === "odds")?.status).toBe("reviewed");
+  });
+
+  it("uses automated minutes report instead of missing minutes evidence", () => {
+    const result = buildSquadRiskReport({
+      generatedAt: "2026-07-04T00:00:00.000Z",
+      recommendation,
+      dataStatus: { dataMode: "official" },
+      fixtureTicker: null,
+      minutesRiskReport: {
+        ...minutesRiskReport,
+        items: [
+          {
+            playerId: 8,
+            name: "Midfielder 1",
+            webName: "Midfielder 1",
+            teamId: 3,
+            teamName: "Team 3",
+            position: "MID",
+            status: "a",
+            minutes: 1500,
+            selected: true,
+            starting: true,
+            benchPosition: null,
+            historicalConfidence: "medium",
+            predictedLineupConfidence: "unavailable",
+            riskLevel: "watch",
+            reasons: ["Moderate historical minutes: 1500."],
+            summary: "Midfielder 1: watch minutes risk."
+          }
+        ]
+      },
+      contextNotes: reviewedContext
+    });
+
+    expect(result.evidenceGaps.find((gap) => gap.area === "minutes")?.status).toBe("reviewed");
+    expect(result.playerRisks.find((risk) => risk.playerId === 8)?.level).toBe("medium");
   });
 
   it("flags provisional data", () => {

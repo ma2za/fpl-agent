@@ -1,6 +1,6 @@
 # Fixture Ticker: GW1-GW6
 
-Generated: 2026-07-28T18:20:28.460Z
+Generated: 2026-07-28T22:07:37.886Z
 
 Difficulty uses the public FPL fixture difficulty value from the team perspective.
 

@@ -122,6 +122,46 @@ export function buildEvidencePack(input: BuildEvidencePackInput): EvidencePack {
     captaincy: null,
     chip: null,
     confidence: null,
+    decisionAnalysis: {
+      summary: null,
+      squadStructure: [],
+      playerDecisions: [
+        {
+          playerId: null,
+          role: "starter | bench | squad",
+          whyPicked: [],
+          comparedAgainst: [
+            {
+              playerId: null,
+              name: null,
+              whyNot: []
+            }
+          ],
+          evidence: []
+        }
+      ],
+      captaincy: {
+        captainPlayerId: null,
+        whyCaptain: [],
+        comparedAgainst: [
+          {
+            playerId: null,
+            name: null,
+            whyNot: []
+          }
+        ],
+        evidence: []
+      },
+      keyOmissions: [
+        {
+          playerId: null,
+          name: null,
+          whyOmitted: [],
+          wouldReconsiderIf: [],
+          evidence: []
+        }
+      ]
+    },
     evidenceReferences: [],
     risks: [],
     whatWouldChangeMyMind: [],
@@ -193,6 +233,10 @@ export function renderDecisionPrompts(evidencePack: EvidencePack) {
 - What would change the recommendation before deadline?
 - What evidence file supports each squad, shortlist, XI, captaincy, bench, chip, risk, and change-condition decision?
 - Does every authored recommendation include machine-readable evidenceReferences with source, reportPath, and note?
+- For every selected player, what evidence supports the pick and which named alternatives were rejected?
+- For every rejected alternative, what specific tradeoff made the selected player preferable?
+- Which premium or popular omissions are most dangerous, and what evidence would change the decision?
+- Does the captaincy section compare the captain against the vice-captain and at least one other realistic captain?
 
 ## Manual Context To Read
 

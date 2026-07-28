@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-07-28T18:26:42.239Z",
+  "generatedAt": "2026-07-28T22:10:09.950Z",
   "gameweek": 1,
   "summary": {
-    "fresh": 5,
+    "fresh": 7,
     "stale": 0,
-    "missing": 1,
-    "requiredMissing": 1,
+    "missing": 0,
+    "requiredMissing": 0,
     "requiredStale": 0
   },
   "sources": [
@@ -20,9 +20,9 @@
       "confidence": "high",
       "freshness": {
         "status": "fresh",
-        "checkedAt": "2026-07-28T18:26:42.239Z",
-        "fetchedAt": "2026-07-28T18:20:28.612Z",
-        "ageHours": 0.1,
+        "checkedAt": "2026-07-28T22:10:09.950Z",
+        "fetchedAt": "2026-07-28T21:50:07.969Z",
+        "ageHours": 0.3,
         "maxAgeHours": 24,
         "message": "FPL data is fresh."
       }
@@ -38,9 +38,9 @@
       "confidence": "high",
       "freshness": {
         "status": "fresh",
-        "checkedAt": "2026-07-28T18:26:42.239Z",
-        "fetchedAt": "2026-07-28T18:20:28.481Z",
-        "ageHours": 0.1,
+        "checkedAt": "2026-07-28T22:10:09.950Z",
+        "fetchedAt": "2026-07-28T22:07:37.931Z",
+        "ageHours": 0,
         "maxAgeHours": 168,
         "message": "Fixture evidence is fresh."
       }
@@ -56,9 +56,9 @@
       "confidence": "medium",
       "freshness": {
         "status": "fresh",
-        "checkedAt": "2026-07-28T18:26:42.239Z",
-        "fetchedAt": "2026-07-28T18:26:23.676Z",
-        "ageHours": 0,
+        "checkedAt": "2026-07-28T22:10:09.950Z",
+        "fetchedAt": "2026-07-28T21:56:20.602Z",
+        "ageHours": 0.2,
         "maxAgeHours": 24,
         "message": "Team news is fresh."
       }
@@ -74,9 +74,9 @@
       "confidence": "medium",
       "freshness": {
         "status": "fresh",
-        "checkedAt": "2026-07-28T18:26:42.239Z",
-        "fetchedAt": "2026-07-28T18:26:23.709Z",
-        "ageHours": 0,
+        "checkedAt": "2026-07-28T22:10:09.950Z",
+        "fetchedAt": "2026-07-28T21:56:20.932Z",
+        "ageHours": 0.2,
         "maxAgeHours": 168,
         "message": "Set pieces is fresh."
       }
@@ -92,9 +92,9 @@
       "confidence": "medium",
       "freshness": {
         "status": "fresh",
-        "checkedAt": "2026-07-28T18:26:42.239Z",
-        "fetchedAt": "2026-07-28T18:26:35.449Z",
-        "ageHours": 0,
+        "checkedAt": "2026-07-28T22:10:09.950Z",
+        "fetchedAt": "2026-07-28T21:50:12.933Z",
+        "ageHours": 0.3,
         "maxAgeHours": 12,
         "message": "Odds evidence is fresh."
       }
@@ -109,12 +109,30 @@
       "required": true,
       "confidence": "medium",
       "freshness": {
-        "status": "missing",
-        "checkedAt": "2026-07-28T18:26:42.239Z",
-        "fetchedAt": null,
-        "ageHours": null,
+        "status": "fresh",
+        "checkedAt": "2026-07-28T22:10:09.950Z",
+        "fetchedAt": "2026-07-28T22:10:01.509Z",
+        "ageHours": 0,
         "maxAgeHours": 24,
-        "message": "Automated minutes evidence is missing."
+        "message": "Minutes evidence is fresh."
+      }
+    },
+    {
+      "id": "public-evidence",
+      "label": "Public browser evidence",
+      "provider": "Read-only public pages captured without API keys",
+      "url": null,
+      "rawPath": null,
+      "reportPath": "packages\\content\\recommendations\\gw-1\\public-evidence-report.json",
+      "required": true,
+      "confidence": "medium",
+      "freshness": {
+        "status": "fresh",
+        "checkedAt": "2026-07-28T22:10:09.950Z",
+        "fetchedAt": "2026-07-28T21:51:35.978Z",
+        "ageHours": 0.3,
+        "maxAgeHours": 12,
+        "message": "Public browser evidence is fresh."
       }
     }
   ],
@@ -126,7 +144,7 @@
       "severity": "info",
       "summary": "FPL data is fresh.",
       "confidence": "high",
-      "fetchedAt": "2026-07-28T18:20:28.612Z",
+      "fetchedAt": "2026-07-28T21:50:07.969Z",
       "url": null
     },
     {
@@ -136,7 +154,7 @@
       "severity": "info",
       "summary": "Fixture evidence is fresh.",
       "confidence": "high",
-      "fetchedAt": "2026-07-28T18:20:28.481Z",
+      "fetchedAt": "2026-07-28T22:07:37.931Z",
       "url": null
     },
     {
@@ -146,7 +164,7 @@
       "severity": "info",
       "summary": "Team news is fresh.",
       "confidence": "medium",
-      "fetchedAt": "2026-07-28T18:26:23.676Z",
+      "fetchedAt": "2026-07-28T21:56:20.602Z",
       "url": null
     },
     {
@@ -156,7 +174,7 @@
       "severity": "info",
       "summary": "Set pieces is fresh.",
       "confidence": "medium",
-      "fetchedAt": "2026-07-28T18:26:23.709Z",
+      "fetchedAt": "2026-07-28T21:56:20.932Z",
       "url": null
     },
     {
@@ -166,21 +184,29 @@
       "severity": "info",
       "summary": "Odds evidence is fresh.",
       "confidence": "medium",
-      "fetchedAt": "2026-07-28T18:26:35.449Z",
+      "fetchedAt": "2026-07-28T21:50:12.933Z",
       "url": null
     },
     {
       "sourceId": "minutes",
       "area": "minutes",
       "subject": "Minutes evidence",
-      "severity": "missing",
-      "summary": "Automated minutes evidence is missing.",
+      "severity": "info",
+      "summary": "Minutes evidence is fresh.",
       "confidence": "medium",
-      "fetchedAt": null,
+      "fetchedAt": "2026-07-28T22:10:01.509Z",
+      "url": null
+    },
+    {
+      "sourceId": "public-evidence",
+      "area": "public-evidence",
+      "subject": "Public browser evidence",
+      "severity": "info",
+      "summary": "Public browser evidence is fresh.",
+      "confidence": "medium",
+      "fetchedAt": "2026-07-28T21:51:35.978Z",
       "url": null
     }
   ],
-  "warnings": [
-    "Automated minutes evidence is missing."
-  ]
+  "warnings": []
 }

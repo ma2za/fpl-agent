@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-28T18:26:23.661Z",
+  "generatedAt": "2026-07-28T21:56:20.543Z",
   "gameweek": 1,
   "source": {
     "id": "team-news",
@@ -12,20 +12,20 @@
     "confidence": "high",
     "freshness": {
       "status": "fresh",
-      "checkedAt": "2026-07-28T18:26:23.661Z",
-      "fetchedAt": "2026-07-28T12:37:16.704Z",
+      "checkedAt": "2026-07-28T21:56:20.543Z",
+      "fetchedAt": "2026-07-28T21:49:55.941Z",
       "ageHours": null,
       "maxAgeHours": 24,
       "message": "FPL availability is fresh."
     }
   },
   "summary": {
-    "flaggedPlayers": 48,
+    "flaggedPlayers": 50,
     "selectedFlaggedPlayers": 0,
     "info": 2,
     "watch": 18,
     "risk": 0,
-    "avoid": 28
+    "avoid": 30
   },
   "items": [
     {
@@ -189,6 +189,22 @@
       "summary": "Suspended until 6 Sep"
     },
     {
+      "playerId": 197,
+      "name": "Norman Bassette",
+      "webName": "Bassette",
+      "teamId": 7,
+      "teamName": "Coventry City",
+      "position": "FWD",
+      "status": "u",
+      "chanceOfPlayingNextRound": 0,
+      "chanceOfPlayingThisRound": null,
+      "news": "Has joined KVC Westerlo on loan for the rest of the season",
+      "newsAdded": "2026-07-28T12:58:50.001768Z",
+      "severity": "avoid",
+      "selected": false,
+      "summary": "Has joined KVC Westerlo on loan for the rest of the season"
+    },
+    {
       "playerId": 225,
       "name": "Christantus Uche",
       "webName": "Uche",
@@ -251,6 +267,22 @@
       "severity": "avoid",
       "selected": false,
       "summary": "Knee injury - Unknown return date"
+    },
+    {
+      "playerId": 342,
+      "name": "Jack Harrison",
+      "webName": "Harrison",
+      "teamId": 13,
+      "teamName": "Leeds",
+      "position": "MID",
+      "status": "u",
+      "chanceOfPlayingNextRound": 0,
+      "chanceOfPlayingThisRound": null,
+      "news": "Has joined New England Revolution permanently",
+      "newsAdded": "2026-07-28T12:59:09.492431Z",
+      "severity": "avoid",
+      "selected": false,
+      "summary": "Has joined New England Revolution permanently"
     },
     {
       "playerId": 376,

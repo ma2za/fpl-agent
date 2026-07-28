@@ -3,11 +3,15 @@ import path from "node:path";
 import {
   buildSquadRiskReport,
   evaluateWeeklyStrategyQuality,
+  renderAgentBrief,
   renderEvidenceReportMarkdown,
+  renderManualChecklist,
   renderSquadRiskReportMarkdown,
   verifyRecommendation,
   type FixtureTicker,
+  type MinutesRiskReport,
   type OddsReport,
+  type PublicEvidenceReport,
   type SetPieceReport,
   type SquadRiskReport,
   type StrategyQualityReport,
@@ -92,6 +96,8 @@ async function main() {
   const evidenceReportMarkdownPath = path.join(outputDir, "evidence-report.md");
   const riskReportJsonPath = path.join(outputDir, "risk-report.json");
   const riskReportMarkdownPath = path.join(outputDir, "risk-report.md");
+  const agentBriefPath = path.join(outputDir, "agent-brief.md");
+  const manualChecklistPath = path.join(outputDir, "manual-checklist.md");
   const recommendation = await readJson<unknown>(recommendationPath);
   const seasonPlanPath = path.join("packages", "content", "strategy", "season-plan.md");
   const weeklyStrategyPath = path.join("packages", "content", "strategy", "weekly", `gw-${gameweek}.json`);
@@ -127,6 +133,8 @@ async function main() {
     const teamNewsReport = await readJsonIfExists<TeamNewsReport>(path.join(outputDir, "team-news-report.json"));
     const setPieceReport = await readJsonIfExists<SetPieceReport>(path.join(outputDir, "set-pieces-report.json"));
     const oddsReport = await readJsonIfExists<OddsReport>(path.join(outputDir, "odds-report.json"));
+    const minutesRiskReport = await readJsonIfExists<MinutesRiskReport>(path.join(outputDir, "minutes-risk-report.json"));
+    const publicEvidenceReport = await readJsonIfExists<PublicEvidenceReport>(path.join(outputDir, "public-evidence-report.json"));
     const riskReport: SquadRiskReport = buildSquadRiskReport({
       generatedAt: new Date().toISOString(),
       recommendation,
@@ -135,6 +143,8 @@ async function main() {
       teamNewsReport,
       setPieceReport,
       oddsReport,
+      minutesRiskReport,
+      publicEvidenceReport,
       contextNotes: {
         teamNews: await readTextIfExists(path.join("packages", "content", "context", "team-news.md")) ?? "",
         setPieces: await readTextIfExists(path.join("packages", "content", "context", "set-pieces.md")) ?? "",
@@ -156,10 +166,19 @@ async function main() {
     await writeFile(evidenceReportMarkdownPath, renderEvidenceReportMarkdown(evidenceReport), "utf8");
     await writeFile(riskReportJsonPath, `${JSON.stringify(riskReport, null, 2)}\n`, "utf8");
     await writeFile(riskReportMarkdownPath, renderSquadRiskReportMarkdown(riskReport), "utf8");
+    await writeFile(agentBriefPath, renderAgentBrief(recommendation), "utf8");
+    await writeFile(manualChecklistPath, renderManualChecklist(recommendation), "utf8");
     legality.strategyQuality = strategyQuality;
     legality.isValid = legality.isValid && strategyQuality.isValid;
     legality.errors = [...legality.errors, ...strategyQuality.errors];
-    legality.warnings = [...legality.warnings, ...strategyQuality.warnings, ...evidenceReport.warnings, ...(oddsReport?.warnings ?? [])];
+    legality.warnings = [
+      ...legality.warnings,
+      ...strategyQuality.warnings,
+      ...evidenceReport.warnings,
+      ...(oddsReport?.warnings ?? []),
+      ...(minutesRiskReport?.warnings ?? []),
+      ...(publicEvidenceReport?.warnings ?? [])
+    ];
   }
 
   await writeFile(legalityPath, `${JSON.stringify(legality, null, 2)}\n`, "utf8");

@@ -26,12 +26,11 @@ export async function buildLocalEvidenceReport(input: {
   const outputDir = path.join("packages", "content", "recommendations", `gw-${input.gameweek}`);
   const dataStatusPath = path.join(outputDir, "data-status.json");
   const fixtureTickerPath = path.join(outputDir, "fixture-ticker.json");
-  const premierLeagueFixturesPath = path.join(outputDir, "premier-league-fixtures.md");
   const teamNewsReportPath = path.join(outputDir, "team-news-report.json");
   const setPiecesReportPath = path.join(outputDir, "set-pieces-report.json");
   const oddsReportPath = path.join(outputDir, "odds-report.json");
   const minutesRiskReportPath = path.join(outputDir, "minutes-risk-report.json");
-  const fixtureFetchedAt = await fileTimestamp(fixtureTickerPath) ?? await fileTimestamp(premierLeagueFixturesPath);
+  const publicEvidenceReportPath = path.join(outputDir, "public-evidence-report.json");
   const sources: EvidenceSourceInput[] = [
     {
       id: "fpl-data",
@@ -50,8 +49,8 @@ export async function buildLocalEvidenceReport(input: {
       label: "Fixture evidence",
       provider: "FPL fixtures and Premier League fixture release",
       rawPath: path.join("data", "raw", "fixtures.json"),
-      reportPath: fixtureFetchedAt === null ? null : fixtureTickerPath,
-      fetchedAt: fixtureFetchedAt,
+      reportPath: fixtureTickerPath,
+      fetchedAt: await fileTimestamp(fixtureTickerPath),
       maxAgeHours: 168,
       confidence: "high",
       missingMessage: "Fixture evidence is missing.",
@@ -100,6 +99,17 @@ export async function buildLocalEvidenceReport(input: {
       confidence: "medium",
       missingMessage: "Automated minutes evidence is missing.",
       staleMessage: "Automated minutes evidence is stale."
+    },
+    {
+      id: "public-evidence",
+      label: "Public browser evidence",
+      provider: "Read-only public pages captured without API keys",
+      reportPath: publicEvidenceReportPath,
+      fetchedAt: await fileTimestamp(publicEvidenceReportPath),
+      maxAgeHours: 12,
+      confidence: "medium",
+      missingMessage: "Public browser evidence is missing.",
+      staleMessage: "Public browser evidence is stale."
     }
   ];
 

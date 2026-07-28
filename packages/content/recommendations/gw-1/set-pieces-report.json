@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-28T18:26:23.690Z",
+  "generatedAt": "2026-07-28T21:56:20.844Z",
   "gameweek": 1,
   "source": {
     "id": "set-pieces",
@@ -12,8 +12,8 @@
     "confidence": "high",
     "freshness": {
       "status": "fresh",
-      "checkedAt": "2026-07-28T18:26:23.690Z",
-      "fetchedAt": "2026-07-28T12:37:16.704Z",
+      "checkedAt": "2026-07-28T21:56:20.844Z",
+      "fetchedAt": "2026-07-28T21:49:55.941Z",
       "ageHours": null,
       "maxAgeHours": 168,
       "message": "FPL set pieces are fresh."
@@ -21,7 +21,7 @@
   },
   "summary": {
     "rolePlayers": 126,
-    "selectedRolePlayers": 7,
+    "selectedRolePlayers": 6,
     "penaltyTakers": 64,
     "directFreeKickTakers": 60,
     "cornerAndIndirectFreeKickTakers": 71
@@ -50,7 +50,7 @@
       "position": "MID",
       "role": "corners-and-indirect-free-kicks",
       "order": 6,
-      "selected": false,
+      "selected": true,
       "status": "a",
       "confidence": "low",
       "summary": "Saka is order 6 for corners and indirect free kicks."
@@ -106,7 +106,7 @@
       "position": "MID",
       "role": "direct-free-kicks",
       "order": 2,
-      "selected": false,
+      "selected": true,
       "status": "a",
       "confidence": "medium",
       "summary": "Saka is order 2 for direct free kicks."
@@ -134,7 +134,7 @@
       "position": "MID",
       "role": "penalties",
       "order": 1,
-      "selected": false,
+      "selected": true,
       "status": "a",
       "confidence": "high",
       "summary": "Saka is order 1 for penalties."
@@ -1716,7 +1716,7 @@
       "position": "FWD",
       "role": "penalties",
       "order": 1,
-      "selected": true,
+      "selected": false,
       "status": "a",
       "confidence": "high",
       "summary": "Calvert-Lewin is order 1 for penalties."
@@ -2066,7 +2066,7 @@
       "position": "MID",
       "role": "corners-and-indirect-free-kicks",
       "order": 4,
-      "selected": true,
+      "selected": false,
       "status": "a",
       "confidence": "low",
       "summary": "B.Fernandes is order 4 for corners and indirect free kicks."
@@ -2108,7 +2108,7 @@
       "position": "MID",
       "role": "direct-free-kicks",
       "order": 1,
-      "selected": true,
+      "selected": false,
       "status": "a",
       "confidence": "high",
       "summary": "B.Fernandes is order 1 for direct free kicks."
@@ -2150,7 +2150,7 @@
       "position": "MID",
       "role": "penalties",
       "order": 1,
-      "selected": true,
+      "selected": false,
       "status": "a",
       "confidence": "high",
       "summary": "B.Fernandes is order 1 for penalties."

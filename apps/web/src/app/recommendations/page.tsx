@@ -37,6 +37,35 @@ type Recommendation = {
     label: string;
     explanation: string;
   } | null;
+  decisionAnalysis?: {
+    summary: string;
+    squadStructure: string[];
+    playerDecisions: Array<{
+      playerId: number;
+      role: string;
+      whyPicked: string[];
+      comparedAgainst: Array<{
+        name: string;
+        whyNot: string[];
+      }>;
+      evidence: string[];
+    }>;
+    captaincy: {
+      captainPlayerId: number;
+      whyCaptain: string[];
+      comparedAgainst: Array<{
+        name: string;
+        whyNot: string[];
+      }>;
+      evidence: string[];
+    };
+    keyOmissions: Array<{
+      name: string;
+      whyOmitted: string[];
+      wouldReconsiderIf: string[];
+      evidence: string[];
+    }>;
+  };
   risks: string[];
   whatWouldChangeMyMind: string[];
 };
@@ -69,6 +98,29 @@ type RiskReport = {
     area: string;
     status: string;
     message: string;
+  }>;
+};
+
+type MinutesRiskReport = {
+  summary: {
+    secure: number;
+    watch: number;
+    risky: number;
+    unknown: number;
+    starterWatchOrWorse: number;
+  };
+  items: Array<{
+    playerId: number;
+    webName: string;
+    teamName: string;
+    position: string;
+    selected: boolean;
+    starting: boolean;
+    benchPosition: number | null;
+    riskLevel: string;
+    historicalConfidence: string;
+    predictedLineupConfidence: string;
+    minutes: number | null;
   }>;
 };
 
@@ -107,6 +159,7 @@ export default function RecommendationsPage() {
   const recommendation = readJson<Recommendation>("packages/content/recommendations/gw-1/recommendation.json");
   const legality = readJson<LegalityReport>("packages/content/recommendations/gw-1/legality-report.json");
   const riskReport = readJson<RiskReport>("packages/content/recommendations/gw-1/risk-report.json");
+  const minutesRiskReport = readJson<MinutesRiskReport>("packages/content/recommendations/gw-1/minutes-risk-report.json");
 
   if (!recommendation) {
     return (
@@ -239,6 +292,19 @@ export default function RecommendationsPage() {
             <p>No risk report has been generated.</p>
           )}
         </article>
+
+        <article className="card">
+          <h2>Minutes</h2>
+          {minutesRiskReport ? (
+            <p>
+              {minutesRiskReport.summary.secure} secure, {minutesRiskReport.summary.watch} watch
+              <br />
+              {minutesRiskReport.summary.starterWatchOrWorse} starter watch-or-worse
+            </p>
+          ) : (
+            <p>No minutes report has been generated.</p>
+          )}
+        </article>
       </section>
 
       <section className="section">
@@ -289,6 +355,68 @@ export default function RecommendationsPage() {
         </article>
       </section>
 
+      {recommendation.decisionAnalysis ? (
+        <section className="section">
+          <h2>Pick Analysis</h2>
+          <p>{recommendation.decisionAnalysis.summary}</p>
+          <div className="grid">
+            {recommendation.decisionAnalysis.playerDecisions.map((decision) => (
+              <article className="card" key={decision.playerId}>
+                <h3>{playerName(players, decision.playerId)}</h3>
+                <p className="fine">{decision.role}</p>
+                <h4>Why Picked</h4>
+                <ul className="list compact">
+                  {decision.whyPicked.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+                <h4>Why Not Alternatives</h4>
+                <ul className="list compact">
+                  {decision.comparedAgainst.map((alternative) => (
+                    <li key={alternative.name}>
+                      {alternative.name}: {alternative.whyNot.join(" ")}
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {recommendation.decisionAnalysis ? (
+        <section className="grid">
+          <article className="card">
+            <h2>Captaincy Comparison</h2>
+            <ul className="list compact">
+              {recommendation.decisionAnalysis.captaincy.whyCaptain.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+            <h3>Why Not Others</h3>
+            <ul className="list compact">
+              {recommendation.decisionAnalysis.captaincy.comparedAgainst.map((alternative) => (
+                <li key={alternative.name}>
+                  {alternative.name}: {alternative.whyNot.join(" ")}
+                </li>
+              ))}
+            </ul>
+          </article>
+
+          <article className="card">
+            <h2>Key Omissions</h2>
+            <ul className="list compact">
+              {recommendation.decisionAnalysis.keyOmissions.map((omission) => (
+                <li key={omission.name}>
+                  {omission.name}: {omission.whyOmitted.join(" ")} Reconsider if:{" "}
+                  {omission.wouldReconsiderIf.join(" ")}
+                </li>
+              ))}
+            </ul>
+          </article>
+        </section>
+      ) : null}
+
       <section className="grid">
         <article className="card">
           <h2>Risks</h2>
@@ -332,6 +460,38 @@ export default function RecommendationsPage() {
               ))}
             </ul>
           </article>
+        </section>
+      ) : null}
+
+      {minutesRiskReport ? (
+        <section className="section">
+          <h2>Minutes Risk</h2>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Role</th>
+                  <th>Risk</th>
+                  <th>Historical</th>
+                  <th>Predicted XI</th>
+                  <th>Minutes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {minutesRiskReport.items.filter((item) => item.selected).map((item) => (
+                  <tr key={item.playerId}>
+                    <td>{item.webName}</td>
+                    <td>{item.starting ? "starter" : `bench ${item.benchPosition ?? "n/a"}`}</td>
+                    <td>{item.riskLevel}</td>
+                    <td>{item.historicalConfidence}</td>
+                    <td>{item.predictedLineupConfidence}</td>
+                    <td>{item.minutes ?? "n/a"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       ) : null}
     </>

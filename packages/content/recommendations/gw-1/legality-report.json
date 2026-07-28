@@ -2,8 +2,6 @@
   "isValid": true,
   "errors": [],
   "warnings": [
-    "Team 13 uses all 3 slots.",
-    "Automated minutes evidence is missing.",
     "No Football-Data Premier League odds rows matched GW1 FPL fixtures.",
     "No Football-Data odds row matched FPL fixture Arsenal v Coventry City.",
     "No Football-Data odds row matched FPL fixture Hull City v Man Utd.",
@@ -15,20 +13,28 @@
     "No Football-Data odds row matched FPL fixture Man City v Bournemouth.",
     "No Football-Data odds row matched FPL fixture Newcastle v Liverpool.",
     "No Football-Data odds row matched FPL fixture Fulham v Chelsea.",
-    "Anytime scorer odds are not available from the Football-Data fixtures CSV.",
-    "Clean-sheet signals are derived from match odds and over/under 2.5 markets, not direct clean-sheet odds."
+    "Anytime scorer odds are not available from the current odds sources.",
+    "Clean-sheet signals are derived from match odds and over/under 2.5 markets, not direct clean-sheet odds.",
+    "Team-goals markets are not available from the current odds sources.",
+    "Predicted-lineup evidence is unavailable; minutes risk uses historical FPL minutes and availability only.",
+    "Selected starter Saka has watch minutes risk.",
+    "Selected starter Digne has watch minutes risk.",
+    "Selected starter Beto has watch minutes risk.",
+    "Selected starter Okafor has watch minutes risk.",
+    "Selected starter Cherki has watch minutes risk.",
+    "Selected bench player Lewis-Potter has watch minutes risk.",
+    "Selected bench player Sessegnon has watch minutes risk.",
+    "Selected bench player Spence has watch minutes risk."
   ],
   "quality": {
     "isValid": true,
     "errors": [],
-    "warnings": [
-      "Team 13 uses all 3 slots."
-    ],
+    "warnings": [],
     "gates": [
       {
         "gate": "budget",
         "status": "pass",
-        "message": "Squad uses £100.0 with £0.0 bank."
+        "message": "Squad uses £99.0 with £1.0 bank."
       },
       {
         "gate": "position-counts",
@@ -37,8 +43,8 @@
       },
       {
         "gate": "club-exposure",
-        "status": "warn",
-        "message": "Team 13 uses all 3 slots."
+        "status": "pass",
+        "message": "No club concentration warning."
       },
       {
         "gate": "starter-minutes",
@@ -74,6 +80,11 @@
         "gate": "evidence-backed-decision",
         "status": "pass",
         "message": "Required recommendation evidence references are present."
+      },
+      {
+        "gate": "pick-comparison-analysis",
+        "status": "pass",
+        "message": "Every selected player and captaincy decision includes why-picked and why-not-alternative analysis."
       }
     ]
   },

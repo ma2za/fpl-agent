@@ -1,29 +1,28 @@
 # Set Pieces Report: GW1
 
-Generated: 2026-07-28T18:26:23.690Z
+Generated: 2026-07-28T21:56:20.844Z
 
 Source: FPL set pieces
 
 ## Summary
 
 - Role players: 126
-- Selected role players: 7
+- Selected role players: 6
 - Penalty takers: 64
 - Direct free-kick takers: 60
 - Corner and indirect free-kick takers: 71
 
 ## Selected Squad Roles
 
+- Saka (Arsenal, MID): corners-and-indirect-free-kicks order 6, low confidence
+- Saka (Arsenal, MID): direct-free-kicks order 2, medium confidence
+- Saka (Arsenal, MID): penalties order 1, high confidence
 - Digne (Aston Villa, DEF): corners-and-indirect-free-kicks order 4, low confidence
 - Lewis-Potter (Brentford, MID): direct-free-kicks order 1, high confidence
 - Beto (Everton, FWD): penalties order 4, low confidence
-- Calvert-Lewin (Leeds, FWD): penalties order 1, high confidence
 - Cherki (Man City, MID): corners-and-indirect-free-kicks order 5, low confidence
 - Cherki (Man City, MID): direct-free-kicks order 1, high confidence
 - Haaland (Man City, FWD): penalties order 1, high confidence
-- B.Fernandes (Man Utd, MID): corners-and-indirect-free-kicks order 4, low confidence
-- B.Fernandes (Man Utd, MID): direct-free-kicks order 1, high confidence
-- B.Fernandes (Man Utd, MID): penalties order 1, high confidence
 
 ## Penalties
 

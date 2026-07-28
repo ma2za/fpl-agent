@@ -51,7 +51,7 @@ E0,22/08/2026,12:30,Hull,Man United,5.8,4.2,1.55,1.9,1.95
     expect(report.summary.selectedTeamsCovered).toBe(2);
     expect(report.teamSignals.find((team) => team.teamName === "Arsenal")?.cleanSheetSignal).toBe("high");
     expect(report.teamSignals.find((team) => team.teamName === "Man Utd")?.attackSignal).toBe("high");
-    expect(report.warnings).toContain("Anytime scorer odds are not available from the Football-Data fixtures CSV.");
+    expect(report.warnings).toContain("Anytime scorer odds are not available from the current odds sources.");
     expect(renderOddsReportMarkdown(report)).toContain("Fixture Markets");
   });
 

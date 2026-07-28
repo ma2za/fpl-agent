@@ -39,6 +39,43 @@ export type RecommendationEvidenceReference = {
   playerIds?: number[];
 };
 
+export type ComparedAlternative = {
+  playerId?: number;
+  name: string;
+  whyNot: string[];
+};
+
+export type PlayerDecisionAnalysis = {
+  playerId: number;
+  role: "starter" | "bench" | "squad";
+  whyPicked: string[];
+  comparedAgainst: ComparedAlternative[];
+  evidence: string[];
+};
+
+export type CaptaincyDecisionAnalysis = {
+  captainPlayerId: number;
+  whyCaptain: string[];
+  comparedAgainst: ComparedAlternative[];
+  evidence: string[];
+};
+
+export type OmittedPlayerAnalysis = {
+  playerId?: number;
+  name: string;
+  whyOmitted: string[];
+  wouldReconsiderIf: string[];
+  evidence: string[];
+};
+
+export type DecisionAnalysis = {
+  summary: string;
+  squadStructure: string[];
+  playerDecisions: PlayerDecisionAnalysis[];
+  captaincy: CaptaincyDecisionAnalysis;
+  keyOmissions: OmittedPlayerAnalysis[];
+};
+
 export type WeeklyRecommendation = {
   gameweek: number;
   createdAt: string;
@@ -66,6 +103,7 @@ export type WeeklyRecommendation = {
     label: "low" | "medium" | "high";
     explanation: string;
   };
+  decisionAnalysis?: DecisionAnalysis;
   evidenceReferences: RecommendationEvidenceReference[];
   risks: string[];
   whatWouldChangeMyMind: string[];
@@ -175,6 +213,62 @@ export type EvidenceReport = {
   };
   sources: EvidenceSource[];
   items: EvidenceItem[];
+  warnings: string[];
+};
+
+export type PublicEvidenceArea = "fixtures" | "team-news" | "predicted-lineups" | "player-news" | "prices" | "general-news";
+
+export type PublicEvidenceSourceConfig = {
+  id: string;
+  label: string;
+  provider: string;
+  url: string;
+  area: PublicEvidenceArea;
+  required: boolean;
+  confidence: EvidenceConfidence;
+};
+
+export type PublicEvidenceCaptureMode = "playwright" | "fetch" | "failed";
+
+export type PublicEvidencePage = {
+  sourceId: string;
+  label: string;
+  provider: string;
+  url: string;
+  area: PublicEvidenceArea;
+  capturedAt: string;
+  captureMode: PublicEvidenceCaptureMode;
+  title: string | null;
+  textExcerpt: string;
+  wordCount: number;
+  rawPath: string | null;
+  error: string | null;
+  confidence: EvidenceConfidence;
+};
+
+export type PublicEvidenceSignal = {
+  sourceId: string;
+  area: PublicEvidenceArea;
+  severity: "info" | "watch" | "risk" | "missing";
+  subject: string;
+  summary: string;
+  url: string;
+  confidence: EvidenceConfidence;
+};
+
+export type PublicEvidenceReport = {
+  generatedAt: string;
+  gameweek: number;
+  summary: {
+    configuredSources: number;
+    capturedPages: number;
+    failedPages: number;
+    playwrightPages: number;
+    fetchPages: number;
+    signals: number;
+  };
+  pages: PublicEvidencePage[];
+  signals: PublicEvidenceSignal[];
   warnings: string[];
 };
 
@@ -440,6 +534,16 @@ export type SetPieceReport = {
 };
 
 export type OddsSignal = "high" | "medium" | "low" | "unknown";
+export type OddsSignalSource = "direct" | "derived" | "unavailable";
+export type OddsCoverageStatus = "covered" | "partial" | "missing";
+
+export type OddsMarketCoverage = {
+  matchOdds: OddsCoverageStatus;
+  overUnder: OddsCoverageStatus;
+  cleanSheet: OddsCoverageStatus;
+  anytimeScorer: OddsCoverageStatus;
+  teamGoals: OddsCoverageStatus;
+};
 
 export type OddsMatchSignal = {
   fixtureId: number;
@@ -461,6 +565,10 @@ export type OddsMatchSignal = {
   awayWinProbability: number | null;
   over25Probability: number | null;
   under25Probability: number | null;
+  homeCleanSheetProbability: number | null;
+  awayCleanSheetProbability: number | null;
+  homeTeamGoalsExpected: number | null;
+  awayTeamGoalsExpected: number | null;
 };
 
 export type OddsTeamSignal = {
@@ -476,9 +584,24 @@ export type OddsTeamSignal = {
   lossProbability: number | null;
   over25Probability: number | null;
   under25Probability: number | null;
+  cleanSheetProbability: number | null;
+  teamGoalsExpected: number | null;
   attackSignal: OddsSignal;
   cleanSheetSignal: OddsSignal;
+  attackSignalSource: OddsSignalSource;
+  cleanSheetSignalSource: OddsSignalSource;
   selectedPlayerIds: number[];
+  summary: string;
+};
+
+export type OddsPlayerSignal = {
+  playerId: number | null;
+  playerName: string;
+  teamId: number | null;
+  teamName: string;
+  market: "anytime-scorer";
+  probability: number;
+  selected: boolean;
   summary: string;
 };
 
@@ -493,8 +616,51 @@ export type OddsReport = {
     matchedFixtures: number;
     unmatchedFixtures: number;
     selectedTeamsCovered: number;
+    coverageStatus: OddsCoverageStatus;
+    marketCoverage: OddsMarketCoverage;
   };
   matches: OddsMatchSignal[];
   teamSignals: OddsTeamSignal[];
+  playerSignals: OddsPlayerSignal[];
+  warnings: string[];
+};
+
+export type MinutesRiskLevel = "secure" | "watch" | "risky" | "unknown";
+
+export type MinutesRiskItem = {
+  playerId: number;
+  name: string;
+  webName: string;
+  teamId: number;
+  teamName: string;
+  position: string;
+  status: string;
+  minutes: number | null;
+  selected: boolean;
+  starting: boolean;
+  benchPosition: number | null;
+  historicalConfidence: EvidenceConfidence;
+  predictedLineupConfidence: "unavailable";
+  riskLevel: MinutesRiskLevel;
+  reasons: string[];
+  summary: string;
+};
+
+export type MinutesRiskReport = {
+  generatedAt: string;
+  gameweek: number;
+  source: EvidenceSource;
+  summary: {
+    playersReviewed: number;
+    selectedPlayers: number;
+    selectedStarters: number;
+    secure: number;
+    watch: number;
+    risky: number;
+    unknown: number;
+    selectedWatchOrWorse: number;
+    starterWatchOrWorse: number;
+  };
+  items: MinutesRiskItem[];
   warnings: string[];
 };

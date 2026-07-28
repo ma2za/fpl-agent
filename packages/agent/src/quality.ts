@@ -74,6 +74,77 @@ function evidenceReferenceErrors(recommendation: WeeklyRecommendation) {
   return errors;
 }
 
+function decisionAnalysisErrors(recommendation: WeeklyRecommendation) {
+  const errors: string[] = [];
+  const analysis = recommendation.decisionAnalysis;
+
+  if (!analysis) {
+    return ["Decision analysis is required for every recommendation."];
+  }
+
+  if (!hasText(analysis.summary)) {
+    errors.push("Decision analysis summary is required.");
+  }
+
+  if (analysis.squadStructure.length < 2 || analysis.squadStructure.some((item) => !hasText(item))) {
+    errors.push("Decision analysis must explain the squad structure tradeoffs.");
+  }
+
+  const selectedIds = new Set(recommendation.squadBefore.players.map((player) => player.id));
+  const decisionByPlayer = new Map(analysis.playerDecisions.map((decision) => [decision.playerId, decision]));
+
+  for (const player of recommendation.squadBefore.players) {
+    const decision = decisionByPlayer.get(player.id);
+
+    if (!decision) {
+      errors.push(`Decision analysis is required for selected player ${player.name}.`);
+      continue;
+    }
+
+    if (decision.whyPicked.length < 2 || decision.whyPicked.some((reason) => !hasText(reason))) {
+      errors.push(`Decision analysis for ${player.name} must include at least two why-picked reasons.`);
+    }
+
+    if (decision.comparedAgainst.length === 0) {
+      errors.push(`Decision analysis for ${player.name} must compare at least one alternative.`);
+    }
+
+    if (decision.comparedAgainst.some((alternative) => !hasText(alternative.name) || alternative.whyNot.length === 0 || alternative.whyNot.some((reason) => !hasText(reason)))) {
+      errors.push(`Decision analysis for ${player.name} has an incomplete alternative comparison.`);
+    }
+
+    if (decision.evidence.length === 0 || decision.evidence.some((item) => !hasText(item))) {
+      errors.push(`Decision analysis for ${player.name} must cite evidence.`);
+    }
+  }
+
+  for (const decision of analysis.playerDecisions) {
+    if (!selectedIds.has(decision.playerId)) {
+      errors.push(`Decision analysis references unselected player id ${decision.playerId}.`);
+    }
+  }
+
+  if (analysis.captaincy.captainPlayerId !== recommendation.captaincy.captainPlayerId) {
+    errors.push("Captaincy decision analysis must match the recommended captain.");
+  }
+
+  if (analysis.captaincy.whyCaptain.length < 2 || analysis.captaincy.comparedAgainst.length === 0 || analysis.captaincy.evidence.length === 0) {
+    errors.push("Captaincy decision analysis must include reasons, alternatives, and evidence.");
+  }
+
+  if (analysis.keyOmissions.length < 2) {
+    errors.push("Decision analysis must include at least two key omitted alternatives.");
+  }
+
+  for (const omission of analysis.keyOmissions) {
+    if (!hasText(omission.name) || omission.whyOmitted.length === 0 || omission.wouldReconsiderIf.length === 0 || omission.evidence.length === 0) {
+      errors.push(`Key omission analysis for ${omission.name || "unknown player"} is incomplete.`);
+    }
+  }
+
+  return errors;
+}
+
 export function evaluateRecommendationQuality(recommendation: WeeklyRecommendation): RecommendationQualityReport {
   const gates: QualityGateResult[] = [];
   const errors: string[] = [];
@@ -158,6 +229,7 @@ export function evaluateRecommendationQuality(recommendation: WeeklyRecommendati
   }
 
   const evidenceErrors = evidenceReferenceErrors(recommendation);
+  const analysisErrors = decisionAnalysisErrors(recommendation);
 
   if (evidenceErrors.length > 0) {
     for (const evidenceError of evidenceErrors) {
@@ -165,6 +237,14 @@ export function evaluateRecommendationQuality(recommendation: WeeklyRecommendati
     }
   } else {
     addGate(gates, "evidence-backed-decision", "pass", "Required recommendation evidence references are present.");
+  }
+
+  if (analysisErrors.length > 0) {
+    for (const analysisError of analysisErrors) {
+      addGate(gates, "pick-comparison-analysis", "fail", analysisError);
+    }
+  } else {
+    addGate(gates, "pick-comparison-analysis", "pass", "Every selected player and captaincy decision includes why-picked and why-not-alternative analysis.");
   }
 
   for (const gate of gates) {

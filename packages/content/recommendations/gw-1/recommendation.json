@@ -1,6 +1,6 @@
 {
   "gameweek": 1,
-  "createdAt": "2026-07-28T18:30:00.000Z",
+  "createdAt": "2026-07-29T00:00:00.000+03:00",
   "deadline": "2026-08-21T17:30:00Z",
   "deadlineStatus": "open",
   "dataMode": "official",
@@ -77,14 +77,14 @@
         "minutes": 2049
       },
       {
-        "id": 426,
-        "name": "Bruno Borges Fernandes",
+        "id": 12,
+        "name": "Bukayo Saka",
         "position": "MID",
-        "teamId": 16,
-        "price": 12,
-        "nowCost": 120,
+        "teamId": 1,
+        "price": 9.5,
+        "nowCost": 95,
         "status": "a",
-        "minutes": 3065
+        "minutes": 2218
       },
       {
         "id": 399,
@@ -137,14 +137,14 @@
         "minutes": 2953
       },
       {
-        "id": 346,
-        "name": "Dominic Calvert-Lewin",
+        "id": 165,
+        "name": "João Pedro Junqueira de Jesus",
         "position": "FWD",
-        "teamId": 13,
-        "price": 6,
-        "nowCost": 60,
+        "teamId": 6,
+        "price": 7.5,
+        "nowCost": 75,
         "status": "a",
-        "minutes": 2721
+        "minutes": 2658
       },
       {
         "id": 248,
@@ -157,7 +157,7 @@
         "minutes": 1551
       }
     ],
-    "bank": 0,
+    "bank": 1,
     "freeTransfers": 1,
     "chipsAvailable": [
       "wildcard",
@@ -170,8 +170,8 @@
     "type": "roll",
     "transfers": [],
     "transferCost": 0,
-    "bankAfter": 0,
-    "explanation": "From-scratch GW1 squad. No transfer action applies until a real squad exists."
+    "bankAfter": 1,
+    "explanation": "From-scratch GW1 squad. No transfer action applies until the human manager creates the initial squad in FPL."
   },
   "pickTeam": {
     "formation": "3-4-3",
@@ -180,12 +180,12 @@
       4,
       231,
       30,
-      426,
+      12,
       399,
       260,
       336,
       411,
-      346,
+      165,
       248
     ],
     "benchOrder": [
@@ -195,11 +195,11 @@
       505
     ],
     "projectedPoints": 51.8,
-    "explanation": "Start the highest evidence-backed XI while keeping Lewis-Potter as first outfield bench cover. Gabriel starts for the top defensive projection and Arsenal's Coventry City home fixture. Calvert-Lewin starts over Lewis-Potter because set-piece evidence lists him as Leeds' high-confidence first penalty taker."
+    "explanation": "Start a 3-4-3 built around Haaland captaincy, Saka vice-captaincy, Gabriel's Arsenal defensive fixture, João Pedro's Chelsea forward slot, and the highest-projection value midfielders. Lewis-Potter is first outfield bench because he is the best cheap playable attacker outside the XI."
   },
   "captaincy": {
     "captainPlayerId": 411,
-    "viceCaptainPlayerId": 426,
+    "viceCaptainPlayerId": 12,
     "alternatives": [
       {
         "playerId": 411,
@@ -207,26 +207,26 @@
         "expectedMinutes": 85,
         "fixtureSummary": "Man City v Bournemouth, FDR 3",
         "risk": "low",
-        "upsideCase": "Highest selected projection, strong historical minutes, no FPL team-news flag, and high-confidence first penalty role.",
+        "upsideCase": "Highest selected projection, strong historical minutes, high-confidence first penalty role, and public lineup evidence includes him.",
         "downsideCase": "Odds report has no matched GW1 market rows, so the captaincy case is not market-checked."
       },
       {
-        "playerId": 426,
-        "projectedPoints": 5.9,
-        "expectedMinutes": 85,
-        "fixtureSummary": "Man Utd away to Hull City, FDR 2",
-        "risk": "low",
-        "upsideCase": "Second-highest selected projection, favorable GW1 fixture, no FPL team-news flag, and high-confidence first penalty and direct-free-kick roles.",
-        "downsideCase": "Odds report has no matched GW1 market rows and minutes evidence is still missing."
-      },
-      {
-        "playerId": 4,
-        "projectedPoints": 5.8,
+        "playerId": 12,
+        "projectedPoints": 4.8,
         "expectedMinutes": 85,
         "fixtureSummary": "Arsenal v Coventry City, FDR 2",
+        "risk": "low",
+        "upsideCase": "Arsenal have the best GW1 fixture in the squad, Saka has high-confidence first penalty role, and RotoWire predicted-lineup evidence includes him.",
+        "downsideCase": "Lower projection than Haaland and Bruno, and public odds coverage is unavailable."
+      },
+      {
+        "playerId": 165,
+        "projectedPoints": 5.1,
+        "expectedMinutes": 85,
+        "fixtureSummary": "Chelsea away to Fulham, FDR 3",
         "risk": "medium",
-        "upsideCase": "Top defensive projection in the evidence pack, strong minutes, and the best GW1 defensive fixture among selected players.",
-        "downsideCase": "Defender captaincy has lower goal involvement and no direct market confirmation from the odds report."
+        "upsideCase": "Strong forward projection and both FFScout and RotoWire public lineup captures include him.",
+        "downsideCase": "Chelsea penalty role belongs to Palmer in set-piece evidence, so João Pedro lacks the set-piece floor Saka and Haaland have."
       },
       {
         "playerId": 399,
@@ -234,11 +234,11 @@
         "expectedMinutes": 75,
         "fixtureSummary": "Man City v Bournemouth, FDR 3",
         "risk": "medium",
-        "upsideCase": "Mid-priced Man City attacker with high-confidence first direct-free-kick role.",
-        "downsideCase": "Lower expected minutes than Haaland and Bruno, and no matched GW1 odds rows."
+        "upsideCase": "Man City attacker with high-confidence first direct-free-kick role.",
+        "downsideCase": "Minutes are watch-level and he is clearly behind Haaland for Man City captaincy."
       }
     ],
-    "explanation": "Captain Haaland because projection-summary ranks him first among selected players and set-pieces-report lists him as Man City's high-confidence first penalty taker. Vice Bruno because projection-summary ranks him second, fixture-ticker gives Man Utd a Hull City FDR 2 opener, and set-pieces-report lists him first for penalties and direct free kicks."
+    "explanation": "Captain Haaland because he is the top selected projection, has a high-confidence first penalty role, has strong historical minutes, and appears in public predicted-lineup evidence. Vice Saka because Arsenal have Coventry City at home, Saka is first-choice penalty taker in set-piece evidence, and RotoWire includes him in the predicted XI."
   },
   "chip": {
     "chip": "none",
@@ -246,8 +246,8 @@
     "expectedGain": 0,
     "reasons": [
       "Season strategy says save chips for doubles, blanks, or exceptional captaincy edges.",
-      "GW1 is a from-scratch squad structure week.",
-      "Odds-report has no matched GW1 market rows and minutes evidence is missing, so there is no evidence-backed chip edge."
+      "GW1 is an initial squad-building week, not a chip-attack week.",
+      "Odds-report has no matched GW1 market rows, so there is no market-backed chip edge."
     ],
     "warnings": []
   },
@@ -266,23 +266,450 @@
         "No configured squad exists to sell from."
       ],
       "concerns": [
-        "Final player choices still need matched GW1 odds rows and predicted-lineup evidence before deadline."
+        "Final player choices should still be checked against late public team news before the deadline."
       ],
       "isLegal": true,
       "legalityErrors": []
     }
   ],
   "confidence": {
-    "score": 0.64,
+    "score": 0.72,
     "label": "medium",
-    "explanation": "Medium confidence because FPL data, fixture evidence, team-news evidence, set-piece evidence, and the odds source fetch are fresh. Confidence is capped because odds-report has no matched GW1 market rows and automated minutes/predicted-lineup evidence is missing."
+    "explanation": "Medium confidence because FPL data, fixtures, team-news availability, set-piece roles, historical minutes, and public rendered evidence are fresh. Confidence is capped because Football-Data has no matched GW1 odds rows and predicted-lineup evidence is captured but not yet normalized into player-level confidence."
+  },
+  "decisionAnalysis": {
+    "summary": "This draft changes direction from the scrapped GW1 squad by restoring Saka and adding João Pedro while keeping Haaland, Gabriel, Cherki, and a playable bench. Bruno Fernandes is the major omission: he is a stronger pure projection than Saka, but Saka plus João Pedro costs £1.0m less than Bruno plus Calvert-Lewin, avoids triple Leeds exposure, keeps Arsenal's Coventry City home fixture, and leaves £1.0m bank.",
+    "squadStructure": [
+      "Premium spine: Haaland, Saka, Gabriel, and João Pedro give captaincy, Arsenal fixture access, elite defensive projection, and a strong second forward.",
+      "Budget discipline: the squad uses £99.0m, leaving £1.0m bank for late price or team-news pivots.",
+      "Formation: 3-4-3 starts the highest-evidence forward trio and keeps Lewis-Potter as first outfield bench.",
+      "Club exposure: Arsenal, Man City, Leeds, Everton, Brentford, and Spurs are all at two or fewer players, so no club is maxed."
+    ],
+    "playerDecisions": [
+      {
+        "playerId": 82,
+        "role": "starter",
+        "whyPicked": [
+          "Kelleher is projected third among goalkeepers at £5.0m and has 3330 historical minutes.",
+          "FFScout public predicted-lineup capture includes Kelleher for Brentford, so he is not just a historical-minutes pick."
+        ],
+        "comparedAgainst": [
+          {
+            "playerId": 1,
+            "name": "Raya",
+            "whyNot": [
+              "Raya has the best goalkeeper projection and Arsenal fixture, but costs £1.0m more and would squeeze the Saka-Gabriel-Haaland-João Pedro structure."
+            ]
+          }
+        ],
+        "evidence": [
+          "projection-summary.md",
+          "minutes-risk-report.md",
+          "public-evidence-report.md"
+        ]
+      },
+      {
+        "playerId": 497,
+        "role": "bench",
+        "whyPicked": [
+          "Dubravka is the cheapest selected goalkeeper at £4.0m and has 3150 historical minutes.",
+          "The second goalkeeper slot should not take budget from the XI while the first goalkeeper is playable."
+        ],
+        "comparedAgainst": [
+          {
+            "playerId": 109,
+            "name": "Verbruggen",
+            "whyNot": [
+              "Verbruggen has strong minutes at £4.5m, but the extra £0.5m is less useful than preserving the £1.0m bank."
+            ]
+          }
+        ],
+        "evidence": [
+          "player-pool.json",
+          "minutes-risk-report.md",
+          "risk-report.md"
+        ]
+      },
+      {
+        "playerId": 4,
+        "role": "starter",
+        "whyPicked": [
+          "Gabriel is the top projected defender at 5.8 and Arsenal open at home to Coventry City.",
+          "Both FFScout and RotoWire public lineup captures include Gabriel, and he has 2750 historical minutes."
+        ],
+        "comparedAgainst": [
+          {
+            "playerId": 387,
+            "name": "Nico O'Reilly",
+            "whyNot": [
+              "O'Reilly is cheaper and has Man City exposure, but Gabriel's projection, fixture, and public lineup support are stronger for GW1."
+            ]
+          }
+        ],
+        "evidence": [
+          "projection-summary.md",
+          "fixture-ticker.md",
+          "public-evidence-report.md"
+        ]
+      },
+      {
+        "playerId": 231,
+        "role": "starter",
+        "whyPicked": [
+          "Keane is a £5.0m defender with 2588 historical minutes and a strong 3.9 projection.",
+          "Everton have the best six-week average fixture difficulty in the ticker, which supports using a value Everton defender."
+        ],
+        "comparedAgainst": [
+          {
+            "playerId": 229,
+            "name": "Tarkowski",
+            "whyNot": [
+              "Tarkowski is a stronger Everton defender on total points, but costs £1.0m more and does not improve the squad enough to justify losing bank or an attacker."
+            ]
+          }
+        ],
+        "evidence": [
+          "projection-summary.md",
+          "fixture-ticker.md",
+          "minutes-risk-report.md"
+        ]
+      },
+      {
+        "playerId": 30,
+        "role": "starter",
+        "whyPicked": [
+          "Digne is the highest projected available defender at £4.5m in the budget defender pool.",
+          "He keeps the defence cheap enough to afford Saka and João Pedro while still offering set-piece-adjacent upside from corner/indirect role evidence."
+        ],
+        "comparedAgainst": [
+          {
+            "playerId": 204,
+            "name": "Tyrick Mitchell",
+            "whyNot": [
+              "Mitchell has stronger historical minutes, but Digne has the better generated projection and more attacking-route evidence."
+            ]
+          }
+        ],
+        "evidence": [
+          "budget-tiers.json",
+          "set-pieces-report.md",
+          "minutes-risk-report.md"
+        ]
+      },
+      {
+        "playerId": 269,
+        "role": "bench",
+        "whyPicked": [
+          "Sessegnon is a playable £4.5m bench defender with 1816 historical minutes.",
+          "He is kept on the bench because Fulham's Chelsea opener is difficult, but his price protects the squad structure."
+        ],
+        "comparedAgainst": [
+          {
+            "playerId": 257,
+            "name": "Calvin Bassey",
+            "whyNot": [
+              "Bassey has more minutes, but Sessegnon has the better generated projection and is acceptable as second outfield bench."
+            ]
+          }
+        ],
+        "evidence": [
+          "budget-tiers.json",
+          "fixture-ticker.md",
+          "minutes-risk-report.md"
+        ]
+      },
+      {
+        "playerId": 505,
+        "role": "bench",
+        "whyPicked": [
+          "Spence is a £4.5m bench defender with 2049 historical minutes.",
+          "He avoids using a dead £4.0m defender, which matters because the squad is meant to remain playable through early uncertainty."
+        ],
+        "comparedAgainst": [
+          {
+            "playerId": 451,
+            "name": "Alex Murphy",
+            "whyNot": [
+              "Murphy is £0.5m cheaper, but has only 7 historical minutes and would make the bench fragile."
+            ]
+          }
+        ],
+        "evidence": [
+          "budget-tiers.json",
+          "minutes-risk-report.md",
+          "risk-report.md"
+        ]
+      },
+      {
+        "playerId": 12,
+        "role": "starter",
+        "whyPicked": [
+          "Saka restores Arsenal attacking exposure for Coventry City at home and set-pieces-report lists him as Arsenal's high-confidence first penalty taker.",
+          "RotoWire public lineup evidence includes Saka, and he is the vice-captain because his fixture and penalty role give a clear fallback captaincy route."
+        ],
+        "comparedAgainst": [
+          {
+            "playerId": 426,
+            "name": "Bruno Fernandes",
+            "whyNot": [
+              "Bruno projects higher and has penalties, but Saka plus João Pedro costs £1.0m less than Bruno plus Calvert-Lewin while keeping Arsenal's best GW1 attacking fixture."
+            ]
+          }
+        ],
+        "evidence": [
+          "projection-summary.md",
+          "set-pieces-report.md",
+          "fixture-ticker.md",
+          "public-evidence-report.md"
+        ]
+      },
+      {
+        "playerId": 399,
+        "role": "starter",
+        "whyPicked": [
+          "Cherki is a £7.5m Man City attacker with a 5.1 projection and a high-confidence first direct-free-kick role.",
+          "He adds Man City attacking exposure alongside Haaland without needing the £8.5m Semenyo spend."
+        ],
+        "comparedAgainst": [
+          {
+            "playerId": 397,
+            "name": "Semenyo",
+            "whyNot": [
+              "Semenyo has stronger historical minutes and total points, but costs £1.0m more and does not beat Cherki's projection or direct-free-kick role."
+            ]
+          }
+        ],
+        "evidence": [
+          "projection-summary.md",
+          "set-pieces-report.md",
+          "minutes-risk-report.md"
+        ]
+      },
+      {
+        "playerId": 260,
+        "role": "starter",
+        "whyPicked": [
+          "Wilson is a £6.5m midfielder with a 4.8 projection and 2674 historical minutes.",
+          "RotoWire public lineup evidence includes Harry Wilson, making him a stronger current pick than a pure projection artifact."
+        ],
+        "comparedAgainst": [
+          {
+            "playerId": 452,
+            "name": "Bruno Guimarães",
+            "whyNot": [
+              "Bruno Guimarães has the same projection, but Newcastle open against Liverpool and Wilson has a better immediate public-lineup/fixture blend."
+            ]
+          }
+        ],
+        "evidence": [
+          "projection-summary.md",
+          "fixture-ticker.md",
+          "public-evidence-report.md"
+        ]
+      },
+      {
+        "playerId": 336,
+        "role": "starter",
+        "whyPicked": [
+          "Okafor is a £6.0m midfielder with a 4.7 projection, which is strong for the price.",
+          "He keeps the midfield affordable enough to carry Saka, Cherki, Haaland, João Pedro, and Gabriel together."
+        ],
+        "comparedAgainst": [
+          {
+            "playerId": 480,
+            "name": "Gibbs-White",
+            "whyNot": [
+              "Gibbs-White has more secure minutes and a strong role, but costs £2.0m more and would force a major downgrade elsewhere."
+            ]
+          }
+        ],
+        "evidence": [
+          "projection-summary.md",
+          "budget-tiers.json",
+          "minutes-risk-report.md"
+        ]
+      },
+      {
+        "playerId": 86,
+        "role": "bench",
+        "whyPicked": [
+          "Lewis-Potter is first outfield bench because he is the best projected sub-£5.6m midfielder and has 1960 historical minutes.",
+          "His high-confidence direct-free-kick role gives him more emergency upside than a defensive bench-only slot."
+        ],
+        "comparedAgainst": [
+          {
+            "playerId": 337,
+            "name": "Aaronson",
+            "whyNot": [
+              "Aaronson is close on price and minutes, but Lewis-Potter has the better generated projection and set-piece route."
+            ]
+          }
+        ],
+        "evidence": [
+          "budget-tiers.json",
+          "set-pieces-report.md",
+          "minutes-risk-report.md"
+        ]
+      },
+      {
+        "playerId": 411,
+        "role": "starter",
+        "whyPicked": [
+          "Haaland is the highest selected projection and set-pieces-report lists him as Man City's high-confidence first penalty taker.",
+          "Public predicted-lineup evidence includes him, and his captaincy profile is clearer than spreading funds into a no-Haaland build."
+        ],
+        "comparedAgainst": [
+          {
+            "name": "No-Haaland balanced structure",
+            "whyNot": [
+              "A no-Haaland structure improves budget spread, but removes the cleanest captaincy option and increases reliance on weaker captain alternatives."
+            ]
+          }
+        ],
+        "evidence": [
+          "projection-summary.md",
+          "set-pieces-report.md",
+          "public-evidence-report.md",
+          "captain-candidates.json"
+        ]
+      },
+      {
+        "playerId": 165,
+        "role": "starter",
+        "whyPicked": [
+          "João Pedro is the second-highest forward projection after Haaland and has 2658 historical minutes.",
+          "Both FFScout and RotoWire public lineup captures include him, which supports starting him despite Chelsea's penalty hierarchy favoring Palmer."
+        ],
+        "comparedAgainst": [
+          {
+            "playerId": 55,
+            "name": "Watkins",
+            "whyNot": [
+              "Watkins is reliable and has strong minutes, but João Pedro projects higher and is £0.5m cheaper."
+            ]
+          }
+        ],
+        "evidence": [
+          "projection-summary.md",
+          "minutes-risk-report.md",
+          "public-evidence-report.md"
+        ]
+      },
+      {
+        "playerId": 248,
+        "role": "starter",
+        "whyPicked": [
+          "Beto is the best-projected £5.5m forward in the evidence pack and helps fund the premium core.",
+          "FFScout public lineup evidence includes Beto, reducing the risk that the pick is purely historical."
+        ],
+        "comparedAgainst": [
+          {
+            "playerId": 346,
+            "name": "Calvert-Lewin",
+            "whyNot": [
+              "Calvert-Lewin has Leeds penalty evidence, but costs £0.5m more and would reduce the bank while projecting lower than Beto."
+            ]
+          }
+        ],
+        "evidence": [
+          "projection-summary.md",
+          "public-evidence-report.md",
+          "minutes-risk-report.md"
+        ]
+      }
+    ],
+    "captaincy": {
+      "captainPlayerId": 411,
+      "whyCaptain": [
+        "Haaland has the highest selected projection and the clearest goal-heavy captaincy profile.",
+        "He has high-confidence penalty evidence, strong historical minutes, and public predicted-lineup support."
+      ],
+      "comparedAgainst": [
+        {
+          "playerId": 12,
+          "name": "Saka",
+          "whyNot": [
+            "Saka is vice-captain because Arsenal have Coventry City at home and he has penalties, but Haaland still has the better scoring profile and selected projection."
+          ]
+        },
+        {
+          "playerId": 165,
+          "name": "João Pedro",
+          "whyNot": [
+            "João Pedro has public lineup support and a strong projection, but lacks first-penalty evidence at Chelsea."
+          ]
+        },
+        {
+          "playerId": 399,
+          "name": "Cherki",
+          "whyNot": [
+            "Cherki has direct-free-kick upside, but his minutes are less secure than Haaland's and he is behind Haaland for Man City captaincy."
+          ]
+        }
+      ],
+      "evidence": [
+        "captain-candidates.json",
+        "projection-summary.md",
+        "set-pieces-report.md",
+        "public-evidence-report.md"
+      ]
+    },
+    "keyOmissions": [
+      {
+        "playerId": 426,
+        "name": "Bruno Fernandes",
+        "whyOmitted": [
+          "Bruno is omitted because the Saka plus João Pedro structure matches the Bruno plus Calvert-Lewin projection, saves £1.0m, avoids triple Leeds exposure, and keeps Arsenal attacking coverage."
+        ],
+        "wouldReconsiderIf": [
+          "Man Utd public evidence becomes materially stronger than Arsenal and Chelsea evidence.",
+          "Late team news weakens Saka or João Pedro."
+        ],
+        "evidence": [
+          "projection-summary.md",
+          "set-pieces-report.md",
+          "fixture-ticker.md",
+          "public-evidence-report.md"
+        ]
+      },
+      {
+        "playerId": 1,
+        "name": "Raya",
+        "whyOmitted": [
+          "Raya is omitted because Gabriel and Saka already give double Arsenal exposure, and spending £6.0m on goalkeeper would reduce squad flexibility."
+        ],
+        "wouldReconsiderIf": [
+          "A cheaper outfield structure frees £1.0m without losing Saka, Gabriel, Haaland, or João Pedro."
+        ],
+        "evidence": [
+          "projection-summary.md",
+          "fixture-ticker.md",
+          "budget-tiers.json"
+        ]
+      },
+      {
+        "playerId": 397,
+        "name": "Semenyo",
+        "whyOmitted": [
+          "Semenyo is omitted because Cherki is £1.0m cheaper, has the better projection in the evidence pack, and owns the first direct-free-kick role."
+        ],
+        "wouldReconsiderIf": [
+          "Predicted-lineup evidence weakens Cherki or public odds eventually favor Semenyo's attacking role."
+        ],
+        "evidence": [
+          "projection-summary.md",
+          "set-pieces-report.md",
+          "minutes-risk-report.md"
+        ]
+      }
+    ]
   },
   "evidenceReferences": [
     {
       "area": "squad",
-      "source": "Projection summary, player pool, fixture ticker, team-news report, set-pieces report",
+      "source": "Projection summary, fixture ticker, team-news report, set-pieces report, public evidence report, minutes risk report",
       "reportPath": "packages/content/recommendations/gw-1/projection-summary.md",
-      "note": "Squad is built around the top selected projections that fit the legal £100.0m structure, while avoiding FPL team-news flags and preserving playable bench minutes.",
+      "note": "Squad is built around Haaland, Saka, Gabriel, João Pedro, and Cherki while keeping £1.0m bank and avoiding maxed club exposure.",
       "playerIds": [
         82,
         497,
@@ -291,70 +718,75 @@
         30,
         269,
         505,
-        426,
+        12,
         399,
         260,
         336,
         86,
         411,
-        346,
+        165,
         248
       ]
     },
     {
       "area": "starting-xi",
-      "source": "Projection summary, fixture ticker, set-pieces report",
+      "source": "Projection summary, fixture ticker, public evidence report, minutes risk report",
       "reportPath": "packages/content/recommendations/gw-1/projection-summary.md",
-      "note": "Starting XI favors Gabriel's Arsenal fixture, Haaland/Bruno/Cherki projection strength, Leeds attacking value, and Calvert-Lewin's first penalty role.",
+      "note": "Starting XI uses the highest-evidence 3-4-3, with Lewis-Potter as first outfield bench rather than forcing a fifth midfielder.",
       "playerIds": [
         82,
         4,
         231,
         30,
-        426,
+        12,
         399,
         260,
         336,
         411,
-        346,
+        165,
         248
       ]
     },
     {
       "area": "shortlist",
-      "source": "Player pool, projection summary, team-news report, set-pieces report, odds report",
+      "source": "Player pool, budget tiers, set-pieces report, public evidence report",
       "reportPath": "packages/content/recommendations/gw-1/player-pool.json",
-      "note": "Shortlist considered Saka, O'Reilly, João Pedro, Wilson, Okafor, and Gabriel. Gabriel was prioritized over Saka because the budget could not keep both without weakening the playable bench or dropping Bruno/Haaland.",
+      "note": "Shortlist compared Bruno, Saka, Gabriel, João Pedro, Calvert-Lewin, Semenyo, Cherki, Raya, and O'Reilly. Saka plus João Pedro won the main structure comparison over Bruno plus Calvert-Lewin.",
       "playerIds": [
+        426,
         12,
-        387,
+        4,
         165,
-        260,
-        336,
-        4
+        346,
+        397,
+        399,
+        1,
+        387
       ]
     },
     {
       "area": "transfers",
       "source": "Weekly strategy and recommendation template",
       "reportPath": "packages/content/strategy/weekly/gw-1.json",
-      "note": "No transfer action applies because the current setup is a from-scratch GW1 squad."
+      "note": "No transfer action applies because this is a from-scratch GW1 squad."
     },
     {
       "area": "captaincy",
-      "source": "Projection summary, fixture ticker, team-news report, set-pieces report, odds report",
+      "source": "Projection summary, set-pieces report, public evidence report",
       "reportPath": "packages/content/recommendations/gw-1/set-pieces-report.md",
-      "note": "Haaland and Bruno are the top two selected projections, have no FPL team-news flags, and both have high-confidence first penalty roles.",
+      "note": "Haaland is captain over Saka, João Pedro, and Cherki because he has the highest selected projection and first-penalty evidence.",
       "playerIds": [
         411,
-        426
+        12,
+        165,
+        399
       ]
     },
     {
       "area": "bench",
       "source": "Projection summary and FPL player metadata",
       "reportPath": "packages/content/recommendations/gw-1/projection-summary.md",
-      "note": "Bench order keeps the playing goalkeeper first, then Lewis-Potter as first outfield cover ahead of Sessegnon and Spence based on projected points.",
+      "note": "Bench order keeps the backup goalkeeper first, then Lewis-Potter as best outfield cover, then Sessegnon and Spence.",
       "playerIds": [
         497,
         86,
@@ -366,34 +798,34 @@
       "area": "chip",
       "source": "Season strategy, weekly strategy, evidence report, odds report",
       "reportPath": "packages/content/strategy/season-plan.md",
-      "note": "No chip because season posture saves chips and the evidence pack lacks matched GW1 odds rows or predicted-lineup evidence for a chip edge."
+      "note": "No chip because this is a GW1 initial squad and odds coverage is missing."
     },
     {
       "area": "risks",
-      "source": "Evidence report, risk report, team-news report, set-pieces report, odds report",
+      "source": "Evidence report, team-news report, odds report, minutes risk report, public evidence report",
       "reportPath": "packages/content/recommendations/gw-1/evidence-report.md",
-      "note": "Risks come from missing minutes evidence, odds-report coverage gaps, full-budget structure, triple Leeds exposure, and the conscious Saka omission."
+      "note": "Risks are odds coverage, watch-level minutes on several value picks, and the conscious Bruno omission."
     },
     {
       "area": "change-conditions",
-      "source": "Evidence report, team-news report, odds report, fixture ticker",
+      "source": "Evidence report, team-news report, odds report, minutes risk report, public evidence report",
       "reportPath": "packages/content/recommendations/gw-1/evidence-report.md",
-      "note": "Change conditions are tied to refreshed odds coverage, predicted-lineup evidence, FPL team-news flags, or a legal variant that restores Saka without weakening the core."
+      "note": "Change conditions are tied to late team news, normalized predicted-lineup changes, odds coverage, or a superior Bruno structure."
     }
   ],
   "risks": [
-    "Automated minutes and predicted-lineup evidence is missing, so starter security is approximated from historical minutes and FPL availability flags.",
-    "Odds-report has no matched GW1 Premier League market rows, so clean-sheet and scoring assumptions are not market-checked.",
-    "The squad spends the full £100.0m budget, leaving no immediate upgrade buffer.",
-    "The squad uses all three Leeds slots through Wilson, Okafor, and Calvert-Lewin.",
-    "Saka is omitted despite Arsenal having Coventry City at home and Saka owning a high-confidence first penalty role."
+    "Football-Data odds-report has no matched GW1 Premier League market rows, so scoring and clean-sheet assumptions are not market-checked.",
+    "Cherki, Okafor, Beto, Digne, Sessegnon, and Lewis-Potter depend on value-role confidence rather than fully normalized predicted-lineup confidence.",
+    "Bruno Fernandes is omitted despite being the highest projected midfielder and having first penalties/direct free kicks.",
+    "Chelsea penalty evidence favors Palmer, so João Pedro's case is projection and lineup based rather than set-piece based.",
+    "The squad relies on Haaland captaincy; a late Man City lineup concern would require a major pivot."
   ],
   "whatWouldChangeMyMind": [
-    "Any selected player appears as watch, risk, or avoid in a refreshed team-news report.",
-    "Matched GW1 odds rows strongly favor an Arsenal attacking double-up or weaken Man City captaincy.",
-    "Predicted-lineup evidence weakens Cherki, Okafor, Wilson, Calvert-Lewin, Beto, Digne, or Keane.",
-    "A legal Saka variant keeps Haaland, Bruno, Gabriel, a playable first bench, and avoids dead low-minute enablers.",
-    "Late FPL price, position, or availability changes alter the £100.0m structure."
+    "Any selected player appears as risk or avoid in a refreshed team-news report.",
+    "Late public predicted-lineup evidence removes Saka, Gabriel, João Pedro, Haaland, Wilson, Kelleher, Beto, or Cherki from expected XIs.",
+    "Matched GW1 odds rows strongly favor Bruno/Man Utd over Saka/Arsenal or João Pedro/Chelsea.",
+    "A legal Bruno structure keeps Saka or Gabriel, avoids dead bench players, and preserves at least £0.5m bank.",
+    "FPL price, position, or availability changes alter the £99.0m structure before deadline."
   ],
   "legality": {
     "isValid": true,

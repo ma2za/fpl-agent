@@ -15,12 +15,15 @@
     "set-pieces": "tsx scripts/generate-set-pieces.ts",
     "team-news": "tsx scripts/generate-team-news.ts",
     "fixtures": "tsx scripts/generate-fixture-ticker.ts",
+    "minutes": "tsx scripts/generate-minutes-risk.ts",
+    "public-evidence": "tsx scripts/generate-public-evidence.ts",
     "recommend": "tsx scripts/generate-recommendation.ts",
     "compare:squads": "tsx scripts/compare-squads.ts",
     "verify": "tsx scripts/verify-recommendation.ts",
     "postmortem": "node scripts/not-implemented.mjs postmortem"
   },
   "devDependencies": {
+    "playwright": "^1.62.0",
     "tsx": "4.22.5",
     "typescript": "6.0.3",
     "vitest": "4.1.9"
