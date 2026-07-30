@@ -3,11 +3,21 @@ import path from "node:path";
 import {
   buildSquadRiskReport,
   evaluateWeeklyStrategyQuality,
+  FixtureTickerSchema,
+  MinutesRiskReportSchema,
+  OddsReportSchema,
+  PublicEvidenceReportSchema,
+  readArtifactFile,
+  readArtifactFileIfExists,
+  RecommendationArtifactSchema,
   renderAgentBrief,
   renderEvidenceReportMarkdown,
   renderManualChecklist,
   renderSquadRiskReportMarkdown,
+  SetPieceReportSchema,
+  TeamNewsReportSchema,
   verifyRecommendation,
+  WeeklyStrategySchema,
   type FixtureTicker,
   type MinutesRiskReport,
   type OddsReport,
@@ -31,10 +41,6 @@ function argValue(name: string) {
   }
 
   return process.argv[index + 1] ?? null;
-}
-
-async function readJson<T>(filePath: string) {
-  return JSON.parse(await readFile(filePath, "utf8")) as T;
 }
 
 async function readJsonIfExists<T>(filePath: string) {
@@ -98,7 +104,7 @@ async function main() {
   const riskReportMarkdownPath = path.join(outputDir, "risk-report.md");
   const agentBriefPath = path.join(outputDir, "agent-brief.md");
   const manualChecklistPath = path.join(outputDir, "manual-checklist.md");
-  const recommendation = await readJson<unknown>(recommendationPath);
+  const recommendation = await readArtifactFile(recommendationPath, RecommendationArtifactSchema);
   const seasonPlanPath = path.join("packages", "content", "strategy", "season-plan.md");
   const weeklyStrategyPath = path.join("packages", "content", "strategy", "weekly", `gw-${gameweek}.json`);
   const legality: VerifyRecommendationResult = isWeeklyRecommendation(recommendation)
@@ -124,17 +130,38 @@ async function main() {
     };
 
   if (isWeeklyRecommendation(recommendation)) {
-    const weeklyStrategy = await readJsonIfExists<WeeklyStrategy>(weeklyStrategyPath);
+    const weeklyStrategy: WeeklyStrategy | null = await readArtifactFileIfExists(
+      weeklyStrategyPath,
+      WeeklyStrategySchema
+    );
     const seasonPlanText = await readTextIfExists(seasonPlanPath);
     const dataStatus = await readJsonIfExists<{ dataMode?: "official" | "provisional" }>(
       path.join(outputDir, "data-status.json")
     );
-    const fixtureTicker = await readJsonIfExists<FixtureTicker>(path.join(outputDir, "fixture-ticker.json"));
-    const teamNewsReport = await readJsonIfExists<TeamNewsReport>(path.join(outputDir, "team-news-report.json"));
-    const setPieceReport = await readJsonIfExists<SetPieceReport>(path.join(outputDir, "set-pieces-report.json"));
-    const oddsReport = await readJsonIfExists<OddsReport>(path.join(outputDir, "odds-report.json"));
-    const minutesRiskReport = await readJsonIfExists<MinutesRiskReport>(path.join(outputDir, "minutes-risk-report.json"));
-    const publicEvidenceReport = await readJsonIfExists<PublicEvidenceReport>(path.join(outputDir, "public-evidence-report.json"));
+    const fixtureTicker: FixtureTicker | null = await readArtifactFileIfExists(
+      path.join(outputDir, "fixture-ticker.json"),
+      FixtureTickerSchema
+    );
+    const teamNewsReport: TeamNewsReport | null = await readArtifactFileIfExists(
+      path.join(outputDir, "team-news-report.json"),
+      TeamNewsReportSchema
+    );
+    const setPieceReport: SetPieceReport | null = await readArtifactFileIfExists(
+      path.join(outputDir, "set-pieces-report.json"),
+      SetPieceReportSchema
+    );
+    const oddsReport: OddsReport | null = await readArtifactFileIfExists(
+      path.join(outputDir, "odds-report.json"),
+      OddsReportSchema
+    );
+    const minutesRiskReport: MinutesRiskReport | null = await readArtifactFileIfExists(
+      path.join(outputDir, "minutes-risk-report.json"),
+      MinutesRiskReportSchema
+    );
+    const publicEvidenceReport: PublicEvidenceReport | null = await readArtifactFileIfExists(
+      path.join(outputDir, "public-evidence-report.json"),
+      PublicEvidenceReportSchema
+    );
     const riskReport: SquadRiskReport = buildSquadRiskReport({
       generatedAt: new Date().toISOString(),
       recommendation,

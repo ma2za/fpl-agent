@@ -236,12 +236,42 @@ function buildStructureRisks(input: BuildSquadRiskReportInput) {
   const highDifficultyStarters = recommendation.pickTeam.startingXI
     .map((playerId) => squadById.get(playerId))
     .filter((player) => player && (difficultyByTeam.get(player.teamId) ?? 0) >= 4);
+  const benchSpend = recommendation.pickTeam.benchOrder
+    .map((playerId) => squadById.get(playerId))
+    .filter((player): player is WeeklyRecommendation["squadBefore"]["players"][number] => Boolean(player))
+    .reduce((sum, player) => sum + player.price, 0);
+  const selectedTeamIds = new Set(recommendation.squadBefore.players.map((player) => player.teamId));
+  const fixtureAttackTeams = (input.fixtureTicker?.teams ?? [])
+    .map((team) => {
+      const firstTwo = team.fixtures.slice(0, 2);
+      const average = firstTwo.length > 0
+        ? firstTwo.reduce((sum, fixture) => sum + fixture.difficulty, 0) / firstTwo.length
+        : null;
+
+      return {
+        team,
+        average
+      };
+    })
+    .filter((item) => item.average !== null && item.average <= 2);
+  const missingFixtureAttackTeams = fixtureAttackTeams.filter((item) => !selectedTeamIds.has(item.team.teamId));
+  const selectedFixtureAttackTeams = fixtureAttackTeams.filter((item) => selectedTeamIds.has(item.team.teamId));
+  const starterWatchOrWorse = input.minutesRiskReport?.summary.starterWatchOrWorse ?? 0;
+  const selectedWatchOrWorse = input.minutesRiskReport?.summary.selectedWatchOrWorse ?? 0;
 
   if (price >= DEFAULT_STARTING_BUDGET || bank <= 0) {
     risks.push({
       risk: "budget-flexibility",
       level: "medium",
       message: `Squad uses £${price.toFixed(1)} with £${bank.toFixed(1)} bank, leaving no immediate upgrade buffer.`
+    });
+  }
+
+  if (benchSpend > 17) {
+    risks.push({
+      risk: "bench-overfunding",
+      level: "medium",
+      message: `Bench spend is £${benchSpend.toFixed(1)}, which may be too much budget outside the XI.`
     });
   }
 
@@ -289,11 +319,45 @@ function buildStructureRisks(input: BuildSquadRiskReportInput) {
     });
   }
 
+  if (fixtureAttackTeams.length > 0 && selectedFixtureAttackTeams.length === 0) {
+    risks.push({
+      risk: "fixture-upside-gap",
+      level: "medium",
+      message: `No squad exposure to the strongest first-two fixture blocks: ${fixtureAttackTeams.map((item) => item.team.teamName).join(", ")}.`
+    });
+  } else if (missingFixtureAttackTeams.length > 0) {
+    risks.push({
+      risk: "fixture-upside-gap",
+      level: "low",
+      message: `Some strong first-two fixture blocks are uncovered: ${missingFixtureAttackTeams.map((item) => item.team.teamName).join(", ")}.`
+    });
+  }
+
+  if (starterWatchOrWorse > 5 || selectedWatchOrWorse > 7) {
+    risks.push({
+      risk: "minutes-risk-concentration",
+      level: "medium",
+      message: `${starterWatchOrWorse} starters and ${selectedWatchOrWorse} selected players are watch-or-worse in the minutes report.`
+    });
+  }
+
   if (input.oddsReport && input.oddsReport.summary.matchedFixtures === 0) {
     risks.push({
       risk: "odds-coverage",
       level: "medium",
       message: "Odds report exists, but no GW fixtures were matched to market rows."
+    });
+  }
+
+  if (
+    recommendation.confidence.score > 0.65 &&
+    input.oddsReport?.summary.matchedFixtures === 0 &&
+    input.minutesRiskReport?.items.some((item) => item.predictedLineupConfidence === "unavailable")
+  ) {
+    risks.push({
+      risk: "false-precision",
+      level: "medium",
+      message: `Confidence ${recommendation.confidence.score.toFixed(2)} is high for a recommendation without matched odds or normalized predicted-lineup confidence.`
     });
   }
 

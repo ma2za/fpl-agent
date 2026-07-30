@@ -16,7 +16,9 @@ export type ValidationResult = {
 export type PlayerForRules = Pick<
   NormalizedPlayer,
   "id" | "name" | "position" | "teamId" | "price" | "nowCost" | "status"
->;
+> & {
+  minutes?: number | null;
+};
 
 export type SquadValidationInput = {
   players: PlayerForRules[];

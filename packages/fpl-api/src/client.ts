@@ -9,7 +9,7 @@ import {
   managerPicksCachePath,
   managerTransfersCachePath,
   playerSummaryCachePath,
-  readJsonCache,
+  readValidatedJsonCache,
   writeJsonCache
 } from "./cache";
 import { buildFplUrl, FPL_BASE_URL, FPL_ENDPOINTS } from "./endpoints";
@@ -40,15 +40,15 @@ async function readResponseJson(response: Response, path: string) {
   }
 }
 
-async function fetchJson(
+async function fetchJson<T>(
   path: string,
   cacheFile: string,
-  schema: z.ZodType,
+  schema: z.ZodType<T>,
   options: Required<FplApiClientOptions>
-) {
+): Promise<T> {
   if (!options.forceRefresh) {
     try {
-      return schema.parse(await readJsonCache(cacheFile));
+      return await readValidatedJsonCache(cacheFile, schema);
     } catch {
       // Cache misses fall through to the public API.
     }
@@ -79,7 +79,7 @@ async function fetchJson(
     }
 
     try {
-      return schema.parse(await readJsonCache(cacheFile));
+      return await readValidatedJsonCache(cacheFile, schema);
     } catch {
       throw error;
     }

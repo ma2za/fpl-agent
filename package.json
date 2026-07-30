@@ -1,6 +1,6 @@
 {
   "name": "fpl-agent",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "license": "Apache-2.0",
   "packageManager": "pnpm@11.9.0",
@@ -8,6 +8,8 @@
     "dev": "corepack pnpm --filter @fpl-agent/web dev",
     "build": "corepack pnpm --filter @fpl-agent/web build",
     "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json && tsc -p apps/web/tsconfig.json",
+    "benchmark": "tsx scripts/benchmark.ts",
     "fetch:data": "tsx scripts/fetch-fpl-data.ts",
     "fetch:pl-fixtures": "tsx scripts/fetch-premier-league-fixtures.ts",
     "evidence": "tsx scripts/generate-evidence.ts",
@@ -23,6 +25,7 @@
     "postmortem": "node scripts/not-implemented.mjs postmortem"
   },
   "devDependencies": {
+    "@types/node": "26.1.0",
     "playwright": "^1.62.0",
     "tsx": "4.22.5",
     "typescript": "6.0.3",

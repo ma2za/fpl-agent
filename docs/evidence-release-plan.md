@@ -1,339 +1,168 @@
-# Evidence Automation Release Plan
+# Evidence Automation Status
 
-This plan moves `fpl-agent` from manual context notes to automated public evidence packs that a coding agent can use to author recommendations. The human manager still applies the final squad manually in the official FPL app or website.
+This document records the evidence capabilities currently implemented in `fpl-agent`. It contains no planned releases.
 
-## Decision Quality Gaps
+## Decision Boundary
 
-Current GW1 recommendations are evidence-backed, but several important decision inputs are still weak or missing.
+Evidence scripts collect, normalize, summarize, and validate information. They do not select the final squad, starting XI, captain, vice-captain, bench order, transfer, or chip.
 
-- Minutes and predicted lineups are the highest-priority gap. Starter security is currently inferred from historical minutes and FPL availability flags.
-- Odds coverage exists, but the current Football-Data source has no matched GW1 Premier League rows and does not provide anytime-scorer or direct clean-sheet markets.
-- Only one final recommendation is authored by default. Better decisions need several agent-authored variants that can be compared without scripts choosing the winner.
-- Fixture evidence uses public FPL FDR, which is useful but too blunt for attack versus defence decisions.
-- Player role evidence beyond set pieces is missing: likely starter, tactical role, attacking involvement, new-club uncertainty, and rotation risk.
-- News evidence is limited to FPL availability fields and manual notes. Trusted public news sources should feed source-backed team/player notes.
-- Price and ownership pressure are not summarized, so full-budget rigidity and early price-change risk are underexplained.
+The coding agent or human developer authors recommendations after reviewing evidence. The human manager applies accepted changes manually in the official FPL interface.
 
-Priority order:
+## Shared Evidence Model
 
-1. Release 0.5: Minutes And Predicted Lineup Evidence.
-2. Release 0.6: Improved Odds Evidence.
-3. Release 0.7: Public Evidence Browser.
-4. Release 0.8: Authored Variant Workflow.
-5. Release 0.9: Fixture Horizon Engine.
-6. Release 0.10: Player Role Evidence.
-7. Release 0.11: Public News Evidence.
-8. Release 0.12: Price And Ownership Risk.
-9. Release 0.13: App Final Selection Flow.
-10. Release 0.14: Postmortem And Learning Loop.
-11. Release 1.0: Recommendation-Ready Workflow.
+Implemented:
 
-## Release 0.1: Evidence Source Framework
+- Evidence source identifiers, providers, URLs, local paths, confidence, and freshness.
+- Fresh, stale, and missing classifications.
+- Required-source missing and stale counts.
+- Evidence items with area, subject, severity, confidence, timestamp, and URL.
+- JSON and Markdown evidence reports.
+- Freshness warnings copied into recommendation verification.
 
-Status: implemented
+## FPL Data
 
-Goal: create the shared ingestion model used by all public evidence sources.
+Implemented:
 
-- Add source snapshot types for URL, fetched-at timestamp, provider name, raw excerpt path, confidence, and freshness.
-- Add shared report types for `EvidenceSource`, `EvidenceItem`, `EvidenceFreshness`, and `EvidenceReport`.
-- Add helpers to render evidence reports as JSON and markdown.
-- Add freshness gates to `verify`: current FPL data, fixtures, team news, set pieces, odds, and minutes evidence.
-- Add `.gitignore` rules for large raw source snapshots while keeping compact markdown/json reports commit-friendly.
+- Public bootstrap, fixture, player-summary, and live-gameweek endpoints.
+- Zod validation for the primary public responses.
+- Raw JSON caches and timestamped bootstrap/fixture snapshots.
+- Normalized player identity, team, position, price, status, availability, expected points, form, minutes, ownership, and total points.
 
-Commands:
+Current limitations:
 
-```bash
-pnpm evidence -- --gw 1
-pnpm verify -- --gw 1
-```
+- Public manager endpoints are returned as unknown data.
+- Cache freshness is reported by evidence tooling rather than enforced by a shared transactional refresh.
 
-Acceptance:
+## Team News and Availability
 
-- Reports never select final players.
-- Every evidence item includes source, timestamp, and confidence.
-- Missing critical evidence lowers confidence or creates a warning.
-- Authored recommendations must include player-by-player pick-versus-alternative analysis.
+Implemented:
 
-## Release 0.2: Team News Evidence
+- `team-news-report.json` and `team-news-report.md`.
+- FPL availability status, playing chance, news text, and news timestamp.
+- `info`, `watch`, `risk`, and `avoid` severity.
+- Selected-player flags when an authored recommendation exists.
+- Source freshness and warnings.
 
-Status: partially implemented from official FPL availability fields; official Scout, Premier League injury page, and predicted-lineup adapters remain future work.
+Current limitations:
 
-Goal: automate injuries, suspensions, transfer status, and availability notes.
+- Official club, BBC, and predicted-lineup sources are not normalized into the team-news report.
+- Public page captures require agent or human interpretation when they do not map cleanly to players.
 
-- Add public-source adapters for official club/Premier League/FPL availability evidence where available.
-- Write `team-news-report.json` and `team-news-report.md`.
-- Normalize evidence to player/team-level notes with severity: `info`, `watch`, `risk`, `avoid`.
-- Flag selected squad players with unresolved injury, suspension, transfer, or availability risk.
-- Replace manual `team-news.md` as a required input; keep it only as optional override notes.
+## Set Pieces
 
-Acceptance:
+Implemented:
 
-- Current recommendation risk report can explain all selected player availability risks.
-- Stale team-news evidence is visible in the web app and verification output.
+- `set-pieces-report.json` and `set-pieces-report.md`.
+- Penalty, direct-free-kick, corner, and indirect-free-kick order fields.
+- Selected-player flags, role confidence, and source freshness.
+- Risk-report and verification visibility for selected-player assumptions.
 
-## Release 0.3: Set Pieces And Penalties Evidence
+Current limitations:
 
-Status: implemented from official FPL set-piece order fields.
+- FPL role order is evidence, not confirmation that the player will start or retain the role.
 
-Goal: automate penalty, corner, free-kick, and indirect set-piece evidence.
+## Odds
 
-- Add `set-pieces-report.json` and `set-pieces-report.md`.
-- Track per-team roles: penalties, direct free kicks, corners, indirect free kicks.
-- Store role confidence and source freshness.
-- Surface captaincy and premium-midfield evidence where a player has meaningful dead-ball role.
-- Flag weak or unverified set-piece assumptions.
+Implemented:
 
-Acceptance:
+- `odds-report.json` and `odds-report.md`.
+- Public Football-Data fixture CSV ingestion.
+- Match win/draw/loss and over/under probabilities when rows match.
+- Clearly labelled derived attack and clean-sheet signals.
+- Separate source freshness and market coverage.
+- Local public snapshot support in the report model.
+- Selected-team coverage and unmatched-fixture warnings.
 
-- Captaincy rationale can reference current set-piece evidence.
-- Recommendation verification warns when a captain or vice-captain depends on unverified set-piece assumptions.
+Current limitations:
 
-## Release 0.4: Odds Evidence
+- The source does not guarantee direct clean-sheet, team-goal, or anytime-scorer markets.
+- Missing markets remain coverage gaps even when the source file is fresh.
 
-Status: implemented from Football-Data public fixtures CSV for match-level odds; player anytime-scorer odds and direct clean-sheet markets are not available from this source.
+## Minutes and Lineup Risk
 
-Goal: add public market evidence for clean sheets, scoring, and team goals.
+Implemented:
 
-- Add odds input adapters for public/non-authenticated sources only: done for Football-Data fixtures CSV.
-- Write `odds-report.json` and `odds-report.md`: done.
-- Track match win/draw/loss and over/under signals: done.
-- Track clean-sheet and attack signals as derived evidence, with warnings when direct markets are unavailable: done.
-- Convert odds into evidence signals, not final player selections: done.
-- Add odds freshness and coverage to the risk report: done.
+- `minutes-risk-report.json` and `minutes-risk-report.md`.
+- Historical FPL minutes and availability inputs.
+- `secure`, `watch`, `risky`, and `unknown` classifications.
+- Selected starter and bench-position context.
+- Historical confidence separated from predicted-lineup confidence.
+- Verification and web visibility for selected-player minutes risk.
 
-Acceptance:
+Current limitations:
 
-- Defensive picks can be reviewed against clean-sheet evidence.
-- Captaincy can be reviewed against scorer/team-goal evidence.
-- Reports show source timestamps and never require private accounts.
+- Predicted-lineup confidence is currently `unavailable` in the normalized report.
+- Historical minutes do not confirm current tactical role or starter status.
 
-## Release 0.5: Minutes And Predicted Lineup Evidence
+## Public Evidence Capture
 
-Status: partially implemented from official FPL historical minutes and availability fields; public predicted-lineup adapters remain future work.
+Implemented:
 
-Goal: reduce bad picks caused by non-starters and rotation.
+- `public-evidence-report.json` and `public-evidence-report.md`.
+- Read-only public page collection for fixtures, news, predicted-lineup context, prices, and general news.
+- Official Premier League Scout pages in the default source set.
+- Playwright capture when available and public HTTP fallback.
+- URL, provider, timestamp, capture mode, title, excerpt, word count, confidence, and errors.
+- Raw text snapshots under ignored source directories.
+- Failed and low-text captures represented as warnings.
 
-- Add `minutes-risk-report.json` and `minutes-risk-report.md`: done.
-- Combine historical minutes and current FPL availability flags: done.
-- Add public predicted-lineup evidence, recent starts, transfer notes, and rotation notes: future work.
-- Classify selected players as `secure`, `watch`, `risky`, or `unknown`: done.
-- Add minutes confidence for every selected player: done.
-- Flag likely non-starters, low-minute starters, low-minute first bench, and unknown-role enablers: partially done from historical minutes.
-- Distinguish historical-minute confidence from current predicted-lineup confidence: done; predicted-lineup confidence is currently `unavailable`.
-- Add specific starter and bench-cover warnings to `verify`: done.
-- Show minutes risk in the web recommendation page.
+Safety:
 
-Acceptance:
+- No login.
+- No persisted FPL cookies.
+- No authenticated FPL management pages.
+- No clicks on team-management controls.
+- No player selection.
 
-- Every selected starter has a visible minutes confidence label.
-- Zero-minute and unknown-role players are clearly visible before final selection.
-- The agent can explain why each selected starter is acceptable despite missing or weak predicted-lineup evidence.
-- Reports do not propose replacement players.
+## Fixture and Structure Evidence
 
-## Release 0.6: Improved Odds Evidence
+Implemented:
 
-Status: partially implemented with market coverage labels and local public snapshot support in the report model.
+- Fixture ticker generation for a configurable horizon.
+- Official Premier League fixture-release parsing.
+- Player projections, position pools, budget tiers, and club exposure.
+- Squad comparison for two authored recommendation files.
+- Full-squad structure comparison requirements in recommendation quality gates.
+- Warnings for overfunded benches, fixture-exposure gaps, projection-scope ambiguity, and confidence overstatement.
 
-Goal: make market evidence useful for captaincy, defensive picks, and high-level team attacking expectations.
+Current limitations:
 
-- Keep the existing Football-Data fixtures CSV adapter.
-- Add support for additional public/non-authenticated odds inputs where allowed.
-- Add import support for a local public odds snapshot file when automated source coverage is unavailable.
-- Track source coverage separately from source freshness.
-- Prefer direct markets when available:
-  - match win/draw/loss
-  - over/under
-  - team goals
-  - clean sheet
-  - anytime scorer
-- Keep derived signals clearly labelled when direct markets are unavailable.
-- Write source coverage warnings into `odds-report.md`, `risk-report.md`, and `legality-report.json`: partially done.
-- Do not select players or rank replacements.
+- Fixture strength is not separated into attacking and defensive models.
+- Squad comparison accepts explicit files rather than managing a complete variant lifecycle.
 
-Acceptance:
+## Recommendation and Strategy Quality
 
-- Defensive picks can be reviewed against either direct clean-sheet markets or clearly labelled derived signals.
-- Captaincy can be reviewed against scorer/team-goal evidence when available.
-- A missing market is reported as a coverage gap, not hidden behind a fresh source timestamp.
-- Reports show source timestamps and never require private accounts.
+Implemented:
 
-## Release 0.7: Public Evidence Browser
+- Evidence-only recommendation templates.
+- Agent-authored weekly recommendations and weekly strategy.
+- Evidence references by decision area.
+- Player-by-player pick and alternative analysis.
+- Full-squad structure comparisons.
+- Captaincy comparisons and key omission analysis.
+- Legality, rationale, risk, confidence, projection-scope, and strategy checks.
+- Generated risk report, legality report, agent brief, and manual checklist.
 
-Status: implemented as a read-only public page collector with Playwright support and HTTP fallback.
+Current limitations:
 
-Goal: capture source-backed public evidence without API keys, private accounts, login, or manual user work.
+- Scripts do not and must not author final selections.
+- Missing public evidence can cap confidence but cannot be eliminated automatically.
 
-- Add `public-evidence-report.json` and `public-evidence-report.md`: done.
-- Capture public pages for fixtures, player news, predicted lineups, and price context: done.
-- Use Playwright when available for rendered pages; fall back to plain public HTTP when Playwright is unavailable: done.
-- Store raw text snapshots under ignored `raw-sources/public-evidence/`: done.
-- Normalize each page into evidence signals with source URL, provider, timestamp, confidence, and severity: done.
-- Add public evidence freshness to `pnpm evidence` and `pnpm verify`: done.
-- Keep the safety boundary: no login, no persisted cookies, no FPL management pages, no final player selection.
-
-Commands:
+## Commands
 
 ```bash
-pnpm public-evidence -- --gw 1
-pnpm public-evidence -- --gw 1 --mode browser
-pnpm public-evidence -- --gw 1 --mode fetch
+pnpm fetch:data
+pnpm fetch:pl-fixtures -- --gw <n> --horizon <n>
+pnpm evidence -- --gw <n>
+pnpm odds -- --gw <n>
+pnpm set-pieces -- --gw <n>
+pnpm team-news -- --gw <n>
+pnpm minutes -- --gw <n>
+pnpm public-evidence -- --gw <n>
+pnpm fixtures -- --gw <n> --horizon <n>
+pnpm recommend -- --gw <n|auto>
+pnpm compare:squads -- --a <file> --b <file>
+pnpm verify -- --gw <n>
 ```
 
-Acceptance:
-
-- Every captured source has URL, provider, timestamp, and capture mode.
-- Failed or low-text captures are visible warnings, not silent gaps.
-- The report does not propose transfer targets, captains, squads, or replacement players.
-
-## Release 0.8: Authored Variant Workflow
-
-Goal: let the coding agent author multiple legal squads and compare them before choosing a final recommendation.
-
-- Standardize variants under `packages/content/recommendations/gw-{n}/variants/{slug}/recommendation.json`.
-- Add `pnpm variant:verify -- --gw 1 --variant {slug}`.
-- Add `pnpm variant:compare -- --gw 1 --a {slug} --b {slug}`.
-- Add `pnpm variant:list -- --gw 1`.
-- Add templates for common structure tests:
-  - Haaland + Bruno + Gabriel.
-  - Haaland + Bruno + Saka.
-  - Haaland + Saka + Gabriel, no Bruno.
-  - No-Haaland balance stress test.
-- Comparison summaries should include legality, budget, bank, captaincy, bench strength, fixture exposure, minutes risk, odds coverage, set-piece roles, and evidence gaps.
-- Keep scripts evidence-only: variants must be authored by the coding agent, not generated by scripts.
-
-Acceptance:
-
-- At least three authored GW1 structures can be compared side by side.
-- Comparison reports never declare a winner automatically.
-- The final recommendation can cite why one authored variant was preferred.
-
-## Release 0.9: Fixture Horizon Engine
-
-Goal: improve fixture evidence for season and weekly strategy.
-
-- Split fixture strength into attacking and defensive views.
-- Generate 1GW, 3GW, and 6GW summaries.
-- Add fixture swing detection and avoid-window notes.
-- Write `fixture-horizon-report.json` and `fixture-horizon-report.md`.
-- Integrate horizon summaries into `decision-prompts.md`, risk report, and weekly strategy evidence.
-
-Acceptance:
-
-- The agent can compare short-term captaincy, medium-term transfers, and 6GW squad structure from one report.
-- High fixture-difficulty clusters are visible for selected squads and variants.
-
-## Release 0.10: Player Role Evidence
-
-Goal: capture player role quality beyond projections, set pieces, and raw minutes.
-
-- Add `player-role-report.json` and `player-role-report.md`.
-- Track role confidence for selected players and shortlist candidates:
-  - likely starter
-  - likely substitute
-  - attacking role
-  - defensive role
-  - penalty-box involvement
-  - wide creator
-  - set-piece dependent
-  - new-club or new-role uncertainty
-  - rotation risk
-- Start with deterministic signals from FPL metadata, minutes history, position, selected-by percentage, set-piece roles, and team-news flags.
-- Allow source-backed manual/public notes to raise or lower role confidence.
-- Flag fragile picks such as low-minute enablers, new transfers, and players whose projection depends on uncertain role assumptions.
-- Do not propose replacements.
-
-Acceptance:
-
-- Every selected player has a visible role-confidence label.
-- Players like Cherki, Wilson, Okafor, Beto, Calvert-Lewin, and Lewis-Potter can be reviewed for role risk before deadline.
-- Role-risk warnings appear in `risk-report.md` and the web recommendation view.
-
-## Release 0.11: Public News Evidence
-
-Goal: gather source-backed team and player news without login, scraping private content, or requiring manual user work.
-
-- Add `news-report.json` and `news-report.md`.
-- Use public, non-authenticated sources only.
-- Prefer high-signal sources:
-  - official FPL Scout articles and updates
-  - official Premier League news
-  - official club injury/team-news pages
-  - BBC football team news
-  - reputable public match previews where accessible
-- Store source URL, fetched timestamp, provider, confidence, affected teams/players, and short normalized notes.
-- Classify notes as `info`, `watch`, `risk`, or `avoid`.
-- De-duplicate notes across sources.
-- Keep excerpts short and source-linked.
-- Feed selected-player risks into `team-news-report.md` or a combined availability/news view.
-- Do not use login, cookies, authenticated pages, or aggressive scraping. Read-only Playwright capture is allowed for public rendered pages.
-
-Acceptance:
-
-- A selected player with credible public injury, transfer, or likely-bench news is flagged.
-- Every news item has a URL, source name, timestamp, and confidence.
-- The agent can cite current news evidence in `recommendation.json`.
-
-## Release 0.12: Price And Ownership Risk
-
-Goal: expose early-season price and ownership pressure so full-budget structures and bandwagon risks are clearer.
-
-- Add `price-risk-report.json` and `price-risk-report.md`.
-- Track selected-by percentage, transfers in/out when available, price, bank, and budget rigidity.
-- Flag:
-  - full-budget squads
-  - no-bank structures
-  - low-owned punts with weak evidence
-  - highly owned omissions that create rank/price pressure
-  - transfer-in/out pressure once FPL event data supports it
-- Summarize ownership concentration by position, club, and captaincy.
-- Keep this as risk evidence, not a player selector.
-
-Acceptance:
-
-- A £0.0 bank recommendation has an explicit flexibility warning.
-- Major omissions such as Saka can be described in risk terms.
-- The report helps the agent decide whether a structure is too rigid before the human applies it.
-
-## Release 0.13: App Final Selection Flow
-
-Goal: let the user choose the final squad in the app from authored recommendations.
-
-- Add recommendation and variant detail pages.
-- Add side-by-side comparison views.
-- Add a local `final-selection.json` marker written by the app or a CLI command.
-- Show final squad, captain, vice, bench order, chip, risk report, and evidence freshness.
-- Keep all FPL actions manual. The app does not log in or submit changes.
-
-Acceptance:
-
-- User can inspect evidence, compare variants, and mark one recommendation as final locally.
-- The final screen is a manual checklist for applying changes in FPL.
-
-## Release 0.14: Postmortem And Learning Loop
-
-Goal: measure recommendation quality after each gameweek.
-
-- Load actual FPL points after the gameweek.
-- Compare recommendation, final selection, captaincy, bench points, and missed risks.
-- Write `postmortem.json` and `postmortem.md`.
-- Feed recurring mistakes into methodology and future risk checks.
-
-Acceptance:
-
-- Each gameweek produces a compact review of what worked, what failed, and what should change.
-- No postmortem logic rewrites future recommendations automatically.
-
-## Release 1.0: Recommendation-Ready Workflow
-
-Goal: make the repo reliable enough for weekly use.
-
-- One command refreshes public data and evidence.
-- One verification command validates legality, evidence freshness, strategy alignment, and risk visibility.
-- The web app shows current recommendation, variants, evidence, and final selection.
-- The coding agent authors final recommendations from evidence.
-- The human manager manually applies the selected squad.
-
-Acceptance:
-
-- A GW recommendation cannot be marked final unless legality passes and critical evidence freshness is visible.
-- The workflow remains read-only with no FPL login, browser automation, cookies, or authenticated actions.
+All commands are local and read-only with respect to the user's FPL team.

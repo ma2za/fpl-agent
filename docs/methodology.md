@@ -1,6 +1,6 @@
 # Methodology
 
-The first complete recommendation model should be simple, transparent, and replaceable.
+The current recommendation model is simple, transparent, and replaceable.
 
 ## Inputs
 

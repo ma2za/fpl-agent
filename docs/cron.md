@@ -13,7 +13,7 @@ Stop using a recommendation after its deadline.
 Human manager manually applies any accepted changes.
 ```
 
-Future recommendation commands should read deadline times from FPL API data and refuse to generate final recommendations after the deadline unless an explicit force flag is provided.
+`pnpm recommend -- --gw auto` resolves the current or next event from cached FPL data. Verification treats a passed deadline as an error unless `--force-deadline` is explicitly supplied.
 
 ## Example
 
@@ -21,4 +21,4 @@ Future recommendation commands should read deadline times from FPL API data and 
 pnpm recommend -- --gw auto
 ```
 
-In Milestone 1 this command is a placeholder.
+The command writes evidence for local review and does not author or submit FPL decisions.

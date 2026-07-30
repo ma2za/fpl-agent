@@ -42,6 +42,39 @@ function lowMinutesStarters(recommendation: WeeklyRecommendation) {
     });
 }
 
+function benchPlayers(recommendation: WeeklyRecommendation) {
+  const squadById = new Map(recommendation.squadBefore.players.map((player) => [player.id, player]));
+
+  return recommendation.pickTeam.benchOrder
+    .map((playerId) => squadById.get(playerId))
+    .filter((player): player is WeeklyRecommendation["squadBefore"]["players"][number] => Boolean(player));
+}
+
+function totalBenchPrice(recommendation: WeeklyRecommendation) {
+  return benchPlayers(recommendation).reduce((sum, player) => sum + player.price, 0);
+}
+
+function starterWatchPlayers(recommendation: WeeklyRecommendation) {
+  const squadById = new Map(recommendation.squadBefore.players.map((player) => [player.id, player]));
+
+  return recommendation.pickTeam.startingXI
+    .map((playerId) => squadById.get(playerId))
+    .filter((player): player is WeeklyRecommendation["squadBefore"]["players"][number] => Boolean(player))
+    .filter((player) => typeof player.minutes === "number" && player.minutes > 0 && player.minutes < 2400);
+}
+
+function selectedWatchPlayers(recommendation: WeeklyRecommendation) {
+  return recommendation.squadBefore.players.filter(
+    (player) => typeof player.minutes === "number" && player.minutes > 0 && player.minutes < 2400
+  );
+}
+
+function mentionsProjectionScope(recommendation: WeeklyRecommendation) {
+  const text = `${recommendation.pickTeam.explanation} ${recommendation.confidence.explanation}`;
+
+  return /captaincy\s+(included|excluded|not included)|projected points include|projected points exclude/i.test(text);
+}
+
 function evidenceReferenceErrors(recommendation: WeeklyRecommendation) {
   const errors: string[] = [];
   const requiredAreas = [
@@ -88,6 +121,22 @@ function decisionAnalysisErrors(recommendation: WeeklyRecommendation) {
 
   if (analysis.squadStructure.length < 2 || analysis.squadStructure.some((item) => !hasText(item))) {
     errors.push("Decision analysis must explain the squad structure tradeoffs.");
+  }
+
+  if (
+    analysis.structureComparisons.length < 2 ||
+    analysis.structureComparisons.some((comparison) =>
+      !hasText(comparison.selectedStructure) ||
+      !hasText(comparison.rejectedStructure) ||
+      comparison.whySelected.length === 0 ||
+      comparison.whyRejected.length === 0 ||
+      comparison.evidence.length === 0 ||
+      comparison.whySelected.some((reason) => !hasText(reason)) ||
+      comparison.whyRejected.some((reason) => !hasText(reason)) ||
+      comparison.evidence.some((item) => !hasText(item))
+    )
+  ) {
+    errors.push("Decision analysis must compare at least two full-squad structures with why-selected, why-rejected, and evidence.");
   }
 
   const selectedIds = new Set(recommendation.squadBefore.players.map((player) => player.id));
@@ -154,6 +203,9 @@ export function evaluateRecommendationQuality(recommendation: WeeklyRecommendati
   const positionCounts = countByPosition(recommendation);
   const clubCounts = countByClub(recommendation);
   const lowMinutePlayers = lowMinutesStarters(recommendation);
+  const benchCost = totalBenchPrice(recommendation);
+  const starterWatch = starterWatchPlayers(recommendation);
+  const selectedWatch = selectedWatchPlayers(recommendation);
 
   if (price > DEFAULT_STARTING_BUDGET) {
     addGate(gates, "budget", "fail", `Squad cost £${price.toFixed(1)} exceeds £${DEFAULT_STARTING_BUDGET.toFixed(1)}.`);
@@ -196,6 +248,38 @@ export function evaluateRecommendationQuality(recommendation: WeeklyRecommendati
     );
   } else {
     addGate(gates, "starter-minutes", "pass", "No low-minutes starter warning from available player metadata.");
+  }
+
+  if (starterWatch.length > 5 || selectedWatch.length > 7) {
+    addGate(
+      gates,
+      "minutes-risk-concentration",
+      "warn",
+      `Role/minutes uncertainty is concentrated: ${starterWatch.length} starters and ${selectedWatch.length} squad players are below 2400 historical minutes.`
+    );
+  } else {
+    addGate(gates, "minutes-risk-concentration", "pass", "Role/minutes uncertainty is not over-concentrated from available metadata.");
+  }
+
+  if (benchCost > 17) {
+    addGate(gates, "bench-spend", "warn", `Bench costs £${benchCost.toFixed(1)}, which may overprotect substitutes at the expense of the XI.`);
+  } else {
+    addGate(gates, "bench-spend", "pass", `Bench costs £${benchCost.toFixed(1)}.`);
+  }
+
+  if (!mentionsProjectionScope(recommendation)) {
+    addGate(gates, "projection-scope", "fail", "Pick-team explanation must state whether projected points include captaincy.");
+  } else {
+    addGate(gates, "projection-scope", "pass", "Projection scope states whether captaincy is included.");
+  }
+
+  if (
+    recommendation.confidence.score > 0.65 &&
+    /no matched|not matched|unavailable|not yet normalized|not normalized/i.test(recommendation.confidence.explanation)
+  ) {
+    addGate(gates, "confidence-calibration", "warn", "Confidence score is too high for missing odds or unnormalized lineup evidence.");
+  } else {
+    addGate(gates, "confidence-calibration", "pass", "Confidence score is calibrated to stated evidence limits.");
   }
 
   if (recommendation.dataMode === "provisional") {
@@ -244,7 +328,7 @@ export function evaluateRecommendationQuality(recommendation: WeeklyRecommendati
       addGate(gates, "pick-comparison-analysis", "fail", analysisError);
     }
   } else {
-    addGate(gates, "pick-comparison-analysis", "pass", "Every selected player and captaincy decision includes why-picked and why-not-alternative analysis.");
+    addGate(gates, "pick-comparison-analysis", "pass", "Structure, player, omission, and captaincy comparisons are present.");
   }
 
   for (const gate of gates) {

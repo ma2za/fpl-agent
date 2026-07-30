@@ -68,9 +68,18 @@ export type OmittedPlayerAnalysis = {
   evidence: string[];
 };
 
+export type StructureDecisionAnalysis = {
+  selectedStructure: string;
+  rejectedStructure: string;
+  whySelected: string[];
+  whyRejected: string[];
+  evidence: string[];
+};
+
 export type DecisionAnalysis = {
   summary: string;
   squadStructure: string[];
+  structureComparisons: StructureDecisionAnalysis[];
   playerDecisions: PlayerDecisionAnalysis[];
   captaincy: CaptaincyDecisionAnalysis;
   keyOmissions: OmittedPlayerAnalysis[];

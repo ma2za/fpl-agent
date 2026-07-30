@@ -41,7 +41,7 @@ const recommendation: WeeklyRecommendation = {
     startingXI: [1, 3, 4, 5, 8, 9, 10, 11, 13, 14, 15],
     benchOrder: [2, 6, 12, 7],
     projectedPoints: 60,
-    explanation: "Fixture test pick."
+    explanation: "Fixture test pick. Projected points exclude captaincy."
   },
   captaincy: {
     captainPlayerId: 8,
@@ -67,6 +67,22 @@ const recommendation: WeeklyRecommendation = {
     squadStructure: [
       "Balanced 3-4-3 test structure.",
       "Keeps enough bank while covering every required position."
+    ],
+    structureComparisons: [
+      {
+        selectedStructure: "Balanced 3-4-3",
+        rejectedStructure: "Premium-heavy 3-4-3",
+        whySelected: ["Keeps the test squad legal with useful bank."],
+        whyRejected: ["Would over-concentrate budget in one area for the fixture test."],
+        evidence: ["test.md"]
+      },
+      {
+        selectedStructure: "Balanced 3-4-3",
+        rejectedStructure: "Bench-heavy 4-4-2",
+        whySelected: ["Keeps more budget in the starting XI."],
+        whyRejected: ["Would spend too much on substitutes for the fixture test."],
+        evidence: ["test.md"]
+      }
     ],
     playerDecisions: Array.from({ length: 15 }, (_, index) => ({
       playerId: index + 1,
@@ -221,6 +237,46 @@ describe("evaluateRecommendationQuality", () => {
     expect(result.warnings).toContain("Team 1 uses all 3 slots.");
   });
 
+  it("warns for overfunded benches", () => {
+    const result = evaluateRecommendationQuality({
+      ...recommendation,
+      pickTeam: {
+        ...recommendation.pickTeam,
+        benchOrder: [2, 6, 12, 14]
+      }
+    });
+
+    expect(result.isValid).toBe(true);
+    expect(result.warnings).toContain("Bench costs £21.0, which may overprotect substitutes at the expense of the XI.");
+  });
+
+  it("fails when projection scope does not say whether captaincy is included", () => {
+    const result = evaluateRecommendationQuality({
+      ...recommendation,
+      pickTeam: {
+        ...recommendation.pickTeam,
+        explanation: "Fixture test pick."
+      }
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain("Pick-team explanation must state whether projected points include captaincy.");
+  });
+
+  it("warns when confidence is too high for missing evidence", () => {
+    const result = evaluateRecommendationQuality({
+      ...recommendation,
+      confidence: {
+        score: 0.72,
+        label: "medium",
+        explanation: "No matched odds and predicted-lineup evidence is not normalized."
+      }
+    });
+
+    expect(result.isValid).toBe(true);
+    expect(result.warnings).toContain("Confidence score is too high for missing odds or unnormalized lineup evidence.");
+  });
+
   it("fails when evidence references are missing", () => {
     const result = evaluateRecommendationQuality({
       ...recommendation,
@@ -239,5 +295,18 @@ describe("evaluateRecommendationQuality", () => {
 
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain("Decision analysis is required for every recommendation.");
+  });
+
+  it("fails when structure comparisons are missing", () => {
+    const result = evaluateRecommendationQuality({
+      ...recommendation,
+      decisionAnalysis: {
+        ...recommendation.decisionAnalysis!,
+        structureComparisons: []
+      }
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain("Decision analysis must compare at least two full-squad structures with why-selected, why-rejected, and evidence.");
   });
 });

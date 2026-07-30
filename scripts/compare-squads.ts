@@ -1,9 +1,10 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   compareSquads,
+  readArtifactFile,
   renderSquadComparisonMarkdown,
-  type WeeklyRecommendation
+  WeeklyRecommendationSchema
 } from "../packages/agent/src";
 
 function argValue(name: string) {
@@ -16,29 +17,8 @@ function argValue(name: string) {
   return process.argv[index + 1] ?? null;
 }
 
-async function readJson<T>(filePath: string) {
-  return JSON.parse(await readFile(filePath, "utf8")) as T;
-}
-
 async function writeJson(filePath: string, data: unknown) {
   await writeFile(filePath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
-}
-
-function isWeeklyRecommendation(value: unknown): value is WeeklyRecommendation {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const recommendation = value as Partial<WeeklyRecommendation>;
-
-  return Array.isArray(recommendation.squadBefore?.players) &&
-    recommendation.pickTeam !== null &&
-    recommendation.pickTeam !== undefined &&
-    recommendation.captaincy !== null &&
-    recommendation.captaincy !== undefined &&
-    recommendation.chip !== null &&
-    recommendation.chip !== undefined &&
-    recommendation.manualExecutionRequired === true;
 }
 
 async function main() {
@@ -51,14 +31,8 @@ async function main() {
     return;
   }
 
-  const recommendationA = await readJson<unknown>(aPath);
-  const recommendationB = await readJson<unknown>(bPath);
-
-  if (!isWeeklyRecommendation(recommendationA) || !isWeeklyRecommendation(recommendationB)) {
-    console.error("Both --a and --b must point to agent-authored recommendation.json files.");
-    process.exitCode = 1;
-    return;
-  }
+  const recommendationA = await readArtifactFile(aPath, WeeklyRecommendationSchema);
+  const recommendationB = await readArtifactFile(bPath, WeeklyRecommendationSchema);
 
   const comparison = compareSquads({
     generatedAt: new Date().toISOString(),

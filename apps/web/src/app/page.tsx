@@ -23,8 +23,7 @@ export default function HomePage() {
         <article className="card">
           <h2>Public data first</h2>
           <p>
-            Future milestones will fetch public FPL API data and cache it for
-            transparent, repeatable analysis.
+            Public FPL API data is cached for transparent, repeatable analysis.
           </p>
         </article>
         <article className="card">

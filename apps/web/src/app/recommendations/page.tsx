@@ -1,5 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import {
+  LegalityReportSchema,
+  MinutesRiskReportSchema,
+  parseArtifactJson,
+  RecommendationArtifactSchema,
+  SquadRiskReportSchema,
+  type ArtifactSchema
+} from "@fpl-agent/agent";
 
 type Player = {
   id: number;
@@ -124,14 +132,14 @@ type MinutesRiskReport = {
   }>;
 };
 
-function readJson<T>(relativePath: string) {
+function readJson<T>(relativePath: string, schema: ArtifactSchema) {
   const filePath = path.join(/*turbopackIgnore: true*/ process.cwd(), "..", "..", relativePath);
 
   if (!existsSync(filePath)) {
     return null;
   }
 
-  return JSON.parse(readFileSync(filePath, "utf8")) as T;
+  return parseArtifactJson(readFileSync(filePath, "utf8"), schema, filePath) as T;
 }
 
 function playerName(players: Player[], playerId: number) {
@@ -156,10 +164,22 @@ function playersByPosition(players: Player[]) {
 }
 
 export default function RecommendationsPage() {
-  const recommendation = readJson<Recommendation>("packages/content/recommendations/gw-1/recommendation.json");
-  const legality = readJson<LegalityReport>("packages/content/recommendations/gw-1/legality-report.json");
-  const riskReport = readJson<RiskReport>("packages/content/recommendations/gw-1/risk-report.json");
-  const minutesRiskReport = readJson<MinutesRiskReport>("packages/content/recommendations/gw-1/minutes-risk-report.json");
+  const recommendation = readJson<Recommendation>(
+    "packages/content/recommendations/gw-1/recommendation.json",
+    RecommendationArtifactSchema
+  );
+  const legality = readJson<LegalityReport>(
+    "packages/content/recommendations/gw-1/legality-report.json",
+    LegalityReportSchema
+  );
+  const riskReport = readJson<RiskReport>(
+    "packages/content/recommendations/gw-1/risk-report.json",
+    SquadRiskReportSchema
+  );
+  const minutesRiskReport = readJson<MinutesRiskReport>(
+    "packages/content/recommendations/gw-1/minutes-risk-report.json",
+    MinutesRiskReportSchema
+  );
 
   if (!recommendation) {
     return (
@@ -207,7 +227,7 @@ export default function RecommendationsPage() {
           <article className="card">
             <h2>Evidence Requirement</h2>
             <p>
-              Every future squad, shortlist, XI, captaincy, bench, chip, risk,
+              Every authored squad, shortlist, XI, captaincy, bench, chip, risk,
               and change condition must cite evidence in `evidenceReferences`.
             </p>
           </article>
