@@ -125,6 +125,15 @@ export function buildEvidencePack(input: BuildEvidencePackInput): EvidencePack {
     decisionAnalysis: {
       summary: null,
       squadStructure: [],
+      structureComparisons: [
+        {
+          selectedStructure: null,
+          rejectedStructure: null,
+          whySelected: [],
+          whyRejected: [],
+          evidence: []
+        }
+      ],
       playerDecisions: [
         {
           playerId: null,
@@ -235,6 +244,7 @@ export function renderDecisionPrompts(evidencePack: EvidencePack) {
 - Does every authored recommendation include machine-readable evidenceReferences with source, reportPath, and note?
 - For every selected player, what evidence supports the pick and which named alternatives were rejected?
 - For every rejected alternative, what specific tradeoff made the selected player preferable?
+- Which full-squad structures were rejected, and did the rejected structures keep unrelated decisions independent?
 - Which premium or popular omissions are most dangerous, and what evidence would change the decision?
 - Does the captaincy section compare the captain against the vice-captain and at least one other realistic captain?
 

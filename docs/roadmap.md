@@ -1,80 +1,91 @@
-# Roadmap
+# Project Status
 
-See `docs/evidence-release-plan.md` for the evidence automation release plan that follows the initial agent decision toolkit.
+This document records the capabilities present in the repository. It does not contain planned releases or private maintenance goals.
 
-## Milestone 1: Repo Skeleton
+## Workspace
 
-- pnpm workspace
-- read-only Next.js app
-- package placeholders
-- config examples
-- documentation
+- TypeScript pnpm monorepo.
+- Read-only Next.js application.
+- Public FPL API client with validation and local caching.
+- Deterministic rules and evidence packages.
+- Local content for context, strategy, recommendations, and postmortems.
 
-## Milestone 2: FPL API Client
+## Public Data
 
-- public endpoint constants: done
-- fetch client: done
-- local caching: done
-- response validation: done
-- fixture-based tests: done
+- Public endpoint constants and URL construction.
+- Validated bootstrap, fixture, player-summary, and live-gameweek responses.
+- Public manager endpoints exposed as untyped optional reads.
+- Raw cache files, timestamped snapshots, and normalized player data.
+- Fixture evidence from the FPL API and official Premier League fixture release.
 
-## Milestone 3: Rules Engine
+## Rules
 
-- squad legality: done
-- budget validation: done
-- club limit validation: done
-- formation validation: done
-- transfer validation: done
-- captaincy, bench, chip, and deadline validation: done
-- provisional data warnings: done
+- Squad size, position structure, budget, and club limits.
+- Starting XI and formation validation.
+- Bench membership and order validation.
+- Captain and vice-captain validation.
+- Basic transfer-cost validation.
+- Basic chip availability.
+- Deadline and provisional-data checks.
 
-## Milestone 4: Decision Engine
+The exact covered and uncovered rule behavior is listed in `docs/rules-coverage.md`.
 
-- transparent projections: done
-- transfer candidates: done
-- captain ranking: done
-- bench order: done
-- conservative chip recommendations: done
+## Decision Evidence
 
-## Milestone 5: Recommendation Output
+- Transparent player projections.
+- Transfer candidate evidence.
+- Captain rankings.
+- Starting XI and bench evidence.
+- Conservative chip evidence.
+- Fixture ticker and squad comparison.
+- Strategy templates and quality checks.
+- Recommendation templates that require coding-agent or human authorship.
 
-- evidence pack output: done
-- recommendation template output: done
-- placeholder manual checklist: done
-- no script-selected players: done
+## Evidence Sources
 
-## Milestone 6: Verification
+- FPL data freshness and coverage.
+- Team availability and news fields from public FPL data.
+- Set-piece order fields from public FPL data.
+- Historical minutes and selected-player risk.
+- Public match-level odds with explicit market coverage.
+- Public page capture with Playwright or HTTP fallback.
+- Official Premier League Scout pages in the public evidence set.
 
-- agent-authored recommendation validation command: done
-- illegal recommendation blocking: done
-- tests for invalid scenarios: done
+Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
-## Milestone 7: Agent Decision Toolkit
+## Verification
 
-- manual context notes: done
-- richer evidence pack: done
-- projection summary and decision prompts: done
-- recommendation quality gates: done
-- expanded verification report: done
-- fixture ticker evidence: done
-- squad comparison command: done
+- Squad, formation, bench, captaincy, chip, transfer, and deadline checks.
+- Recommendation rationale and evidence-reference quality gates.
+- Full-squad structure comparisons and player alternative analysis.
+- Captaincy alternatives and important omission analysis.
+- Projection-scope, confidence, bench-spend, fixture-exposure, and evidence-gap warnings.
+- Weekly strategy consistency checks.
+- Generated legality, risk, brief, and manual-checklist outputs.
 
-## Milestone 8: Cron Support
+## Website
 
-- `--gw auto`
-- deadline detection
-- safe failure behavior
-- cron documentation
+- Read-only project overview.
+- Current GW1 recommendation and risk presentation.
+- Squad, methodology, and postmortem pages.
 
-## Milestone 9: Website
+## Operational State
 
-- generated recommendation archive
-- recommendation detail pages
-- squad page backed by config/data
-- methodology and postmortem pages
+- `pnpm test` passes 24 test files and 99 tests at the `0.0.2` status update.
+- Evidence commands write local files for review.
+- Final squad, transfer, captaincy, bench, and chip decisions remain agent- or human-authored.
+- The human manager performs every change in the official FPL interface.
 
-## Milestone 10: Postmortems
+## Current Limitations
 
-- load saved recommendations
-- compare projections to actual points
-- write postmortem JSON and markdown
+- The recommendation page reads GW1 paths directly.
+- Public manager responses are not normalized into recommendation state.
+- Evidence refresh is split across multiple commands.
+- Predicted-lineup confidence is unavailable unless supported by manually reviewed public evidence.
+- Odds coverage depends on public rows and lacks guaranteed direct player markets.
+- Projection and transfer-horizon models are intentionally simple.
+- Postmortem automation is not implemented.
+
+## Safety Boundary
+
+The repository does not log into FPL, store authenticated FPL cookies, automate management pages, or submit team changes.

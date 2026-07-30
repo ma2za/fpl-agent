@@ -264,7 +264,7 @@ describe("buildSquadRiskReport", () => {
 
     expect(result.summary.evidenceGaps).toBe(0);
     expect(result.summary.high).toBe(0);
-    expect(result.summary.medium).toBe(0);
+    expect(result.structureRisks.find((risk) => risk.risk === "bench-overfunding")?.level).toBe("medium");
   });
 
   it("flags zero-minute squad players", () => {
@@ -452,6 +452,17 @@ describe("buildSquadRiskReport", () => {
     expect(result.structureRisks.find((risk) => risk.risk === "budget-flexibility")?.level).toBe("medium");
   });
 
+  it("flags bench overfunding", () => {
+    const result = report({
+      pickTeam: {
+        ...recommendation.pickTeam,
+        benchOrder: [2, 6, 12, 14]
+      }
+    });
+
+    expect(result.structureRisks.find((risk) => risk.risk === "bench-overfunding")?.level).toBe("medium");
+  });
+
   it("flags odds reports that do not cover the gameweek fixtures", () => {
     const result = buildSquadRiskReport({
       generatedAt: "2026-07-04T00:00:00.000Z",
@@ -470,6 +481,55 @@ describe("buildSquadRiskReport", () => {
 
     expect(result.structureRisks.find((risk) => risk.risk === "odds-coverage")?.level).toBe("medium");
     expect(result.evidenceGaps.find((gap) => gap.area === "odds")?.status).toBe("reviewed");
+  });
+
+  it("flags false precision when confidence is high without odds or lineup confidence", () => {
+    const result = buildSquadRiskReport({
+      generatedAt: "2026-07-04T00:00:00.000Z",
+      recommendation: {
+        ...recommendation,
+        confidence: {
+          score: 0.72,
+          label: "medium",
+          explanation: "High confidence."
+        }
+      },
+      dataStatus: { dataMode: "official" },
+      fixtureTicker: null,
+      oddsReport: {
+        ...oddsReport,
+        summary: {
+          ...oddsReport.summary,
+          matchedFixtures: 0
+        }
+      },
+      minutesRiskReport: {
+        ...minutesRiskReport,
+        items: [
+          {
+            playerId: 8,
+            name: "Midfielder 1",
+            webName: "Midfielder 1",
+            teamId: 3,
+            teamName: "Team 3",
+            position: "MID",
+            status: "a",
+            minutes: 1500,
+            selected: true,
+            starting: true,
+            benchPosition: null,
+            historicalConfidence: "medium",
+            predictedLineupConfidence: "unavailable",
+            riskLevel: "watch",
+            reasons: ["Moderate historical minutes: 1500."],
+            summary: "Midfielder 1: watch minutes risk."
+          }
+        ]
+      },
+      contextNotes: reviewedContext
+    });
+
+    expect(result.structureRisks.find((risk) => risk.risk === "false-precision")?.level).toBe("medium");
   });
 
   it("uses automated minutes report instead of missing minutes evidence", () => {
@@ -554,5 +614,52 @@ describe("buildSquadRiskReport", () => {
 
     expect(result.structureRisks.find((risk) => risk.risk === "fixture-cluster")?.level).toBe("medium");
     expect(markdown).not.toContain("replace");
+  });
+
+  it("flags missing exposure to strongest opening fixture blocks", () => {
+    const fixtureTicker: FixtureTicker = {
+      gameweek: 1,
+      horizon: 2,
+      generatedAt: "2026-07-04T00:00:00.000Z",
+      teams: [20, 21].map((teamId) => ({
+        teamId,
+        teamName: `Team ${teamId}`,
+        shortName: `T${teamId}`,
+        fixtureCount: 2,
+        blankCount: 0,
+        doubleCount: 0,
+        averageDifficulty: 2,
+        difficultySum: 4,
+        fixtures: [
+          {
+            event: 1,
+            opponentTeamId: 98,
+            opponentName: "Opponent 1",
+            venue: "H",
+            difficulty: 2,
+            kickoffTime: null,
+            finished: false
+          },
+          {
+            event: 2,
+            opponentTeamId: 99,
+            opponentName: "Opponent 2",
+            venue: "A",
+            difficulty: 2,
+            kickoffTime: null,
+            finished: false
+          }
+        ]
+      }))
+    };
+    const result = buildSquadRiskReport({
+      generatedAt: "2026-07-04T00:00:00.000Z",
+      recommendation,
+      dataStatus: { dataMode: "official" },
+      fixtureTicker,
+      contextNotes: reviewedContext
+    });
+
+    expect(result.structureRisks.find((risk) => risk.risk === "fixture-upside-gap")?.level).toBe("medium");
   });
 });

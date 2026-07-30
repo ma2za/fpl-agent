@@ -239,15 +239,18 @@ data/raw/**/*.csv
 data/processed/**/*.json
 data/cache/**/*.json
 
-# Large generated recommendation evidence
-packages/content/recommendations/**/projections.json
-packages/content/recommendations/**/player-pool.json
-packages/content/recommendations/**/budget-tiers.json
-packages/content/recommendations/**/club-exposure.json
-packages/content/recommendations/**/fixture-ticker.json
-packages/content/recommendations/**/strategy-evidence.json
-packages/content/recommendations/**/raw-sources/
-packages/content/recommendations/**/source-snapshots/
+# Local season workspace
+docs/agent-handoff.md
+packages/content/context/*.md
+packages/content/postmortems/*
+packages/content/recommendations/gw-*/
+packages/content/strategy/season-plan.md
+packages/content/strategy/weekly/*
+!packages/content/context/.gitkeep
+!packages/content/postmortems/.gitkeep
+!packages/content/recommendations/.gitkeep
+!packages/content/strategy/.gitkeep
+!packages/content/strategy/weekly/.gitkeep
 
 # Local OS/editor noise
 .DS_Store

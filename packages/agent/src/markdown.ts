@@ -29,6 +29,21 @@ ${analysis.summary}
 
 ${analysis.squadStructure.map((item) => `- ${item}`).join("\n")}
 
+### Structure Comparisons
+
+${analysis.structureComparisons.map((comparison) => `#### Selected: ${comparison.selectedStructure}
+
+Rejected: ${comparison.rejectedStructure}
+
+Why selected:
+${comparison.whySelected.map((reason) => `- ${reason}`).join("\n")}
+
+Why rejected:
+${comparison.whyRejected.map((reason) => `- ${reason}`).join("\n")}
+
+Evidence:
+${comparison.evidence.map((item) => `- ${item}`).join("\n")}`).join("\n\n")}
+
 ### Player Picks And Alternatives
 
 ${analysis.playerDecisions.map((decision) => `#### ${playerLine(recommendation, decision.playerId)}
@@ -194,8 +209,10 @@ Manual execution required: ${recommendation.manualExecutionRequired}
 - recommendation.json
 - legality-report.json
 - projections.json
-- captain-candidates.json
-- transfer-candidates.json
+- projection-summary.md
+- fixture-ticker.md
+- minutes-risk-report.md
+- public-evidence-report.md
 - manual-checklist.md
 
 ## Deterministic Outputs

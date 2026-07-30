@@ -41,7 +41,7 @@ const recommendation: WeeklyRecommendation = {
     startingXI: [1, 3, 4, 5, 8, 9, 10, 11, 13, 14, 15],
     benchOrder: [2, 6, 12, 7],
     projectedPoints: 60,
-    explanation: "Fixture test pick."
+    explanation: "Fixture test pick. Projected points exclude captaincy."
   },
   captaincy: {
     captainPlayerId: 8,
@@ -67,6 +67,22 @@ const recommendation: WeeklyRecommendation = {
     squadStructure: [
       "Balanced 3-4-3 test structure.",
       "Keeps enough bank while covering every required position."
+    ],
+    structureComparisons: [
+      {
+        selectedStructure: "Balanced 3-4-3",
+        rejectedStructure: "Premium-heavy 3-4-3",
+        whySelected: ["Keeps the test squad legal with useful bank."],
+        whyRejected: ["Would over-concentrate budget in one area for the fixture test."],
+        evidence: ["test.md"]
+      },
+      {
+        selectedStructure: "Balanced 3-4-3",
+        rejectedStructure: "Bench-heavy 4-4-2",
+        whySelected: ["Keeps more budget in the starting XI."],
+        whyRejected: ["Would spend too much on substitutes for the fixture test."],
+        evidence: ["test.md"]
+      }
     ],
     playerDecisions: Array.from({ length: 15 }, (_, index) => ({
       playerId: index + 1,

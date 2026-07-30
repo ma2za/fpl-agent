@@ -2,9 +2,11 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   buildSetPieceReport,
+  isWeeklyRecommendationArtifact,
+  readArtifactFileIfExists,
+  RecommendationArtifactSchema,
   renderSetPieceReportMarkdown,
-  type EvidenceSource,
-  type WeeklyRecommendation
+  type EvidenceSource
 } from "../packages/agent/src";
 
 type BootstrapStatic = {
@@ -27,18 +29,6 @@ async function readJson<T>(filePath: string) {
   return JSON.parse(await readFile(filePath, "utf8")) as T;
 }
 
-async function readJsonIfExists<T>(filePath: string) {
-  try {
-    return JSON.parse(await readFile(filePath, "utf8")) as T;
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      return null;
-    }
-
-    throw error;
-  }
-}
-
 async function fileTimestamp(filePath: string) {
   const file = await stat(filePath);
 
@@ -56,7 +46,13 @@ async function main() {
 
   const bootstrapPath = path.join("data", "raw", "bootstrap-static.json");
   const outputDir = path.join("packages", "content", "recommendations", `gw-${gameweek}`);
-  const recommendation = await readJsonIfExists<WeeklyRecommendation>(path.join(outputDir, "recommendation.json"));
+  const recommendationArtifact = await readArtifactFileIfExists(
+    path.join(outputDir, "recommendation.json"),
+    RecommendationArtifactSchema
+  );
+  const recommendation = recommendationArtifact && isWeeklyRecommendationArtifact(recommendationArtifact)
+    ? recommendationArtifact
+    : null;
   const bootstrap = await readJson<BootstrapStatic>(bootstrapPath);
   const generatedAt = new Date().toISOString();
   const source: EvidenceSource = {

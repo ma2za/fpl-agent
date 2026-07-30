@@ -9,7 +9,7 @@
 - `packages/rules` validates squad, transfer, formation, captaincy, bench, chip, deadline, and provisional-data rules.
 - `packages/engine` generates deterministic projections and evidence helpers.
 - `packages/agent` builds evidence packs, renders decision prompts, evaluates recommendation quality, and verifies agent-authored files before manual use.
-- `packages/content` stores generated recommendations and postmortems.
+- `packages/content` is an ignored local workspace for season context, strategy, recommendations, evidence, and postmortems.
 
 ## Safety Boundary
 

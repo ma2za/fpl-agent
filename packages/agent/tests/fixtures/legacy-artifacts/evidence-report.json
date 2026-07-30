@@ -1,0 +1,44 @@
+{
+  "generatedAt": "2026-07-04T00:00:00.000Z",
+  "gameweek": 1,
+  "summary": {
+    "fresh": 1,
+    "stale": 0,
+    "missing": 0,
+    "requiredMissing": 0,
+    "requiredStale": 0
+  },
+  "sources": [
+    {
+      "id": "fpl-data",
+      "label": "FPL data",
+      "provider": "Fantasy Premier League",
+      "url": null,
+      "rawPath": "data/raw/bootstrap-static.json",
+      "reportPath": null,
+      "required": true,
+      "confidence": "high",
+      "freshness": {
+        "status": "fresh",
+        "checkedAt": "2026-07-04T00:00:00.000Z",
+        "fetchedAt": "2026-07-04T00:00:00.000Z",
+        "ageHours": 0,
+        "maxAgeHours": 24,
+        "message": "FPL data is fresh."
+      }
+    }
+  ],
+  "items": [
+    {
+      "sourceId": "fpl-data",
+      "area": "fpl-data",
+      "subject": "FPL data",
+      "severity": "info",
+      "summary": "FPL data is fresh.",
+      "confidence": "high",
+      "fetchedAt": "2026-07-04T00:00:00.000Z",
+      "url": null
+    }
+  ],
+  "warnings": []
+}

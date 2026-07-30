@@ -2,13 +2,15 @@
 
 This repo is structured so Codex, Claude Code, or a developer can make decisions from files.
 
+For a fresh chat or handover, read the local `docs/agent-handoff.md` first when it exists. It is ignored because it can contain current-season state.
+
 ## Agent Inputs
 
 - `config/squad.ts`
 - `config/risk-profile.ts`
 - `docs/methodology.md`
-- cached FPL API data from future milestones
-- manually collected FPL news notes from future milestones
+- cached public FPL API data
+- manually collected FPL news notes
 - manual context notes in `packages/content/context`
 - previous recommendations and postmortems in `packages/content`
 - generated evidence files from `pnpm recommend -- --gw {n}`
@@ -30,7 +32,7 @@ packages/content/recommendations/gw-{n}/risk-report.md
 
 Scripts must not select players. They can prepare evidence, projections, data status, and templates. The coding agent authors the final squad, starting XI, captaincy, bench order, transfers, and chip decision.
 
-Every authored recommendation must include extensive `decisionAnalysis` in `recommendation.json`. For every selected player, the agent must explain why the player was picked, which named alternatives were rejected, why each alternative lost, and which evidence files support the judgment. Captaincy must compare the captain against the vice-captain and at least one other realistic captain. Key omissions must explain what would change the decision.
+Every authored recommendation must include extensive `decisionAnalysis` in `recommendation.json`. The analysis must compare full-squad structures before player-level picks, so unrelated choices are not bundled into a false binary. For every selected player, the agent must explain why the player was picked, which named alternatives were rejected, why each alternative lost, and which evidence files support the judgment. Captaincy must compare the captain against the vice-captain and at least one other realistic captain. Key omissions must explain what would change the decision.
 
 The coding agent also authors the weekly strategy memo and JSON before verification. Strategy files explain the season posture, weekly thesis, transfer posture, captaincy profile, chip decision, risks, and change conditions.
 
@@ -51,7 +53,7 @@ recommendation-template.json
 strategy-evidence.json
 ```
 
-Large derived evidence JSON files are local artifacts and ignored by git. Commit authored recommendation files and compact summaries, not raw generated player pools.
+All context, strategy, recommendation, evidence, and postmortem files are local season artifacts and ignored by git. Commit reusable code, schemas, fixtures, and documentation, not live-season decisions or generated reports.
 
 `pnpm evidence -- --gw {n}` refreshes `evidence-report.json` and `evidence-report.md`. The report tracks source presence and freshness for FPL data, fixtures, team news, set pieces, odds, minutes evidence, and public browser evidence. It does not select players.
 
@@ -63,7 +65,7 @@ Large derived evidence JSON files are local artifacts and ignored by git. Commit
 
 `pnpm minutes -- --gw {n}` writes `minutes-risk-report.json` and `minutes-risk-report.md` from public FPL historical minutes and availability fields. It labels predicted-lineup confidence as unavailable until a public predicted-lineup adapter exists.
 
-`pnpm public-evidence -- --gw {n}` writes `public-evidence-report.json` and `public-evidence-report.md` from read-only public pages. It uses Playwright when available and falls back to public HTTP. It must not log in, persist cookies, visit authenticated FPL management pages, click team controls, or choose players.
+`pnpm public-evidence -- --gw {n}` writes `public-evidence-report.json` and `public-evidence-report.md` from read-only public pages, including official Premier League Scout evidence where configured. It uses Playwright when available and falls back to public HTTP. It must not log in, persist cookies, visit authenticated FPL management pages, click team controls, or choose players.
 
 `pnpm fixtures -- --gw {n} --horizon 6` writes fixture ticker evidence for the same gameweek folder.
 
@@ -81,7 +83,7 @@ The decision loop is:
 
 1. Run `pnpm recommend -- --gw {n}` to refresh evidence.
 2. Run source-specific evidence commands such as `pnpm team-news`, `pnpm set-pieces`, `pnpm odds`, `pnpm minutes`, and `pnpm public-evidence`.
-3. Author `recommendation.json`, including `decisionAnalysis`.
+3. Author `recommendation.json`, including `decisionAnalysis` with structure comparisons, player comparisons, captaincy comparisons, key omissions, and evidence references.
 4. Run `pnpm verify -- --gw {n}`.
 5. Read `risk-report.md`, `agent-brief.md`, and `manual-checklist.md`; update the recommendation or author a variant if needed.
 6. Compare authored variants with `pnpm compare:squads`.
@@ -89,7 +91,7 @@ The decision loop is:
 
 ## Quality Gates
 
-`pnpm verify -- --gw {n}` checks legality and recommendation quality. Legality errors block. Missing required rationale and missing pick-versus-alternative analysis block. Stale data, excess bank, low-minutes starters, and club concentration are reported as warnings for agent review.
+`pnpm verify -- --gw {n}` checks legality and recommendation quality. Legality errors block. Missing required rationale, missing structure comparisons, missing pick-versus-alternative analysis, and ambiguous projection scope block. Stale data, excess bank, overfunded benches, low-minutes starters, fixture-upside gaps, confidence overstatement, and club concentration are reported as warnings for agent review.
 
 Verification also checks `packages/content/strategy/weekly/gw-{n}.json` against the recommendation and `packages/content/strategy/season-plan.md`.
 

@@ -4,10 +4,13 @@ import { projectPlayers, type PlayerForEngine } from "../packages/engine/src";
 import {
   buildEvidencePack,
   buildStrategyEvidence,
+  readArtifactFileIfExists,
+  RecommendationArtifactSchema,
   renderDecisionPrompts,
   renderProjectionSummary,
   renderSeasonStrategyTemplate,
   renderWeeklyStrategyTemplate,
+  WeeklyStrategySchema,
   weeklyStrategyJsonTemplate,
   type DecisionContext
 } from "../packages/agent/src";
@@ -53,18 +56,6 @@ async function readText(filePath: string) {
 async function readTextIfExists(filePath: string) {
   try {
     return await readFile(filePath, "utf8");
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      return null;
-    }
-
-    throw error;
-  }
-}
-
-async function readJsonIfExists(filePath: string) {
-  try {
-    return JSON.parse(await readFile(filePath, "utf8")) as unknown;
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT") {
       return null;
@@ -250,10 +241,16 @@ async function main() {
   const weeklyStrategyMarkdownPath = path.join(weeklyStrategyDir, `gw-${gameweek}.md`);
   const weeklyStrategyJsonPath = path.join(weeklyStrategyDir, `gw-${gameweek}.json`);
   const recommendationPath = path.join(outputDir, "recommendation.json");
-  const existingRecommendation = await readJsonIfExists(recommendationPath);
+  const existingRecommendation = await readArtifactFileIfExists(
+    recommendationPath,
+    RecommendationArtifactSchema
+  );
   const authoredRecommendationExists = hasAuthoredRecommendation(existingRecommendation);
   const existingSeasonPlan = await readTextIfExists(seasonPlanPath);
-  const existingWeeklyStrategy = await readJsonIfExists(weeklyStrategyJsonPath);
+  const existingWeeklyStrategy = await readArtifactFileIfExists(
+    weeklyStrategyJsonPath,
+    WeeklyStrategySchema
+  );
   const notes = {
     fixtures: await readText(path.join("packages", "content", "context", "fixtures.md")),
     teamNews: await readText(path.join("packages", "content", "context", "team-news.md")),

@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.1`
+Version: `0.0.2`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -95,7 +95,7 @@ pnpm postmortem -- --gw 1
 
 `pnpm minutes -- --gw {n}` writes a minutes risk report from public FPL historical minutes and availability fields. Predicted-lineup coverage is marked unavailable until a public source adapter is added.
 
-`pnpm public-evidence -- --gw {n}` captures read-only public evidence pages for fixtures, player news, predicted lineups, and price-risk context. It uses Playwright when available and otherwise falls back to plain public HTTP. It does not log in, persist cookies, click FPL management controls, or select players.
+`pnpm public-evidence -- --gw {n}` captures read-only public evidence pages for fixtures, player news, official Premier League Scout articles, predicted lineups, and price-risk context. It uses Playwright when available and otherwise falls back to plain public HTTP. It does not log in, persist cookies, click FPL management controls, or select players.
 
 For rendered-page capture, install the browser once with `corepack pnpm exec playwright install chromium`, then run `pnpm public-evidence -- --gw {n} --mode browser`.
 
@@ -157,9 +157,11 @@ packages/content/recommendations/gw-{n}/
 
 For coding-agent review, start with `agent-brief.md`. It lists the evidence files and current judgment checks before the agent authors a final recommendation.
 
+For a fresh Codex or Claude Code chat, create a local `docs/agent-handoff.md`. The file is ignored because it can contain current-season state.
+
 Scripts must not choose the squad, starting XI, captain, vice-captain, bench order, transfers, or chips. Those decisions belong to Codex, Claude Code, or a human developer after reviewing the evidence.
 
-Every authored recommendation must include `decisionAnalysis`: why each selected player was picked, which alternatives were rejected, why those alternatives lost, captaincy comparisons, and key omissions. `pnpm verify` fails recommendations that do not include this analysis.
+Every authored recommendation must include `decisionAnalysis`: full-squad structure comparisons, why each selected player was picked, which alternatives were rejected, why those alternatives lost, captaincy comparisons, and key omissions. `pnpm verify` fails recommendations that do not include this analysis or fail to state whether projected points include captaincy.
 
 Evidence includes `projection-summary.md`, `budget-tiers.json`, `club-exposure.json`, and `decision-prompts.md`.
 
@@ -167,7 +169,7 @@ Fixture context is generated separately with `pnpm fixtures -- --gw {n} --horizo
 
 Strategy context lives under `packages/content/strategy/`. `season-plan.md` sets season posture, while `weekly/gw-{n}.md` and `weekly/gw-{n}.json` hold the agent-authored weekly strategy checked by verification.
 
-Large derived evidence JSON files are ignored by git. Regenerate them locally with `pnpm recommend -- --gw {n}`.
+The context, season strategy, weekly strategy, recommendation, evidence, and postmortem files are a local season workspace ignored by git. Regenerate evidence with `pnpm recommend -- --gw {n}` and keep the reusable application and packages independent of a particular season.
 
 Manual context notes live under:
 
@@ -181,7 +183,7 @@ Rules coverage and known gaps are tracked in `docs/rules-coverage.md`.
 
 `pnpm verify -- --gw {n}` validates agent-authored recommendation files before a manual checklist is trusted.
 
-It checks squad legality, starting XI, formation, bench order, captaincy, chip availability, transfer cost, deadline status, the manual-execution safety flag, quality gates for rationale and risk notes, pick-versus-alternative analysis, and weekly strategy gates.
+It checks squad legality, starting XI, formation, bench order, captaincy, chip availability, transfer cost, deadline status, the manual-execution safety flag, quality gates for rationale and risk notes, structure comparisons, pick-versus-alternative analysis, projection-scope disclosure, bench spend, confidence calibration, and weekly strategy gates.
 
 Invalid recommendations fail loudly and update:
 
@@ -211,9 +213,9 @@ pnpm dev
 - The repo can hold a season strategy and verify weekly strategy rationale.
 - Public odds coverage depends on Football-Data fixture rows being available for the target gameweek.
 - Player selection is intentionally agent-authored, not script-authored.
-- The repo does not ingest FPL news automatically.
+- The repo captures selected public evidence pages, including official Premier League Scout articles, but does not log in or scrape authenticated FPL pages.
 - Public manager endpoints exist in the API client but are not wired into recommendation flow yet.
 
-## Roadmap
+## Project Status
 
 See `docs/roadmap.md`.

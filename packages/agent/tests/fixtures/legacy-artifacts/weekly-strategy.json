@@ -1,0 +1,32 @@
+{
+  "gameweek": 1,
+  "status": "agent_authored",
+  "riskProfile": "balanced",
+  "squadSource": "from_scratch",
+  "weeklyThesis": "Use a legal and flexible opening structure.",
+  "horizons": {
+    "oneGameweek": "Captaincy and team selection.",
+    "threeGameweeks": "Avoid forced transfers.",
+    "sixGameweeks": "Retain structural flexibility."
+  },
+  "transferPlan": {
+    "posture": "roll",
+    "rationale": "No transfer applies to a new squad.",
+    "followsRiskProfile": true
+  },
+  "captaincyPlan": {
+    "primaryProfile": "Secure premium attacker.",
+    "rationale": "Prioritize minutes and goal involvement."
+  },
+  "chipPlan": {
+    "chip": "none",
+    "rationale": "Preserve chips.",
+    "referencesSeasonPosture": true
+  },
+  "risks": [
+    "Late team news."
+  ],
+  "whatWouldChangeMyMind": [
+    "A starter becomes unavailable."
+  ]
+}

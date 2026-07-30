@@ -2,10 +2,12 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   buildOddsReport,
+  isWeeklyRecommendationArtifact,
   parseFootballDataCsv,
+  readArtifactFileIfExists,
+  RecommendationArtifactSchema,
   renderOddsReportMarkdown,
-  type EvidenceSource,
-  type WeeklyRecommendation
+  type EvidenceSource
 } from "../packages/agent/src";
 import type { Fixture, Team } from "../packages/fpl-api/src";
 
@@ -27,18 +29,6 @@ function argValue(name: string) {
 
 async function readJson<T>(filePath: string) {
   return JSON.parse(await readFile(filePath, "utf8")) as T;
-}
-
-async function readJsonIfExists<T>(filePath: string) {
-  try {
-    return JSON.parse(await readFile(filePath, "utf8")) as T;
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      return null;
-    }
-
-    throw error;
-  }
 }
 
 async function fileTimestamp(filePath: string) {
@@ -79,7 +69,13 @@ async function main() {
   const rawCsvPath = path.join(rawDir, "football-data-fixtures.csv");
   const bootstrap = await readJson<BootstrapStatic>(path.join("data", "raw", "bootstrap-static.json"));
   const fixtures = await readJson<Fixture[]>(path.join("data", "raw", "fixtures.json"));
-  const recommendation = await readJsonIfExists<WeeklyRecommendation>(path.join(outputDir, "recommendation.json"));
+  const recommendationArtifact = await readArtifactFileIfExists(
+    path.join(outputDir, "recommendation.json"),
+    RecommendationArtifactSchema
+  );
+  const recommendation = recommendationArtifact && isWeeklyRecommendationArtifact(recommendationArtifact)
+    ? recommendationArtifact
+    : null;
   const csv = await fetchCsv(sourceUrl);
 
   await mkdir(rawDir, { recursive: true });
