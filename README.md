@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.4`
+Version: `0.0.5`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -76,6 +76,9 @@ pnpm public-evidence -- --gw 1
 pnpm fixtures -- --gw 1 --horizon 6
 pnpm recommend -- --gw auto
 pnpm compare:squads -- --a path/to/a.json --b path/to/b.json
+pnpm variant:list -- --gw 1
+pnpm variant:verify -- --gw 1 --variant balanced
+pnpm variant:compare -- --gw 1 --a balanced --b alternate
 pnpm verify -- --gw 1
 pnpm postmortem -- --gw 1
 ```
@@ -107,6 +110,8 @@ For rendered-page capture, install the browser once with `corepack pnpm exec pla
 `pnpm recommend -- --gw {n}` prepares evidence for the coding agent. It does not select players or write a final recommendation.
 
 `pnpm compare:squads` compares two agent-authored recommendation files and prints or writes a decision report.
+
+`pnpm variant:list`, `pnpm variant:verify`, and `pnpm variant:compare` manage authored alternatives under `gw-{n}/variants/{slug}/`. Variant verification reuses shared gameweek evidence and the same legality, quality, strategy, freshness, and risk checks as the primary recommendation. Comparison reports remain neutral, expose unavailable evidence explicitly, and never select a variant.
 
 `pnpm verify -- --gw {n}` re-validates an agent-authored recommendation and weekly strategy, rewrites the legality report, brief, checklist, and risk report, and exits non-zero when the recommendation is missing, illegal, missing required rationale, or missing pick-versus-alternative analysis.
 

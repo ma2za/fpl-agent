@@ -42,6 +42,7 @@ The exact covered and uncovered rule behavior is listed in `docs/rules-coverage.
 - Starting XI and bench evidence.
 - Conservative chip evidence.
 - Fixture ticker and squad comparison.
+- Authored variant discovery, independent verification, and neutral shared-evidence comparison.
 - Strategy templates and quality checks.
 - Recommendation templates that require coding-agent or human authorship.
 - Transactional evidence refresh with validated staging, bounded concurrency, offline mode, and atomic promotion.
@@ -68,6 +69,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 - Projection-scope, confidence, bench-spend, fixture-exposure, and evidence-gap warnings.
 - Weekly strategy consistency checks.
 - Generated legality, risk, brief, and manual-checklist outputs.
+- Variant-local legality, risk, brief, checklist, and comparison outputs without final selection.
 
 ## Website
 
@@ -77,7 +79,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ## Operational State
 
-- The locked local test suite passes 27 test files and 147 tests at the `0.0.4` status update.
+- The locked local test suite passes 28 test files and 163 tests at the `0.0.5` status update.
 - Evidence commands write local files for review.
 - Final squad, transfer, captaincy, bench, and chip decisions remain agent- or human-authored.
 - The human manager performs every change in the official FPL interface.

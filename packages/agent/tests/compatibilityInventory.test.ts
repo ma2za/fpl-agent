@@ -38,6 +38,18 @@ describe("compatibility inventory", () => {
     expect(packageJson.scripts.refresh).toBe("tsx scripts/refresh.ts");
   });
 
+  it("exposes the additive authored variant commands", () => {
+    const packageJson = JSON.parse(
+      readFileSync(resolve(root, "package.json"), "utf8"),
+    ) as { scripts: Record<string, string> };
+
+    expect(packageJson.scripts).toMatchObject({
+      "variant:list": "tsx scripts/variant-list.ts",
+      "variant:verify": "tsx scripts/variant-verify.ts",
+      "variant:compare": "tsx scripts/variant-compare.ts",
+    });
+  });
+
   it.each([
     [
       "agent",
@@ -59,6 +71,7 @@ describe("compatibility inventory", () => {
         "teamNews",
         "types",
         "verification",
+        "variants",
       ],
     ],
     [

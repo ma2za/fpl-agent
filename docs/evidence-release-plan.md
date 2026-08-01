@@ -136,13 +136,14 @@ Implemented:
 - Official Premier League fixture-release parsing.
 - Player projections, position pools, budget tiers, and club exposure.
 - Squad comparison for two authored recommendation files.
+- Authored variant listing, independent verification, and neutral comparison against shared gameweek evidence.
 - Full-squad structure comparison requirements in recommendation quality gates.
 - Warnings for overfunded benches, fixture-exposure gaps, projection-scope ambiguity, and confidence overstatement.
 
 Current limitations:
 
 - Fixture strength is not separated into attacking and defensive models.
-- Squad comparison accepts explicit files rather than managing a complete variant lifecycle.
+- Price-risk comparison remains unavailable until normalized price evidence exists; reports expose that gap explicitly.
 
 ## Recommendation and Strategy Quality
 
@@ -177,6 +178,9 @@ pnpm public-evidence -- --gw <n>
 pnpm fixtures -- --gw <n> --horizon <n>
 pnpm recommend -- --gw <n|auto>
 pnpm compare:squads -- --a <file> --b <file>
+pnpm variant:list -- --gw <gameweek>
+pnpm variant:verify -- --gw <gameweek> --variant <slug>
+pnpm variant:compare -- --gw <gameweek> --a <slug> --b <slug>
 pnpm verify -- --gw <n>
 ```
 

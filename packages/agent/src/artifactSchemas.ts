@@ -605,6 +605,79 @@ export const MinutesRiskReportSchema = looseObject({
 
 export const PlayerProjectionArraySchema = z.array(playerProjection);
 
+const variantEvidenceSummary = looseObject({
+  fixtureDifficulty: nullableNumber,
+  fixtureCount: nullableNumber,
+  minutesWatchOrWorse: nullableNumber,
+  playersWithOddsCoverage: nullableNumber,
+  setPieceRolePlayers: nullableNumber,
+  priceRisk: z.null(),
+  evidenceGaps: stringArray
+});
+
+const squadComparison = looseObject({
+  generatedAt: z.string(),
+  a: looseObject({
+    label: z.string(),
+    recommendation: WeeklyRecommendationSchema,
+    quality: qualityReport,
+    riskSummary: looseObject({
+      high: z.number(),
+      medium: z.number(),
+      low: z.number(),
+      evidenceGaps: z.number()
+    })
+  }),
+  b: looseObject({
+    label: z.string(),
+    recommendation: WeeklyRecommendationSchema,
+    quality: qualityReport,
+    riskSummary: looseObject({
+      high: z.number(),
+      medium: z.number(),
+      low: z.number(),
+      evidenceGaps: z.number()
+    })
+  }),
+  sharedPlayerIds: z.array(z.number()),
+  onlyAPlayerIds: z.array(z.number()),
+  onlyBPlayerIds: z.array(z.number()),
+  positionChanges: z.record(z.string(), looseObject({
+    onlyAPlayerIds: z.array(z.number()),
+    onlyBPlayerIds: z.array(z.number())
+  })),
+  summary: looseObject({
+    budgetUsedA: z.number(),
+    budgetUsedB: z.number(),
+    bankA: z.number(),
+    bankB: z.number(),
+    budgetDelta: z.number(),
+    bankDelta: z.number(),
+    projectedPointsA: z.number(),
+    projectedPointsB: z.number(),
+    projectedPointsDelta: z.number(),
+    captainA: z.number(),
+    captainB: z.number(),
+    chipA: z.string(),
+    chipB: z.string(),
+    outfieldBenchPlayableA: z.number(),
+    outfieldBenchPlayableB: z.number(),
+    outfieldBenchPlayableDelta: z.number()
+  }),
+  notes: stringArray
+});
+
+export const VariantComparisonReportSchema = looseObject({
+  schemaVersion,
+  generatedAt: z.string(),
+  gameweek: z.number(),
+  variants: looseObject({ a: z.string(), b: z.string() }),
+  verification: looseObject({ a: LegalityReportSchema, b: LegalityReportSchema }),
+  comparison: squadComparison,
+  evidence: looseObject({ a: variantEvidenceSummary, b: variantEvidenceSummary }),
+  decisionPolicy: z.string()
+});
+
 export const ArtifactSchemas = {
   evidenceReport: EvidenceReportSchema,
   fixtureTicker: FixtureTickerSchema,
@@ -617,7 +690,8 @@ export const ArtifactSchemas = {
   setPieceReport: SetPieceReportSchema,
   strategyEvidence: StrategyEvidenceSchema,
   teamNewsReport: TeamNewsReportSchema,
-  weeklyStrategy: WeeklyStrategySchema
+  weeklyStrategy: WeeklyStrategySchema,
+  variantComparison: VariantComparisonReportSchema
 } as const;
 
 export type ArtifactSchemaName = keyof typeof ArtifactSchemas;

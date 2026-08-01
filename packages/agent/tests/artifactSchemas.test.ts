@@ -70,6 +70,7 @@ describe("artifact schemas", () => {
       "setPieceReport",
       "strategyEvidence",
       "teamNewsReport",
+      "variantComparison",
       "weeklyStrategy"
     ]);
   });

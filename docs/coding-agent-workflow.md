@@ -86,8 +86,10 @@ The decision loop is:
 3. Author `recommendation.json`, including `decisionAnalysis` with structure comparisons, player comparisons, captaincy comparisons, key omissions, and evidence references.
 4. Run `pnpm verify -- --gw {n}`.
 5. Read `risk-report.md`, `agent-brief.md`, and `manual-checklist.md`; update the recommendation or author a variant if needed.
-6. Compare authored variants with `pnpm compare:squads`.
+6. List, verify, and compare authored variants with `pnpm variant:list -- --gw {n}`, `pnpm variant:verify -- --gw {n} --variant <slug>`, and `pnpm variant:compare -- --gw {n} --a <slug> --b <slug>`.
 7. Keep the final recommendation human-readable and manually executable.
+
+Variant slugs use lowercase letters, digits, and single hyphens. Each variant keeps only its authored recommendation and derived verification files in its own directory; fixture, availability, odds, role, strategy, and freshness evidence remains shared at gameweek level. Comparison output is written under `variants/comparisons/{a}-vs-{b}/` unless `--out` is supplied. It presents differences and evidence gaps without ranking variants or choosing the final action.
 
 ## Quality Gates
 

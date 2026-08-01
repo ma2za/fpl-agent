@@ -1,6 +1,6 @@
 import { evaluateRecommendationQuality } from "./quality";
 import { buildSquadRiskReport } from "./riskReport";
-import type { SquadComparison, WeeklyRecommendation } from "./types";
+import type { RecommendationQualityReport, SquadComparison, SquadRiskReport, WeeklyRecommendation } from "./types";
 
 type CompareSquadsInput = {
   generatedAt: string;
@@ -8,6 +8,10 @@ type CompareSquadsInput = {
   labelB: string;
   recommendationA: WeeklyRecommendation;
   recommendationB: WeeklyRecommendation;
+  qualityA?: RecommendationQualityReport;
+  qualityB?: RecommendationQualityReport;
+  riskSummaryA?: SquadRiskReport["summary"];
+  riskSummaryB?: SquadRiskReport["summary"];
 };
 
 function totalPrice(recommendation: WeeklyRecommendation) {
@@ -68,7 +72,7 @@ export function compareSquads(input: CompareSquadsInput): SquadComparison {
   const budgetDelta = budgetUsedB - budgetUsedA;
   const outfieldBenchPlayableA = playableOutfieldBench(input.recommendationA);
   const outfieldBenchPlayableB = playableOutfieldBench(input.recommendationB);
-  const riskA = buildSquadRiskReport({
+  const riskA = input.riskSummaryA ?? buildSquadRiskReport({
     generatedAt: input.generatedAt,
     recommendation: input.recommendationA,
     dataStatus: { dataMode: input.recommendationA.dataMode },
@@ -78,8 +82,8 @@ export function compareSquads(input: CompareSquadsInput): SquadComparison {
       setPieces: "Reviewed: yes",
       watchlist: "Reviewed: yes"
     }
-  });
-  const riskB = buildSquadRiskReport({
+  }).summary;
+  const riskB = input.riskSummaryB ?? buildSquadRiskReport({
     generatedAt: input.generatedAt,
     recommendation: input.recommendationB,
     dataStatus: { dataMode: input.recommendationB.dataMode },
@@ -89,15 +93,15 @@ export function compareSquads(input: CompareSquadsInput): SquadComparison {
       setPieces: "Reviewed: yes",
       watchlist: "Reviewed: yes"
     }
-  });
+  }).summary;
   const notes = [
     `${input.labelB} changes ${onlyAPlayerIds.length} squad slots from ${input.labelA}.`,
     `${input.labelB} projected XI delta: ${projectedDelta >= 0 ? "+" : ""}${projectedDelta.toFixed(1)}.`,
     `${input.labelB} bank delta: ${bankDelta >= 0 ? "+" : ""}£${bankDelta.toFixed(1)}.`,
     `${input.labelB} budget-used delta: ${budgetDelta >= 0 ? "+" : ""}£${budgetDelta.toFixed(1)}.`,
     `${input.labelB} playable outfield bench delta: ${outfieldBenchPlayableB - outfieldBenchPlayableA >= 0 ? "+" : ""}${outfieldBenchPlayableB - outfieldBenchPlayableA}.`,
-    `${input.labelA} risk summary: ${riskA.summary.high} high, ${riskA.summary.medium} medium.`,
-    `${input.labelB} risk summary: ${riskB.summary.high} high, ${riskB.summary.medium} medium.`
+    `${input.labelA} risk summary: ${riskA.high} high, ${riskA.medium} medium.`,
+    `${input.labelB} risk summary: ${riskB.high} high, ${riskB.medium} medium.`
   ];
 
   if (input.recommendationA.captaincy.captainPlayerId !== input.recommendationB.captaincy.captainPlayerId) {
@@ -109,14 +113,14 @@ export function compareSquads(input: CompareSquadsInput): SquadComparison {
     a: {
       label: input.labelA,
       recommendation: input.recommendationA,
-      quality: evaluateRecommendationQuality(input.recommendationA),
-      riskSummary: riskA.summary
+      quality: input.qualityA ?? evaluateRecommendationQuality(input.recommendationA),
+      riskSummary: riskA
     },
     b: {
       label: input.labelB,
       recommendation: input.recommendationB,
-      quality: evaluateRecommendationQuality(input.recommendationB),
-      riskSummary: riskB.summary
+      quality: input.qualityB ?? evaluateRecommendationQuality(input.recommendationB),
+      riskSummary: riskB
     },
     sharedPlayerIds,
     onlyAPlayerIds,

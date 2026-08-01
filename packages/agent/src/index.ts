@@ -19,3 +19,4 @@ export * from "./strategy";
 export * from "./teamNews";
 export * from "./types";
 export * from "./verification";
+export * from "./variants";
