@@ -24,8 +24,12 @@ This document records the capabilities present in the repository. It does not co
 - Starting XI and formation validation.
 - Bench membership and order validation.
 - Captain and vice-captain validation.
-- Basic transfer-cost validation.
-- Basic chip availability.
+- Season-neutral transfer-cost and chip-availability validation for existing callers.
+- Explicit 2026/27 rules for two chip sets, first-half expiry, Free Hit restrictions, and up to five rolled transfers.
+- Season-aware transfer hits, chip effects, and selling-price calculations.
+- Match and gameweek scoring, including defensive contributions and bonus-point ties.
+- Formation-safe automatic substitutions, captain fallback, and chip multipliers.
+- Blank and double gameweek aggregation plus provisional and final score states.
 - Deadline and provisional-data checks.
 
 The exact covered and uncovered rule behavior is listed in `docs/rules-coverage.md`.
@@ -71,7 +75,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ## Operational State
 
-- `pnpm test` passes 24 test files and 99 tests at the `0.0.2` status update.
+- The locked local test suite passes 25 test files and 132 tests at the `0.0.3` status update.
 - Evidence commands write local files for review.
 - Final squad, transfer, captaincy, bench, and chip decisions remain agent- or human-authored.
 - The human manager performs every change in the official FPL interface.
