@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.3`
+Version: `0.0.4`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -64,6 +64,7 @@ pnpm install
 ```bash
 pnpm dev
 pnpm test
+pnpm refresh -- --gw auto
 pnpm fetch:data
 pnpm fetch:pl-fixtures -- --gw 1 --horizon 6
 pnpm evidence -- --gw 1
@@ -80,6 +81,8 @@ pnpm postmortem -- --gw 1
 ```
 
 `pnpm dev` starts the read-only website.
+
+`pnpm refresh -- --gw {n|auto}` fetches shared public FPL inputs once, builds evidence in an isolated staging directory with bounded concurrency, validates generated artifacts, and atomically promotes a complete gameweek set. Add `--offline` to prohibit network access and use validated caches. Required failures preserve the previous set; stage outcomes remain visible in `refresh-manifest.json` and optional-source gaps remain visible in evidence coverage.
 
 `pnpm fetch:data` fetches public FPL API data, writes raw cache files, writes timestamped snapshots, and writes normalized player data.
 

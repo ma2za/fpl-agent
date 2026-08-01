@@ -1,5 +1,6 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import {
   buildPublicEvidenceReport,
   renderPublicEvidenceReportMarkdown,
@@ -27,7 +28,7 @@ type BrowserModule = {
   };
 };
 
-const defaultSources: PublicEvidenceSourceConfig[] = [
+export const defaultPublicEvidenceSources: PublicEvidenceSourceConfig[] = [
   {
     id: "premier-league-matches",
     label: "Premier League matches",
@@ -120,7 +121,7 @@ function sourcesFromArgs() {
   const sourceUrls = argValues("--source-url");
 
   if (sourceUrls.length === 0) {
-    return defaultSources;
+    return defaultPublicEvidenceSources;
   }
 
   return sourceUrls.map((url, index): PublicEvidenceSourceConfig => ({
@@ -138,8 +139,12 @@ async function loadBrowser() {
   return import("playwright") as Promise<BrowserModule>;
 }
 
-async function captureWithFetch(source: PublicEvidenceSourceConfig, rawDir: string): Promise<PublicEvidencePage> {
-  const response = await fetch(source.url, {
+async function captureWithFetch(
+  source: PublicEvidenceSourceConfig,
+  rawDir: string,
+  fetchImpl: typeof fetch
+): Promise<PublicEvidencePage> {
+  const response = await fetchImpl(source.url, {
     headers: {
       accept: "text/html,text/plain,*/*",
       "accept-language": "en-US,en;q=0.9",
@@ -234,11 +239,33 @@ function failedPage(source: PublicEvidenceSourceConfig, error: unknown): PublicE
   };
 }
 
+async function captureFromCache(source: PublicEvidenceSourceConfig, rawDir: string): Promise<PublicEvidencePage> {
+  const rawPath = path.join(rawDir, `${source.id}.txt`);
+  const [text, file] = await Promise.all([readFile(rawPath, "utf8"), stat(rawPath)]);
+
+  return {
+    sourceId: source.id,
+    label: source.label,
+    provider: source.provider,
+    url: source.url,
+    area: source.area,
+    capturedAt: file.mtime.toISOString(),
+    captureMode: "fetch",
+    title: null,
+    textExcerpt: excerpt(text),
+    wordCount: wordCount(text),
+    rawPath,
+    error: null,
+    confidence: source.confidence
+  };
+}
+
 async function captureSource(
   source: PublicEvidenceSourceConfig,
   rawDir: string,
   mode: "auto" | "browser" | "fetch",
-  browserModule: BrowserModule | null
+  browserModule: BrowserModule | null,
+  fetchImpl: typeof fetch
 ) {
   if (mode !== "fetch" && browserModule) {
     return captureWithBrowser(source, rawDir, browserModule);
@@ -248,31 +275,43 @@ async function captureSource(
     throw new Error("Playwright is not installed or could not launch Chromium.");
   }
 
-  return captureWithFetch(source, rawDir);
+  return captureWithFetch(source, rawDir, fetchImpl);
 }
 
-async function main() {
-  const gameweek = Number(argValue("--gw") ?? 1);
-  const mode = argValue("--mode") ?? "auto";
+export async function generatePublicEvidence(input: {
+  gameweek: number;
+  outputDir?: string;
+  rawDir?: string;
+  logicalRawDir?: string;
+  sources?: PublicEvidenceSourceConfig[];
+  mode?: "auto" | "browser" | "fetch";
+  offline?: boolean;
+  generatedAt?: string;
+  log?: boolean;
+  fetchImpl?: typeof fetch;
+}) {
+  const gameweek = input.gameweek;
+  const mode = input.mode ?? "auto";
 
   if (!Number.isInteger(gameweek) || gameweek < 1 || !["auto", "browser", "fetch"].includes(mode)) {
-    console.error(usage());
-    process.exitCode = 1;
-    return;
+    throw new Error(usage());
   }
 
-  const generatedAt = new Date().toISOString();
-  const outputDir = path.join("packages", "content", "recommendations", `gw-${gameweek}`);
-  const rawDir = path.join(outputDir, "raw-sources", "public-evidence");
-  const sources = sourcesFromArgs();
-  const browserModule = mode === "fetch" ? null : await loadBrowser().catch(() => null);
+  const generatedAt = input.generatedAt ?? new Date().toISOString();
+  const outputDir = input.outputDir ?? path.join("packages", "content", "recommendations", `gw-${gameweek}`);
+  const rawDir = input.rawDir ?? path.join(outputDir, "raw-sources", "public-evidence");
+  const logicalRawDir = input.logicalRawDir ?? rawDir;
+  const sources = input.sources ?? defaultPublicEvidenceSources;
+  const browserModule = input.offline || mode === "fetch" ? null : await loadBrowser().catch(() => null);
   const pages: PublicEvidencePage[] = [];
 
   await mkdir(rawDir, { recursive: true });
 
   for (const source of sources) {
     try {
-      pages.push(await captureSource(source, rawDir, mode as "auto" | "browser" | "fetch", browserModule));
+      pages.push(input.offline
+        ? await captureFromCache(source, rawDir)
+        : await captureSource(source, rawDir, mode, browserModule, input.fetchImpl ?? fetch));
     } catch (error) {
       pages.push(failedPage(source, error));
     }
@@ -282,17 +321,37 @@ async function main() {
     generatedAt,
     gameweek,
     sources,
-    pages
+    pages: pages.map((page) => page.rawPath
+      ? { ...page, rawPath: path.join(logicalRawDir, path.basename(page.rawPath)) }
+      : page)
   });
 
   await writeFile(path.join(outputDir, "public-evidence-report.json"), `${JSON.stringify(report, null, 2)}\n`, "utf8");
   await writeFile(path.join(outputDir, "public-evidence-report.md"), renderPublicEvidenceReportMarkdown(report), "utf8");
-  console.log(
-    `Wrote public evidence report to ${outputDir}: ${report.summary.capturedPages}/${report.summary.configuredSources} pages captured.`
-  );
+  if (input.log ?? true) {
+    console.log(
+      `Wrote public evidence report to ${outputDir}: ${report.summary.capturedPages}/${report.summary.configuredSources} pages captured.`
+    );
+  }
+
+  return report;
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const gameweek = Number(argValue("--gw") ?? 1);
+  const mode = argValue("--mode") ?? "auto";
+
+  if (!Number.isInteger(gameweek) || gameweek < 1 || !["auto", "browser", "fetch"].includes(mode)) {
+    console.error(usage());
+    process.exitCode = 1;
+  } else {
+    generatePublicEvidence({
+      gameweek,
+      mode: mode as "auto" | "browser" | "fetch",
+      sources: sourcesFromArgs()
+    }).catch((error) => {
+      console.error(error instanceof Error ? error.message : error);
+      process.exitCode = 1;
+    });
+  }
+}

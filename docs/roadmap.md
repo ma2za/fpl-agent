@@ -44,6 +44,8 @@ The exact covered and uncovered rule behavior is listed in `docs/rules-coverage.
 - Fixture ticker and squad comparison.
 - Strategy templates and quality checks.
 - Recommendation templates that require coding-agent or human authorship.
+- Transactional evidence refresh with validated staging, bounded concurrency, offline mode, and atomic promotion.
+- Local refresh manifests with source freshness, stage duration, artifact hashes, and visible failures.
 
 ## Evidence Sources
 
@@ -75,7 +77,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ## Operational State
 
-- The locked local test suite passes 25 test files and 132 tests at the `0.0.3` status update.
+- The locked local test suite passes 27 test files and 147 tests at the `0.0.4` status update.
 - Evidence commands write local files for review.
 - Final squad, transfer, captaincy, bench, and chip decisions remain agent- or human-authored.
 - The human manager performs every change in the official FPL interface.
@@ -84,7 +86,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 - The recommendation page reads GW1 paths directly.
 - Public manager responses are not normalized into recommendation state.
-- Evidence refresh is split across multiple commands.
+- Individual evidence commands write directly when used outside the transactional refresh workflow.
 - Predicted-lineup confidence is unavailable unless supported by manually reviewed public evidence.
 - Odds coverage depends on public rows and lacks guaranteed direct player markets.
 - Projection and transfer-horizon models are intentionally simple.

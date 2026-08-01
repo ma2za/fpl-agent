@@ -1,5 +1,6 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import {
   buildOddsReport,
   isWeeklyRecommendationArtifact,
@@ -37,8 +38,8 @@ async function fileTimestamp(filePath: string) {
   return file.mtime.toISOString();
 }
 
-async function fetchCsv(url: string) {
-  const response = await fetch(url, {
+async function fetchCsv(url: string, fetchImpl: typeof fetch) {
+  const response = await fetchImpl(url, {
     headers: {
       accept: "text/csv,text/plain,*/*",
       "accept-language": "en-US,en;q=0.9",
@@ -53,22 +54,33 @@ async function fetchCsv(url: string) {
   return response.text();
 }
 
-async function main() {
-  const gameweek = Number(argValue("--gw") ?? 1);
-  const sourceUrl = argValue("--source-url") ?? defaultSourceUrl;
+export async function generateOddsEvidence(input: {
+  gameweek: number;
+  outputDir?: string;
+  logicalOutputDir?: string;
+  rawDir?: string;
+  bootstrap?: BootstrapStatic;
+  fixtures?: Fixture[];
+  sourceUrl?: string;
+  offline?: boolean;
+  generatedAt?: string;
+  log?: boolean;
+  fetchImpl?: typeof fetch;
+}) {
+  const gameweek = input.gameweek;
+  const sourceUrl = input.sourceUrl ?? defaultSourceUrl;
 
   if (!Number.isInteger(gameweek) || gameweek < 1) {
-    console.error("Usage: pnpm odds -- --gw <gameweek> [--source-url <url>]");
-    process.exitCode = 1;
-    return;
+    throw new Error("Usage: pnpm odds -- --gw <gameweek> [--source-url <url>]");
   }
 
-  const generatedAt = new Date().toISOString();
-  const outputDir = path.join("packages", "content", "recommendations", `gw-${gameweek}`);
-  const rawDir = path.join("data", "raw", "odds");
+  const generatedAt = input.generatedAt ?? new Date().toISOString();
+  const outputDir = input.outputDir ?? path.join("packages", "content", "recommendations", `gw-${gameweek}`);
+  const logicalOutputDir = input.logicalOutputDir ?? outputDir;
+  const rawDir = input.rawDir ?? path.join("data", "raw", "odds");
   const rawCsvPath = path.join(rawDir, "football-data-fixtures.csv");
-  const bootstrap = await readJson<BootstrapStatic>(path.join("data", "raw", "bootstrap-static.json"));
-  const fixtures = await readJson<Fixture[]>(path.join("data", "raw", "fixtures.json"));
+  const bootstrap = input.bootstrap ?? await readJson<BootstrapStatic>(path.join("data", "raw", "bootstrap-static.json"));
+  const fixtures = input.fixtures ?? await readJson<Fixture[]>(path.join("data", "raw", "fixtures.json"));
   const recommendationArtifact = await readArtifactFileIfExists(
     path.join(outputDir, "recommendation.json"),
     RecommendationArtifactSchema
@@ -76,10 +88,14 @@ async function main() {
   const recommendation = recommendationArtifact && isWeeklyRecommendationArtifact(recommendationArtifact)
     ? recommendationArtifact
     : null;
-  const csv = await fetchCsv(sourceUrl);
+  const csv = input.offline
+    ? await readFile(rawCsvPath, "utf8")
+    : await fetchCsv(sourceUrl, input.fetchImpl ?? fetch);
 
-  await mkdir(rawDir, { recursive: true });
-  await writeFile(rawCsvPath, csv, "utf8");
+  if (!input.offline) {
+    await mkdir(rawDir, { recursive: true });
+    await writeFile(rawCsvPath, csv, "utf8");
+  }
 
   const source: EvidenceSource = {
     id: "odds",
@@ -87,7 +103,7 @@ async function main() {
     provider: "Football-Data.co.uk public fixtures CSV",
     url: sourceUrl,
     rawPath: rawCsvPath,
-    reportPath: path.join(outputDir, "odds-report.json"),
+    reportPath: path.join(logicalOutputDir, "odds-report.json"),
     required: true,
     confidence: "medium",
     freshness: {
@@ -96,7 +112,9 @@ async function main() {
       fetchedAt: await fileTimestamp(rawCsvPath),
       ageHours: null,
       maxAgeHours: 12,
-      message: "Football-Data odds CSV was fetched."
+      message: input.offline
+        ? "Football-Data odds CSV was loaded from cache."
+        : "Football-Data odds CSV was fetched."
     }
   };
   const report = buildOddsReport({
@@ -115,12 +133,21 @@ async function main() {
   await mkdir(outputDir, { recursive: true });
   await writeFile(path.join(outputDir, "odds-report.json"), `${JSON.stringify(report, null, 2)}\n`, "utf8");
   await writeFile(path.join(outputDir, "odds-report.md"), renderOddsReportMarkdown(report), "utf8");
-  console.log(
-    `Wrote odds report to ${outputDir}: ${report.summary.matchedFixtures}/${report.summary.gameweekFixtures} GW fixtures matched.`
-  );
+  if (input.log ?? true) {
+    console.log(
+      `Wrote odds report to ${outputDir}: ${report.summary.matchedFixtures}/${report.summary.gameweekFixtures} GW fixtures matched.`
+    );
+  }
+
+  return report;
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  generateOddsEvidence({
+    gameweek: Number(argValue("--gw") ?? 1),
+    sourceUrl: argValue("--source-url") ?? defaultSourceUrl
+  }).catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}

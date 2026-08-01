@@ -27,11 +27,25 @@ Implemented:
 - Zod validation for the primary public responses.
 - Raw JSON caches and timestamped bootstrap/fixture snapshots.
 - Normalized player identity, team, position, price, status, availability, expected points, form, minutes, ownership, and total points.
+- Transactional refresh fetches bootstrap and fixtures once and normalizes the shared player set once.
+- Validated offline refresh from local bootstrap and fixture caches, with stale inputs identified explicitly.
 
 Current limitations:
 
 - Public manager endpoints are returned as unknown data.
-- Cache freshness is reported by evidence tooling rather than enforced by a shared transactional refresh.
+- Individual source commands remain non-transactional when run outside the shared refresh command.
+
+## Transactional Refresh
+
+Implemented:
+
+- One `refresh` command for decision evidence, fixtures, availability, set pieces, minutes, odds, public evidence, and the aggregate evidence report.
+- Isolated staging directories and validation before atomic gameweek promotion.
+- Required and optional stage classification.
+- Preservation of the previous valid gameweek directory after required-stage, validation, interrupted-write, or input-publication failures.
+- Bounded stage concurrency with one shared in-memory FPL input set.
+- Offline mode that performs no network requests.
+- A local `refresh-manifest.json` containing run mode, deadline state, input freshness and hashes, stage status and duration, artifact hashes, and failures.
 
 ## Team News and Availability
 
@@ -151,6 +165,7 @@ Current limitations:
 ## Commands
 
 ```bash
+pnpm refresh -- --gw <n|auto> [--offline]
 pnpm fetch:data
 pnpm fetch:pl-fixtures -- --gw <n> --horizon <n>
 pnpm evidence -- --gw <n>

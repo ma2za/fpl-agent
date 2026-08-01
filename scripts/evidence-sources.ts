@@ -5,11 +5,11 @@ import { buildEvidenceReport } from "../packages/agent/src";
 
 type EvidenceSourceInput = Parameters<typeof buildEvidenceReport>[0]["sources"][number];
 
-async function fileTimestamp(filePath: string) {
+async function fileTimestamp(filePath: string, existingTimestamp?: string) {
   try {
     const file = await stat(filePath);
 
-    return file.mtime.toISOString();
+    return existingTimestamp ?? file.mtime.toISOString();
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT") {
       return null;
@@ -22,8 +22,12 @@ async function fileTimestamp(filePath: string) {
 export async function buildLocalEvidenceReport(input: {
   gameweek: number;
   generatedAt: string;
+  outputDir?: string;
+  reportDir?: string;
+  artifactTimestamp?: string;
 }): Promise<EvidenceReport> {
-  const outputDir = path.join("packages", "content", "recommendations", `gw-${input.gameweek}`);
+  const outputDir = input.outputDir ?? path.join("packages", "content", "recommendations", `gw-${input.gameweek}`);
+  const reportDir = input.reportDir ?? outputDir;
   const dataStatusPath = path.join(outputDir, "data-status.json");
   const fixtureTickerPath = path.join(outputDir, "fixture-ticker.json");
   const teamNewsReportPath = path.join(outputDir, "team-news-report.json");
@@ -37,8 +41,8 @@ export async function buildLocalEvidenceReport(input: {
       label: "FPL data",
       provider: "Fantasy Premier League public API cache",
       rawPath: path.join("data", "raw", "bootstrap-static.json"),
-      reportPath: dataStatusPath,
-      fetchedAt: await fileTimestamp(dataStatusPath),
+      reportPath: path.join(reportDir, "data-status.json"),
+      fetchedAt: await fileTimestamp(dataStatusPath, input.artifactTimestamp),
       maxAgeHours: 24,
       confidence: "high",
       missingMessage: "FPL data status is missing.",
@@ -49,8 +53,8 @@ export async function buildLocalEvidenceReport(input: {
       label: "Fixture evidence",
       provider: "FPL fixtures and Premier League fixture release",
       rawPath: path.join("data", "raw", "fixtures.json"),
-      reportPath: fixtureTickerPath,
-      fetchedAt: await fileTimestamp(fixtureTickerPath),
+      reportPath: path.join(reportDir, "fixture-ticker.json"),
+      fetchedAt: await fileTimestamp(fixtureTickerPath, input.artifactTimestamp),
       maxAgeHours: 168,
       confidence: "high",
       missingMessage: "Fixture evidence is missing.",
@@ -60,8 +64,8 @@ export async function buildLocalEvidenceReport(input: {
       id: "team-news",
       label: "Team news",
       provider: "Automated public team-news evidence",
-      reportPath: teamNewsReportPath,
-      fetchedAt: await fileTimestamp(teamNewsReportPath),
+      reportPath: path.join(reportDir, "team-news-report.json"),
+      fetchedAt: await fileTimestamp(teamNewsReportPath, input.artifactTimestamp),
       maxAgeHours: 24,
       confidence: "medium",
       missingMessage: "Automated team-news evidence is missing.",
@@ -71,8 +75,8 @@ export async function buildLocalEvidenceReport(input: {
       id: "set-pieces",
       label: "Set pieces",
       provider: "Automated public set-piece evidence",
-      reportPath: setPiecesReportPath,
-      fetchedAt: await fileTimestamp(setPiecesReportPath),
+      reportPath: path.join(reportDir, "set-pieces-report.json"),
+      fetchedAt: await fileTimestamp(setPiecesReportPath, input.artifactTimestamp),
       maxAgeHours: 168,
       confidence: "medium",
       missingMessage: "Automated set-piece evidence is missing.",
@@ -82,8 +86,8 @@ export async function buildLocalEvidenceReport(input: {
       id: "odds",
       label: "Odds evidence",
       provider: "Automated public odds evidence",
-      reportPath: oddsReportPath,
-      fetchedAt: await fileTimestamp(oddsReportPath),
+      reportPath: path.join(reportDir, "odds-report.json"),
+      fetchedAt: await fileTimestamp(oddsReportPath, input.artifactTimestamp),
       maxAgeHours: 12,
       confidence: "medium",
       missingMessage: "Automated odds evidence is missing.",
@@ -93,8 +97,8 @@ export async function buildLocalEvidenceReport(input: {
       id: "minutes",
       label: "Minutes evidence",
       provider: "Automated minutes and predicted-lineup evidence",
-      reportPath: minutesRiskReportPath,
-      fetchedAt: await fileTimestamp(minutesRiskReportPath),
+      reportPath: path.join(reportDir, "minutes-risk-report.json"),
+      fetchedAt: await fileTimestamp(minutesRiskReportPath, input.artifactTimestamp),
       maxAgeHours: 24,
       confidence: "medium",
       missingMessage: "Automated minutes evidence is missing.",
@@ -104,8 +108,8 @@ export async function buildLocalEvidenceReport(input: {
       id: "public-evidence",
       label: "Public browser evidence",
       provider: "Read-only public pages captured without API keys",
-      reportPath: publicEvidenceReportPath,
-      fetchedAt: await fileTimestamp(publicEvidenceReportPath),
+      reportPath: path.join(reportDir, "public-evidence-report.json"),
+      fetchedAt: await fileTimestamp(publicEvidenceReportPath, input.artifactTimestamp),
       maxAgeHours: 12,
       confidence: "medium",
       missingMessage: "Public browser evidence is missing.",

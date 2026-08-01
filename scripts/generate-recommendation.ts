@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { projectPlayers, type PlayerForEngine } from "../packages/engine/src";
 import {
   buildEvidencePack,
@@ -77,7 +78,7 @@ function hasAuthoredRecommendation(value: unknown) {
     recommendation.squadBefore.players.length > 0;
 }
 
-function deadlineStatus(event: BootstrapEvent | undefined): DeadlineStatus {
+function deadlineStatus(event: BootstrapEvent | undefined, now: number): DeadlineStatus {
   if (!event) {
     return "unknown";
   }
@@ -88,23 +89,24 @@ function deadlineStatus(event: BootstrapEvent | undefined): DeadlineStatus {
     return "unknown";
   }
 
-  return deadline > Date.now() ? "open" : "passed";
+  return deadline > now ? "open" : "passed";
 }
 
-function hasLiveFplData(event: BootstrapEvent | undefined) {
+function hasLiveFplData(event: BootstrapEvent | undefined, now: number) {
   if (!event || event.finished) {
     return false;
   }
 
   const deadline = Date.parse(event.deadline_time);
 
-  return Number.isFinite(deadline) && deadline > Date.now() && (event.is_next || event.is_current);
+  return Number.isFinite(deadline) && deadline > now && (event.is_next || event.is_current);
 }
 
 function resolveDataMode(input: {
   event: BootstrapEvent | undefined;
   officialModeRequested: boolean;
   provisionalModeRequested: boolean;
+  now: number;
 }) {
   if (input.officialModeRequested) {
     return "official";
@@ -114,7 +116,7 @@ function resolveDataMode(input: {
     return "provisional";
   }
 
-  return hasLiveFplData(input.event) ? "official" : "provisional";
+  return hasLiveFplData(input.event, input.now) ? "official" : "provisional";
 }
 
 function resolveGameweek(events: BootstrapEvent[], requested: string) {
@@ -218,23 +220,38 @@ Reason: scripts are not allowed to select players. A coding agent must author th
 `;
 }
 
-async function main() {
-  const requestedGameweek = argValue("--gw") ?? "auto";
-  const players = await readJson<PlayerForEngine[]>(path.join("data", "processed", "players.json"));
-  const bootstrap = await readJson<BootstrapStatic>(path.join("data", "raw", "bootstrap-static.json"));
+export async function generateRecommendationEvidence(input: {
+  requestedGameweek?: string;
+  players?: PlayerForEngine[];
+  bootstrap?: BootstrapStatic;
+  outputDir?: string;
+  generatedAt?: string;
+  now?: number;
+  officialModeRequested?: boolean;
+  provisionalModeRequested?: boolean;
+  deadlineStatus?: DeadlineStatus;
+  writeStrategyTemplates?: boolean;
+  log?: boolean;
+} = {}) {
+  const requestedGameweek = input.requestedGameweek ?? "auto";
+  const players = input.players ?? await readJson<PlayerForEngine[]>(path.join("data", "processed", "players.json"));
+  const bootstrap = input.bootstrap ?? await readJson<BootstrapStatic>(path.join("data", "raw", "bootstrap-static.json"));
   const gameweek = resolveGameweek(bootstrap.events, requestedGameweek);
   const event = bootstrap.events.find((item) => item.id === gameweek);
-  const officialModeRequested = process.argv.includes("--official");
-  const provisionalModeRequested = process.argv.includes("--provisional");
+  const now = input.now ?? Date.now();
+  const generatedAt = input.generatedAt ?? new Date().toISOString();
+  const officialModeRequested = input.officialModeRequested ?? false;
+  const provisionalModeRequested = input.provisionalModeRequested ?? false;
   const dataMode = resolveDataMode({
     event,
     officialModeRequested,
-    provisionalModeRequested
+    provisionalModeRequested,
+    now
   });
-  const realDeadlineStatus = deadlineStatus(event);
+  const realDeadlineStatus = input.deadlineStatus ?? deadlineStatus(event, now);
   const effectiveDeadlineStatus = dataMode === "provisional" ? "unknown" : realDeadlineStatus;
   const projections = projectPlayers(players);
-  const outputDir = path.join("packages", "content", "recommendations", `gw-${gameweek}`);
+  const outputDir = input.outputDir ?? path.join("packages", "content", "recommendations", `gw-${gameweek}`);
   const strategyDir = path.join("packages", "content", "strategy");
   const weeklyStrategyDir = path.join(strategyDir, "weekly");
   const seasonPlanPath = path.join(strategyDir, "season-plan.md");
@@ -261,7 +278,7 @@ async function main() {
   };
   const evidencePack = buildEvidencePack({
     gameweek,
-    createdAt: new Date().toISOString(),
+    createdAt: generatedAt,
     dataMode,
     deadline: event?.deadline_time ?? "unknown",
     deadlineStatus: effectiveDeadlineStatus,
@@ -287,10 +304,10 @@ async function main() {
 
   await mkdir(outputDir, { recursive: true });
   await mkdir(weeklyStrategyDir, { recursive: true });
-  if (existingSeasonPlan === null) {
+  if (existingSeasonPlan === null && (input.writeStrategyTemplates ?? true)) {
     await writeFile(seasonPlanPath, renderSeasonStrategyTemplate(), "utf8");
   }
-  if (existingWeeklyStrategy === null) {
+  if (existingWeeklyStrategy === null && (input.writeStrategyTemplates ?? true)) {
     await writeJson(weeklyStrategyJsonPath, weeklyStrategyJsonTemplate(gameweek));
     await writeFile(weeklyStrategyMarkdownPath, renderWeeklyStrategyTemplate(strategyEvidence), "utf8");
   }
@@ -333,15 +350,25 @@ async function main() {
     await writeFile(path.join(outputDir, "manual-checklist.md"), renderManualChecklistPlaceholder(gameweek), "utf8");
   }
 
-  console.log(`Wrote decision evidence to ${outputDir}`);
-  console.log(
-    authoredRecommendationExists
-      ? "Existing agent-authored recommendation was preserved."
-      : "No players were selected by script. The coding agent must author the final recommendation."
-  );
+  if (input.log ?? true) {
+    console.log(`Wrote decision evidence to ${outputDir}`);
+    console.log(
+      authoredRecommendationExists
+        ? "Existing agent-authored recommendation was preserved."
+        : "No players were selected by script. The coding agent must author the final recommendation."
+    );
+  }
+
+  return { gameweek, outputDir, event, deadlineStatus: effectiveDeadlineStatus, dataMode };
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  generateRecommendationEvidence({
+    requestedGameweek: argValue("--gw") ?? "auto",
+    officialModeRequested: process.argv.includes("--official"),
+    provisionalModeRequested: process.argv.includes("--provisional")
+  }).catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}

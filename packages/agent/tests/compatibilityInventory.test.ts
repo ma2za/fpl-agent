@@ -30,6 +30,14 @@ describe("compatibility inventory", () => {
     });
   });
 
+  it("exposes the additive transactional refresh command", () => {
+    const packageJson = JSON.parse(
+      readFileSync(resolve(root, "package.json"), "utf8"),
+    ) as { scripts: Record<string, string> };
+
+    expect(packageJson.scripts.refresh).toBe("tsx scripts/refresh.ts");
+  });
+
   it.each([
     [
       "agent",
