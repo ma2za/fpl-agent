@@ -36,6 +36,19 @@ const players: PlayerForEngine[] = positions.map((position, index) => ({
 }));
 
 const recommendation: WeeklyRecommendation = {
+  schemaVersion: 2,
+  artifactKind: "agent_decision",
+  authorship: {
+    kind: "coding_agent",
+    agent: "benchmark-agent",
+    authoredAt: "2020-01-01T00:00:00.000Z"
+  },
+  decisionContext: {
+    phase: "TRANSFER_WINDOW",
+    deadlineProximity: "early",
+    activeGameweek: 1,
+    nextDeadline: "2020-01-02T00:00:00.000Z"
+  },
   gameweek: 1,
   createdAt: "2020-01-01T00:00:00.000Z",
   deadline: "2020-01-02T00:00:00.000Z",

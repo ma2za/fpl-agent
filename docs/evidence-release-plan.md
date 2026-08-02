@@ -153,6 +153,9 @@ Current limitations:
 Implemented:
 
 - Evidence-only recommendation templates.
+- Schema-v2 tool evidence and candidate contracts that cannot parse as final decisions.
+- Schema-v2 coding-agent decision contracts with required authorship and competition context.
+- Legacy v1 artifact read compatibility without final-verification eligibility.
 - Agent-authored weekly recommendations and weekly strategy.
 - Evidence references by decision area.
 - Player-by-player pick and alternative analysis.

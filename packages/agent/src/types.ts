@@ -6,11 +6,15 @@ import type {
   PickTeamRecommendation,
   TransferCandidate
 } from "../../engine/src";
-import type { DeadlineStatus } from "../../rules/src";
+import type {
+  CompetitionAction,
+  CompetitionState,
+  DeadlineStatus
+} from "../../rules/src";
 import type { PlayerForRules, ValidationResult } from "../../rules/src";
 
 export type RecommendedAction = {
-  type: "roll" | "transfer" | "hit" | "wildcard" | "free_hit";
+  type: CompetitionAction;
   transfers: Array<{
     sellPlayerId: number;
     buyPlayerId: number;
@@ -86,6 +90,14 @@ export type DecisionAnalysis = {
 };
 
 export type WeeklyRecommendation = {
+  schemaVersion?: 1 | 2;
+  artifactKind?: "agent_decision";
+  authorship?: {
+    kind: "coding_agent";
+    agent: string;
+    authoredAt: string;
+  };
+  decisionContext?: CompetitionState;
   gameweek: number;
   createdAt: string;
   deadline: string;
@@ -134,6 +146,7 @@ export type DecisionContext = {
   dataMode: "official" | "provisional";
   deadline: string;
   deadlineStatus: DeadlineStatus;
+  competitionState: CompetitionState;
   manualSquadConfigured: boolean;
   currentSquadPlayerIds: number[];
   riskProfile: Record<string, string>;
@@ -174,6 +187,22 @@ export type EvidencePack = {
   budgetTiers: BudgetTier[];
   clubExposure: ClubExposure[];
   recommendationTemplate: unknown;
+};
+
+export type ToolEvidenceArtifact = {
+  schemaVersion: 2;
+  artifactKind: "tool_evidence";
+  generatedAt: string;
+  tool: string;
+  payload: unknown;
+};
+
+export type CandidateArtifact = {
+  schemaVersion: 2;
+  artifactKind: "candidate";
+  generatedAt: string;
+  scenarioId: string;
+  payload: unknown;
 };
 
 export type EvidenceConfidence = "low" | "medium" | "high";

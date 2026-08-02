@@ -1,4 +1,10 @@
-import { DEFAULT_STARTING_BUDGET, REQUIRED_SQUAD_COUNTS, type DeadlineStatus } from "../../rules/src";
+import {
+  DEFAULT_STARTING_BUDGET,
+  REQUIRED_SQUAD_COUNTS,
+  allowedCompetitionActions,
+  type CompetitionState,
+  type DeadlineStatus
+} from "../../rules/src";
 import type {
   BudgetTier,
   DecisionContext,
@@ -14,6 +20,7 @@ type BuildEvidencePackInput = {
   dataMode: "official" | "provisional";
   deadline: string;
   deadlineStatus: DeadlineStatus;
+  competitionState: CompetitionState;
   manualSquadConfigured: boolean;
   currentSquadPlayerIds: number[];
   riskProfile: Record<string, string>;
@@ -99,6 +106,7 @@ export function buildEvidencePack(input: BuildEvidencePackInput): EvidencePack {
     dataMode: input.dataMode,
     deadline: input.deadline,
     deadlineStatus: input.deadlineStatus,
+    competitionState: input.competitionState,
     manualSquadConfigured: input.manualSquadConfigured,
     currentSquadPlayerIds: input.currentSquadPlayerIds,
     riskProfile: input.riskProfile,
@@ -106,24 +114,30 @@ export function buildEvidencePack(input: BuildEvidencePackInput): EvidencePack {
     warnings: input.warnings
   };
   const recommendationTemplate = {
-    status: "agent_decision_required",
-    gameweek: input.gameweek,
-    createdAt: null,
-    deadline: input.deadline,
-    deadlineStatus: input.deadlineStatus,
-    dataMode: input.dataMode,
-    squadBefore: {
-      players: [],
-      bank: null,
-      freeTransfers: input.freeTransfers,
-      chipsAvailable: input.chipsAvailable
-    },
-    recommendedAction: null,
-    pickTeam: null,
-    captaincy: null,
-    chip: null,
-    confidence: null,
-    decisionAnalysis: {
+    schemaVersion: 2,
+    artifactKind: "tool_evidence",
+    generatedAt: input.createdAt,
+    tool: "recommendation-template",
+    payload: {
+      status: "agent_decision_required",
+      gameweek: input.gameweek,
+      deadline: input.deadline,
+      deadlineStatus: input.deadlineStatus,
+      dataMode: input.dataMode,
+      decisionContext: input.competitionState,
+      allowedActions: allowedCompetitionActions(input.competitionState.phase),
+      requiredAuthorship: {
+        kind: "coding_agent",
+        agent: "<agent name>",
+        authoredAt: "<ISO timestamp>"
+      },
+      squadBefore: {
+        players: [],
+        bank: null,
+        freeTransfers: input.freeTransfers,
+        chipsAvailable: input.chipsAvailable
+      },
+      decisionAnalysis: {
       summary: null,
       squadStructure: [],
       structureComparisons: [
@@ -171,11 +185,12 @@ export function buildEvidencePack(input: BuildEvidencePackInput): EvidencePack {
           evidence: []
         }
       ]
-    },
-    evidenceReferences: [],
-    risks: [],
-    whatWouldChangeMyMind: [],
-    manualExecutionRequired: true
+      },
+      evidenceReferences: [],
+      risks: [],
+      whatWouldChangeMyMind: [],
+      manualExecutionRequired: true
+    }
   };
 
   return {

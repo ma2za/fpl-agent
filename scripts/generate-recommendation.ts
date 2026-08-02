@@ -17,7 +17,12 @@ import {
   type DecisionContext,
   type FixtureHorizonReport
 } from "../packages/agent/src";
-import { DEFAULT_STARTING_BUDGET, REQUIRED_SQUAD_COUNTS, type DeadlineStatus } from "../packages/rules/src";
+import {
+  DEFAULT_STARTING_BUDGET,
+  REQUIRED_SQUAD_COUNTS,
+  deriveCompetitionState,
+  type DeadlineStatus
+} from "../packages/rules/src";
 import { CURRENT_SQUAD } from "../config/squad";
 import { RISK_PROFILE } from "../config/risk-profile";
 
@@ -146,6 +151,7 @@ function renderDecisionBrief(input: {
   event: BootstrapEvent | undefined;
   deadlineStatus: DeadlineStatus;
   dataMode: "official" | "provisional";
+  competitionState: DecisionContext["competitionState"];
   notes: DecisionContext["notes"];
 }) {
   return `# FPL Agent Decision Brief: GW${input.gameweek}
@@ -157,6 +163,12 @@ Data mode: ${input.dataMode}
 Deadline: ${input.event?.deadline_time ?? "unknown"}
 
 Deadline status: ${input.deadlineStatus}
+
+Competition phase: ${input.competitionState.phase}
+
+Valid actions: ${input.competitionState.phase === "PRESEASON_DRAFT"
+    ? "retain_draft, modify_draft, rebuild_structure, wait_for_information, lock_draft"
+    : "See recommendation-template.json"}
 
 Manual squad configured: ${CURRENT_SQUAD.players.length === 15}
 
@@ -253,6 +265,16 @@ export async function generateRecommendationEvidence(input: {
   });
   const realDeadlineStatus = input.deadlineStatus ?? deadlineStatus(event, now);
   const effectiveDeadlineStatus = dataMode === "provisional" ? "unknown" : realDeadlineStatus;
+  const competitionState = deriveCompetitionState({
+    events: bootstrap.events.map((item) => ({
+      id: item.id,
+      deadlineTime: item.deadline_time,
+      finished: item.finished ?? false,
+      isCurrent: item.is_current,
+      isNext: item.is_next
+    })),
+    now
+  });
   const projections = projectPlayers(players);
   const outputDir = input.outputDir ?? path.join("packages", "content", "recommendations", `gw-${gameweek}`);
   const fixtureHorizonReport = input.fixtureHorizonReport ?? await readArtifactFileIfExists(
@@ -289,6 +311,7 @@ export async function generateRecommendationEvidence(input: {
     dataMode,
     deadline: event?.deadline_time ?? "unknown",
     deadlineStatus: effectiveDeadlineStatus,
+    competitionState,
     manualSquadConfigured: CURRENT_SQUAD.players.length === 15,
     currentSquadPlayerIds: CURRENT_SQUAD.players,
     riskProfile: RISK_PROFILE,
@@ -351,6 +374,7 @@ export async function generateRecommendationEvidence(input: {
         event,
         deadlineStatus: effectiveDeadlineStatus,
         dataMode,
+        competitionState,
         notes
       }),
       "utf8"

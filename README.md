@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.6`
+Version: `0.0.7`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -169,6 +169,8 @@ For coding-agent review, start with `agent-brief.md`. It lists the evidence file
 For a fresh Codex or Claude Code chat, create a local `docs/agent-handoff.md`. The file is ignored because it can contain current-season state.
 
 Scripts must not choose the squad, starting XI, captain, vice-captain, bench order, transfers, or chips. Those decisions belong to the coding agent after it reviews the evidence.
+
+Agent-authored recommendations use schema v2 with `artifactKind: "agent_decision"`, coding-agent authorship metadata, and a deterministic competition-state context. Tool evidence and candidate artifacts have separate kinds and cannot pass final recommendation verification. Legacy v1 artifacts remain readable but cannot pass as newly authored decisions.
 
 Every authored recommendation must include `decisionAnalysis`: full-squad structure comparisons, why each selected player was picked, which alternatives were rejected, why those alternatives lost, captaincy comparisons, and key omissions. `pnpm verify` fails recommendations that do not include this analysis or fail to state whether projected points include captaincy.
 

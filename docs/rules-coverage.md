@@ -13,6 +13,9 @@ The rules package models the 2026/27 FPL rules needed to validate and score an a
 - Basic transfer-cost arithmetic.
 - Basic chip availability.
 - Deadline status.
+- Exclusive competition-phase derivation with deadline proximity kept separate.
+- Phase-valid action vocabularies for preseason, live gameweeks, transfer windows, final lockdown, and season completion.
+- Rejection of transfer-window actions such as `roll` during preseason draft construction.
 - Two chip sets across the season and first-half chip expiry.
 - Free Hit not available in GW1 and not playable in consecutive gameweeks.
 - Roll up to five free transfers.

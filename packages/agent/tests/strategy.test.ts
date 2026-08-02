@@ -131,6 +131,12 @@ describe("strategy helpers", () => {
       dataMode: "official",
       deadline: "2026-08-21T17:30:00Z",
       deadlineStatus: "open",
+      competitionState: {
+        phase: "TRANSFER_WINDOW",
+        deadlineProximity: "early",
+        activeGameweek: 1,
+        nextDeadline: "2026-08-15T10:00:00Z"
+      },
       manualSquadConfigured: false,
       currentSquadPlayerIds: [],
       riskProfile: { transferHits: "balanced" },

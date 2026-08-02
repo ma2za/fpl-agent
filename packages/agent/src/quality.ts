@@ -88,7 +88,10 @@ function evidenceReferenceErrors(recommendation: WeeklyRecommendation) {
     "change-conditions"
   ];
 
-  if (recommendation.recommendedAction.type !== "roll" || recommendation.recommendedAction.transfers.length > 0) {
+  if (
+    ["transfer", "hit", "wildcard", "free_hit"].includes(recommendation.recommendedAction.type) ||
+    recommendation.recommendedAction.transfers.length > 0
+  ) {
     requiredAreas.push("transfers");
   }
 

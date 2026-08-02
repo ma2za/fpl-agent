@@ -7,6 +7,30 @@ const nullableNumber = z.number().nullable();
 const confidence = z.enum(["low", "medium", "high"]);
 const deadlineStatus = z.enum(["open", "passed", "unknown"]);
 const dataMode = z.enum(["official", "provisional"]);
+const competitionPhase = z.enum([
+  "PRESEASON_DRAFT",
+  "LIVE_GAMEWEEK",
+  "TRANSFER_WINDOW",
+  "FINAL_LOCKDOWN",
+  "SEASON_COMPLETE"
+]);
+const deadlineProximity = z.enum(["early", "approaching", "imminent", "passed", "unknown"]);
+const competitionAction = z.enum([
+  "retain_draft",
+  "modify_draft",
+  "rebuild_structure",
+  "wait_for_information",
+  "lock_draft",
+  "monitor",
+  "review_live_gameweek",
+  "roll",
+  "transfer",
+  "hit",
+  "wildcard",
+  "free_hit",
+  "wait_for_finalization",
+  "review_season"
+]);
 
 const validationResult = looseObject({
   isValid: z.boolean(),
@@ -133,7 +157,7 @@ const decisionAnalysis = looseObject({
   }))
 });
 
-export const WeeklyRecommendationSchema = looseObject({
+const recommendationFields = {
   schemaVersion,
   gameweek: z.number(),
   createdAt: z.string(),
@@ -147,7 +171,7 @@ export const WeeklyRecommendationSchema = looseObject({
     chipsAvailable: z.array(z.enum(["wildcard", "free_hit", "bench_boost", "triple_captain"]))
   }),
   recommendedAction: looseObject({
-    type: z.enum(["roll", "transfer", "hit", "wildcard", "free_hit"]),
+    type: competitionAction,
     transfers: z.array(transferMove),
     transferCost: z.number(),
     bankAfter: z.number(),
@@ -189,9 +213,36 @@ export const WeeklyRecommendationSchema = looseObject({
   whatWouldChangeMyMind: stringArray,
   legality: validationResult,
   manualExecutionRequired: z.literal(true)
+};
+
+export const LegacyWeeklyRecommendationSchema = looseObject({
+  ...recommendationFields,
+  schemaVersion
 });
 
-export const RecommendationTemplateSchema = looseObject({
+export const AgentDecisionArtifactSchema = looseObject({
+  ...recommendationFields,
+  schemaVersion: z.literal(2),
+  artifactKind: z.literal("agent_decision"),
+  authorship: looseObject({
+    kind: z.literal("coding_agent"),
+    agent: z.string().min(1),
+    authoredAt: z.string().min(1)
+  }),
+  decisionContext: looseObject({
+    phase: competitionPhase,
+    deadlineProximity,
+    activeGameweek: z.number().nullable(),
+    nextDeadline: z.string().nullable()
+  })
+});
+
+export const WeeklyRecommendationSchema = z.union([
+  AgentDecisionArtifactSchema,
+  LegacyWeeklyRecommendationSchema
+]);
+
+const LegacyRecommendationTemplateSchema = looseObject({
   schemaVersion,
   status: z.literal("agent_decision_required"),
   gameweek: z.number(),
@@ -217,15 +268,39 @@ export const RecommendationTemplateSchema = looseObject({
   manualExecutionRequired: z.literal(true)
 });
 
+export const ToolEvidenceArtifactSchema = z.object({
+  schemaVersion: z.literal(2),
+  artifactKind: z.literal("tool_evidence"),
+  generatedAt: z.string(),
+  tool: z.string().min(1),
+  payload: z.unknown()
+}).strict();
+
+export const CandidateArtifactSchema = z.object({
+  schemaVersion: z.literal(2),
+  artifactKind: z.literal("candidate"),
+  generatedAt: z.string(),
+  scenarioId: z.string().min(1),
+  payload: z.unknown()
+}).strict();
+
+export const RecommendationTemplateSchema = z.union([
+  ToolEvidenceArtifactSchema,
+  LegacyRecommendationTemplateSchema
+]);
+
 export const RecommendationArtifactSchema = z.union([
-  WeeklyRecommendationSchema,
-  RecommendationTemplateSchema
+  AgentDecisionArtifactSchema,
+  LegacyWeeklyRecommendationSchema,
+  ToolEvidenceArtifactSchema,
+  LegacyRecommendationTemplateSchema
 ]);
 
 export function isWeeklyRecommendationArtifact(
   value: z.infer<typeof RecommendationArtifactSchema>
 ): value is z.infer<typeof WeeklyRecommendationSchema> {
-  return WeeklyRecommendationSchema.safeParse(value).success;
+  return AgentDecisionArtifactSchema.safeParse(value).success ||
+    LegacyWeeklyRecommendationSchema.safeParse(value).success;
 }
 
 const evidenceFreshness = looseObject({
@@ -781,6 +856,8 @@ export const VariantComparisonReportSchema = looseObject({
 });
 
 export const ArtifactSchemas = {
+  agentDecision: AgentDecisionArtifactSchema,
+  candidate: CandidateArtifactSchema,
   evidenceReport: EvidenceReportSchema,
   fixtureHorizonReport: FixtureHorizonReportSchema,
   fixtureTicker: FixtureTickerSchema,
@@ -793,6 +870,7 @@ export const ArtifactSchemas = {
   setPieceReport: SetPieceReportSchema,
   strategyEvidence: StrategyEvidenceSchema,
   teamNewsReport: TeamNewsReportSchema,
+  toolEvidence: ToolEvidenceArtifactSchema,
   weeklyStrategy: WeeklyStrategySchema,
   variantComparison: VariantComparisonReportSchema
 } as const;

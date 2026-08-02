@@ -6,6 +6,7 @@ import {
   validateSquad,
   validateStartingXI,
   validateTransfers,
+  validateCompetitionAction,
   type ValidationResult
 } from "../../rules/src";
 import { evaluateRecommendationQuality } from "./quality";
@@ -31,6 +32,48 @@ function mergeResults(...results: ValidationResult[]): ValidationResult {
 function actionErrors(recommendation: WeeklyRecommendation) {
   const errors: string[] = [];
   const squadIds = new Set(recommendation.squadBefore.players.map((player) => player.id));
+
+  if (
+    recommendation.schemaVersion !== 2 ||
+    recommendation.artifactKind !== "agent_decision" ||
+    recommendation.authorship?.kind !== "coding_agent" ||
+    !recommendation.authorship.agent.trim() ||
+    !recommendation.authorship.authoredAt.trim()
+  ) {
+    errors.push("Final recommendation must be a schema v2 coding-agent-authored decision artifact.");
+  }
+
+  if (!recommendation.decisionContext) {
+    errors.push("Final recommendation must include its competition decision context.");
+  } else {
+    errors.push(...validateCompetitionAction({
+      phase: recommendation.decisionContext.phase,
+      action: recommendation.recommendedAction.type
+    }).errors);
+
+    if (
+      recommendation.decisionContext.phase === "PRESEASON_DRAFT" &&
+      recommendation.recommendedAction.transferCost !== 0
+    ) {
+      errors.push("Preseason draft actions cannot have a transfer cost.");
+    }
+  }
+
+  if (
+    [
+      "retain_draft",
+      "wait_for_information",
+      "lock_draft",
+      "monitor",
+      "review_live_gameweek",
+      "roll",
+      "wait_for_finalization",
+      "review_season"
+    ].includes(recommendation.recommendedAction.type) &&
+    recommendation.recommendedAction.transfers.length > 0
+  ) {
+    errors.push(`Action ${recommendation.recommendedAction.type} cannot contain player moves.`);
+  }
 
   if (recommendation.manualExecutionRequired !== true) {
     errors.push("Recommendation must require manual execution.");
@@ -69,6 +112,15 @@ export function verifyRecommendation(
     ? ["Provisional recommendation: player IDs, prices, fixtures, and availability may be stale."]
     : [];
   const customErrors = actionErrors(recommendation);
+  const transferValidation = recommendation.decisionContext?.phase === "PRESEASON_DRAFT"
+    ? { isValid: true, errors: [], warnings: [] }
+    : validateTransfers({
+      freeTransfers: recommendation.squadBefore.freeTransfers,
+      moves: recommendation.recommendedAction.transfers,
+      expectedTransferCost: recommendation.recommendedAction.transferCost,
+      wildcardActive,
+      freeHitActive
+    });
   const result = mergeResults(
     validateSquad({
       players: recommendation.squadBefore.players
@@ -88,13 +140,7 @@ export function verifyRecommendation(
       captainPlayerId: recommendation.captaincy.captainPlayerId,
       viceCaptainPlayerId: recommendation.captaincy.viceCaptainPlayerId
     }),
-    validateTransfers({
-      freeTransfers: recommendation.squadBefore.freeTransfers,
-      moves: recommendation.recommendedAction.transfers,
-      expectedTransferCost: recommendation.recommendedAction.transferCost,
-      wildcardActive,
-      freeHitActive
-    }),
+    transferValidation,
     validateChip({
       chip: recommendation.chip.chip,
       chipsAvailable: recommendation.squadBefore.chipsAvailable

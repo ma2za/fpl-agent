@@ -5,6 +5,33 @@ export type Chip = "wildcard" | "free_hit" | "bench_boost" | "triple_captain";
 export type ChipSelection = "none" | Chip;
 export type DeadlineStatus = "open" | "passed" | "unknown";
 export type DataMode = "official" | "provisional";
+export type CompetitionPhase =
+  | "PRESEASON_DRAFT"
+  | "LIVE_GAMEWEEK"
+  | "TRANSFER_WINDOW"
+  | "FINAL_LOCKDOWN"
+  | "SEASON_COMPLETE";
+export type DeadlineProximity =
+  | "early"
+  | "approaching"
+  | "imminent"
+  | "passed"
+  | "unknown";
+export type CompetitionAction =
+  | "retain_draft"
+  | "modify_draft"
+  | "rebuild_structure"
+  | "wait_for_information"
+  | "lock_draft"
+  | "monitor"
+  | "review_live_gameweek"
+  | "roll"
+  | "transfer"
+  | "hit"
+  | "wildcard"
+  | "free_hit"
+  | "wait_for_finalization"
+  | "review_season";
 export type Formation = "3-4-3" | "3-5-2" | "4-3-3" | "4-4-2" | "4-5-1" | "5-3-2" | "5-4-1";
 
 export type ValidationResult = {
@@ -73,4 +100,19 @@ export type DraftSquadValidationInput = {
   dataMode?: DataMode;
   officialGw1Available?: boolean;
   deadlineStatus?: DeadlineStatus;
+};
+
+export type CompetitionEvent = {
+  id: number;
+  deadlineTime: string;
+  finished: boolean;
+  isCurrent: boolean;
+  isNext: boolean;
+};
+
+export type CompetitionState = {
+  phase: CompetitionPhase;
+  deadlineProximity: DeadlineProximity;
+  activeGameweek: number | null;
+  nextDeadline: string | null;
 };

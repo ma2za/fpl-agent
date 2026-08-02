@@ -2,6 +2,19 @@ import { describe, expect, it } from "vitest";
 import { verifyRecommendation, type WeeklyRecommendation } from "../src";
 
 const recommendation: WeeklyRecommendation = {
+  schemaVersion: 2,
+  artifactKind: "agent_decision",
+  authorship: {
+    kind: "coding_agent",
+    agent: "test-agent",
+    authoredAt: "2026-07-04T00:00:00.000Z"
+  },
+  decisionContext: {
+    phase: "TRANSFER_WINDOW",
+    deadlineProximity: "early",
+    activeGameweek: 1,
+    nextDeadline: "2026-08-15T10:00:00Z"
+  },
   gameweek: 1,
   createdAt: "2026-07-04T00:00:00.000Z",
   deadline: "2026-08-15T10:00:00Z",
@@ -193,6 +206,68 @@ describe("verifyRecommendation", () => {
 
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain("Recommendation must require manual execution.");
+  });
+
+  it("rejects legacy recommendations without agent authorship", () => {
+    const result = verifyRecommendation({
+      ...recommendation,
+      schemaVersion: 1,
+      artifactKind: undefined,
+      authorship: undefined,
+      decisionContext: undefined
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain(
+      "Final recommendation must be a schema v2 coding-agent-authored decision artifact."
+    );
+  });
+
+  it("rejects roll during preseason", () => {
+    const result = verifyRecommendation({
+      ...recommendation,
+      decisionContext: {
+        ...recommendation.decisionContext!,
+        phase: "PRESEASON_DRAFT"
+      }
+    });
+
+    expect(result.errors).toContain("Action roll is not valid during PRESEASON_DRAFT.");
+  });
+
+  it("accepts a preseason retain action without transfer charging", () => {
+    const result = verifyRecommendation({
+      ...recommendation,
+      decisionContext: {
+        ...recommendation.decisionContext!,
+        phase: "PRESEASON_DRAFT"
+      },
+      recommendedAction: {
+        ...recommendation.recommendedAction,
+        type: "retain_draft"
+      }
+    });
+
+    expect(result.isValid).toBe(true);
+  });
+
+  it("rejects transfer cost and player moves on a retained preseason draft", () => {
+    const result = verifyRecommendation({
+      ...recommendation,
+      decisionContext: {
+        ...recommendation.decisionContext!,
+        phase: "PRESEASON_DRAFT"
+      },
+      recommendedAction: {
+        ...recommendation.recommendedAction,
+        type: "retain_draft",
+        transfers: [{ sellPlayerId: 7, buyPlayerId: 99 }],
+        transferCost: 4
+      }
+    });
+
+    expect(result.errors).toContain("Preseason draft actions cannot have a transfer cost.");
+    expect(result.errors).toContain("Action retain_draft cannot contain player moves.");
   });
 
   it("warns for provisional recommendations", () => {

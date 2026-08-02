@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildEvidencePack, renderDecisionPrompts, renderProjectionSummary } from "../src";
+import {
+  ToolEvidenceArtifactSchema,
+  buildEvidencePack,
+  renderDecisionPrompts,
+  renderProjectionSummary
+} from "../src";
 import type { PlayerForEngine, PlayerProjection } from "../../engine/src";
 
 const players: PlayerForEngine[] = [
@@ -60,6 +65,12 @@ describe("buildEvidencePack", () => {
       dataMode: "provisional",
       deadline: "unknown",
       deadlineStatus: "unknown",
+      competitionState: {
+        phase: "PRESEASON_DRAFT",
+        deadlineProximity: "unknown",
+        activeGameweek: 1,
+        nextDeadline: null
+      },
       manualSquadConfigured: false,
       currentSquadPlayerIds: [],
       riskProfile: {},
@@ -82,6 +93,12 @@ describe("buildEvidencePack", () => {
     expect(pack.playerPool.MID[0].projectedPoints).toBe(7);
     expect(pack.budgetTiers.find((tier) => tier.name === "premium")?.players).toHaveLength(2);
     expect(pack.clubExposure.find((club) => club.teamId === 1)?.count).toBe(2);
+    const template = ToolEvidenceArtifactSchema.parse(pack.recommendationTemplate);
+    expect(template.tool).toBe("recommendation-template");
+    expect(template.payload).toMatchObject({
+      decisionContext: { phase: "PRESEASON_DRAFT" },
+      allowedActions: expect.arrayContaining(["retain_draft", "lock_draft"])
+    });
     expect(renderProjectionSummary(pack)).toContain("Projection Summary");
     expect(renderDecisionPrompts(pack)).toContain("Agent Questions");
   });

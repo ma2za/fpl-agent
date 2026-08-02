@@ -4,15 +4,19 @@ import { describe, expect, it } from "vitest";
 import {
   ArtifactSchemas,
   ArtifactValidationError,
+  AgentDecisionArtifactSchema,
+  CandidateArtifactSchema,
   EvidenceReportSchema,
   FixtureHorizonReportSchema,
   RecommendationArtifactSchema,
+  ToolEvidenceArtifactSchema,
   WeeklyStrategySchema,
   canonicalArtifactJson,
   canonicalizeArtifact,
   parseArtifactJson,
   readArtifactFile
 } from "../src";
+import { variantRecommendation } from "./fixtures/variantRecommendation";
 
 const fixtureDir = path.join("packages", "agent", "tests", "fixtures", "legacy-artifacts");
 
@@ -58,6 +62,32 @@ describe("artifact schemas", () => {
     expect(() => WeeklyStrategySchema.parse({ ...fixture, schemaVersion: 2 })).toThrow();
   });
 
+  it("separates tool, candidate, and agent decision artifacts", () => {
+    const tool = {
+      schemaVersion: 2,
+      artifactKind: "tool_evidence",
+      generatedAt: "2026-08-01T00:00:00.000Z",
+      tool: "test-tool",
+      payload: { players: [1, 2, 3] }
+    } as const;
+    const candidate = {
+      schemaVersion: 2,
+      artifactKind: "candidate",
+      generatedAt: "2026-08-01T00:00:00.000Z",
+      scenarioId: "test-scenario",
+      payload: { playerIds: [1, 2, 3] }
+    } as const;
+    const decision = variantRecommendation();
+
+    expect(ToolEvidenceArtifactSchema.parse(tool).artifactKind).toBe("tool_evidence");
+    expect(CandidateArtifactSchema.parse(candidate).artifactKind).toBe("candidate");
+    expect(AgentDecisionArtifactSchema.parse(decision).artifactKind).toBe("agent_decision");
+    expect(AgentDecisionArtifactSchema.safeParse(tool).success).toBe(false);
+    expect(AgentDecisionArtifactSchema.safeParse(candidate).success).toBe(false);
+    expect(ToolEvidenceArtifactSchema.safeParse(decision).success).toBe(false);
+    expect(CandidateArtifactSchema.safeParse(decision).success).toBe(false);
+  });
+
   it("rejects malformed fixture horizon artifacts at the read boundary", () => {
     expect(() => parseArtifactJson(
       JSON.stringify({
@@ -76,6 +106,8 @@ describe("artifact schemas", () => {
 
   it("exports every persisted artifact schema", () => {
     expect(Object.keys(ArtifactSchemas).sort()).toEqual([
+      "agentDecision",
+      "candidate",
       "evidenceReport",
       "fixtureHorizonReport",
       "fixtureTicker",
@@ -88,6 +120,7 @@ describe("artifact schemas", () => {
       "setPieceReport",
       "strategyEvidence",
       "teamNewsReport",
+      "toolEvidence",
       "variantComparison",
       "weeklyStrategy"
     ]);

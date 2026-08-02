@@ -25,6 +25,19 @@ export function variantRecommendation(gameweek = 1, replacedPlayerId?: number): 
   const startingXI = [ids[0], ...ids.slice(2, 5), ...ids.slice(7, 11), ...ids.slice(12, 15)];
 
   return {
+    schemaVersion: 2,
+    artifactKind: "agent_decision",
+    authorship: {
+      kind: "coding_agent",
+      agent: "variant-test-agent",
+      authoredAt: "2026-08-01T00:00:00.000Z"
+    },
+    decisionContext: {
+      phase: "TRANSFER_WINDOW",
+      deadlineProximity: "early",
+      activeGameweek: gameweek,
+      nextDeadline: "2026-08-15T10:00:00.000Z"
+    },
     gameweek,
     createdAt: "2026-08-01T00:00:00.000Z",
     deadline: "2026-08-15T10:00:00.000Z",

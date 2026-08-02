@@ -18,6 +18,7 @@ type Player = {
 };
 
 type Recommendation = {
+  artifactKind?: "agent_decision";
   status?: string;
   gameweek: number;
   deadline: string;
@@ -78,6 +79,22 @@ type Recommendation = {
   risks: string[];
   whatWouldChangeMyMind: string[];
 };
+
+type ToolEvidenceArtifact = {
+  artifactKind: "tool_evidence";
+  tool: string;
+  payload: unknown;
+};
+
+function recommendationFromArtifact(artifact: Recommendation | ToolEvidenceArtifact | null) {
+  if (artifact?.artifactKind === "tool_evidence") {
+    return artifact.tool === "recommendation-template"
+      ? artifact.payload as Recommendation
+      : null;
+  }
+
+  return artifact;
+}
 
 type LegalityReport = {
   isValid: boolean;
@@ -182,9 +199,11 @@ function playersByPosition(players: Player[]) {
 }
 
 export default function RecommendationsPage() {
-  const recommendation = readJson<Recommendation>(
-    "packages/content/recommendations/gw-1/recommendation.json",
-    RecommendationArtifactSchema
+  const recommendation = recommendationFromArtifact(
+    readJson<Recommendation | ToolEvidenceArtifact>(
+      "packages/content/recommendations/gw-1/recommendation.json",
+      RecommendationArtifactSchema
+    )
   );
   const legality = readJson<LegalityReport>(
     "packages/content/recommendations/gw-1/legality-report.json",

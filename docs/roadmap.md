@@ -12,7 +12,7 @@ This document records the capabilities present in the repository and the planned
 - Tool-produced evidence and candidate artifacts must remain structurally separate from agent-authored decision artifacts.
 - Verification may reject illegal or unsupported decisions, but it must never replace them or choose an alternative.
 
-## Current State: 0.0.6
+## Current State: 0.0.7
 
 ### Workspace
 
@@ -92,12 +92,21 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Operational State
 
-- The locked local test suite passes 30 test files and 171 tests at the `0.0.6` status update.
+- The locked local test suite passes 31 test files and 251 tests at the `0.0.7` status update.
 - Evidence commands write local files for review.
 - Final squad, transfer, captaincy, bench, and chip decisions remain coding-agent-authored.
 - The human manager performs every change in the official FPL interface.
 
-## Planned Releases
+### Decision Ownership and Competition State
+
+- Exclusive competition phases and separate deadline proximity.
+- Phase-valid action vocabularies, including preseason draft actions.
+- Rejection of preseason `roll`, hits, and normal transfers.
+- Separate schema-v2 tool evidence, candidate, and coding-agent decision artifacts.
+- Required coding-agent authorship and competition context for final verification.
+- Read compatibility for legacy v1 recommendation and template artifacts.
+
+## Delivered Releases
 
 ### 0.0.7: Competition State and Decision Ownership
 
@@ -114,6 +123,10 @@ Release gate:
 
 - Exhaustively test every phase and action combination, including rejection of a GW1 `roll`.
 - Prove that tool and candidate artifacts cannot be parsed as agent decisions.
+
+Status: delivered.
+
+## Planned Releases
 
 ### 0.0.8: Facts, Assumptions, and Provenance
 

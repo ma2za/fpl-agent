@@ -226,6 +226,14 @@ function transferPostureMatchesRecommendation(strategy: WeeklyStrategy, recommen
     return strategy.transferPlan.posture === "free_transfer";
   }
 
+  if (["retain_draft", "wait_for_information", "lock_draft"].includes(recommendation.recommendedAction.type)) {
+    return strategy.transferPlan.posture === "roll";
+  }
+
+  if (["modify_draft", "rebuild_structure"].includes(recommendation.recommendedAction.type)) {
+    return strategy.transferPlan.posture === "free_transfer";
+  }
+
   return strategy.transferPlan.posture === "roll";
 }
 
