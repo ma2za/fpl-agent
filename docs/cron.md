@@ -1,6 +1,6 @@
 # Cron Workflow
 
-Cron should only generate files for human review.
+Cron should only generate files for agent review and human manual application.
 
 It must not submit FPL changes.
 

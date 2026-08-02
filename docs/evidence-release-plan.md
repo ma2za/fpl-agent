@@ -6,7 +6,7 @@ This document records the evidence capabilities currently implemented in `fpl-ag
 
 Evidence scripts collect, normalize, summarize, and validate information. They do not select the final squad, starting XI, captain, vice-captain, bench order, transfer, or chip.
 
-The coding agent or human developer authors recommendations after reviewing evidence. The human manager applies accepted changes manually in the official FPL interface.
+The coding agent authors recommendations after reviewing evidence. The human manager applies accepted changes manually in the official FPL interface.
 
 ## Shared Evidence Model
 
@@ -60,7 +60,7 @@ Implemented:
 Current limitations:
 
 - Official club, BBC, and predicted-lineup sources are not normalized into the team-news report.
-- Public page captures require agent or human interpretation when they do not map cleanly to players.
+- Public page captures require agent interpretation when they do not map cleanly to players.
 
 ## Set Pieces
 

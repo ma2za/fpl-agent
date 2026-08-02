@@ -35,7 +35,7 @@ This model is intentionally simple and inspectable.
 
 ## Agent Selection
 
-Final squad, starting XI, captaincy, bench order, transfer, and chip decisions are authored by the coding agent or human developer after reviewing evidence and current public context.
+Final squad, starting XI, captaincy, bench order, transfer, and chip decisions are authored by the coding agent after reviewing evidence and current public context.
 
 Scripts must not make those final calls.
 

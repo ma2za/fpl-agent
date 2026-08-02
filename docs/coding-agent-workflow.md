@@ -1,6 +1,6 @@
 # Coding Agent Workflow
 
-This repo is structured so Codex, Claude Code, or a developer can make decisions from files.
+This repo is structured so a coding agent makes FPL decisions from repository evidence and workspace files.
 
 For a fresh chat or handover, read the local `docs/agent-handoff.md` first when it exists. It is ignored because it can contain current-season state.
 
@@ -28,7 +28,7 @@ packages/content/recommendations/gw-{n}/legality-report.json
 packages/content/recommendations/gw-{n}/risk-report.md
 ```
 
-`agent-brief.md` is the first file a coding agent should read for a gameweek. It separates deterministic evidence from the non-deterministic judgment checks that require current FPL news and human review.
+`agent-brief.md` is the first file a coding agent should read for a gameweek. It separates deterministic evidence from the non-deterministic judgment checks that require current FPL news and agent review.
 
 Scripts must not select players. They can prepare evidence, projections, data status, and templates. The coding agent authors the final squad, starting XI, captaincy, bench order, transfers, and chip decision.
 
