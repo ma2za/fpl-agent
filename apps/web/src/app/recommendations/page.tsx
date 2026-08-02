@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import {
   LegalityReportSchema,
+  FixtureHorizonReportSchema,
   MinutesRiskReportSchema,
   parseArtifactJson,
   RecommendationArtifactSchema,
@@ -132,6 +133,23 @@ type MinutesRiskReport = {
   }>;
 };
 
+type FixtureHorizonReport = {
+  warnings: string[];
+  teams: Array<{
+    teamId: number;
+    teamName: string;
+    horizons: Array<{
+      gameweeks: 1 | 3 | 6;
+      attack: { averageDifficulty: number | null; label: string; confidence: string };
+      defence: { averageDifficulty: number | null; label: string; confidence: string };
+      blankGameweeks: number[];
+      doubleGameweeks: number[];
+      shortRestCount: number;
+    }>;
+    swing: { attack: string; defence: string };
+  }>;
+};
+
 function readJson<T>(relativePath: string, schema: ArtifactSchema) {
   const filePath = path.join(/*turbopackIgnore: true*/ process.cwd(), "..", "..", relativePath);
 
@@ -179,6 +197,10 @@ export default function RecommendationsPage() {
   const minutesRiskReport = readJson<MinutesRiskReport>(
     "packages/content/recommendations/gw-1/minutes-risk-report.json",
     MinutesRiskReportSchema
+  );
+  const fixtureHorizonReport = readJson<FixtureHorizonReport>(
+    "packages/content/recommendations/gw-1/fixture-horizon-report.json",
+    FixtureHorizonReportSchema
   );
 
   if (!recommendation) {
@@ -325,6 +347,46 @@ export default function RecommendationsPage() {
             <p>No minutes report has been generated.</p>
           )}
         </article>
+      </section>
+
+      <section className="section">
+        <h2>Fixture Horizons</h2>
+        {fixtureHorizonReport ? (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Team</th>
+                  <th>1GW A/D</th>
+                  <th>3GW A/D</th>
+                  <th>6GW A/D</th>
+                  <th>Swing</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fixtureHorizonReport.teams.map((team) => {
+                  const summary = (gameweeks: 1 | 3 | 6) => {
+                    const horizon = team.horizons.find((item) => item.gameweeks === gameweeks);
+                    return horizon
+                      ? `${horizon.attack.averageDifficulty ?? "n/a"}/${horizon.defence.averageDifficulty ?? "n/a"}`
+                      : "n/a";
+                  };
+                  return (
+                    <tr key={team.teamId}>
+                      <td>{team.teamName}</td>
+                      <td>{summary(1)}</td>
+                      <td>{summary(3)}</td>
+                      <td>{summary(6)}</td>
+                      <td>{team.swing.attack}/{team.swing.defence}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p>Fixture horizon evidence is unavailable. The legacy fixture ticker remains the fallback.</p>
+        )}
       </section>
 
       <section className="section">

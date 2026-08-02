@@ -1,6 +1,7 @@
 import { DEFAULT_STARTING_BUDGET, MAX_PLAYERS_PER_CLUB } from "../../rules/src";
 import type {
   EvidenceGap,
+  FixtureHorizonReport,
   FixtureTicker,
   MinutesRiskReport,
   OddsReport,
@@ -21,6 +22,7 @@ type BuildSquadRiskReportInput = {
     dataMode?: "official" | "provisional";
   } | null;
   fixtureTicker?: FixtureTicker | null;
+  fixtureHorizonReport?: FixtureHorizonReport | null;
   teamNewsReport?: TeamNewsReport | null;
   setPieceReport?: SetPieceReport | null;
   oddsReport?: OddsReport | null;
@@ -92,6 +94,18 @@ function fixtureDifficultyByTeam(fixtureTicker: FixtureTicker | null | undefined
   return difficulties;
 }
 
+function horizonDifficultyByTeam(report: FixtureHorizonReport | null | undefined, position: string, gameweeks: 1 | 3 = 1) {
+  const difficulties = new Map<number, number>();
+  for (const team of report?.teams ?? []) {
+    const horizon = team.horizons.find((item) => item.gameweeks === gameweeks);
+    const difficulty = position === "GKP" || position === "DEF"
+      ? horizon?.defence.averageDifficulty
+      : horizon?.attack.averageDifficulty;
+    if (difficulty !== null && difficulty !== undefined) difficulties.set(team.teamId, difficulty);
+  }
+  return difficulties;
+}
+
 function buildPlayerRisks(input: BuildSquadRiskReportInput) {
   const startingIds = new Set(input.recommendation.pickTeam.startingXI);
   const difficultyByTeam = fixtureDifficultyByTeam(input.fixtureTicker, input.recommendation.gameweek);
@@ -102,7 +116,9 @@ function buildPlayerRisks(input: BuildSquadRiskReportInput) {
     const levels: RiskLevel[] = [];
     const starting = startingIds.has(player.id);
     const minutes = player.minutes ?? null;
-    const difficulty = difficultyByTeam.get(player.teamId) ?? null;
+    const difficulty = horizonDifficultyByTeam(input.fixtureHorizonReport, player.position).get(player.teamId)
+      ?? difficultyByTeam.get(player.teamId)
+      ?? null;
 
     if (player.status !== "a") {
       reasons.push(`Availability status is ${player.status}.`);
@@ -118,7 +134,7 @@ function buildPlayerRisks(input: BuildSquadRiskReportInput) {
     }
 
     if (typeof difficulty === "number" && difficulty >= 4) {
-      reasons.push(`High immediate fixture difficulty: FDR ${difficulty}.`);
+      reasons.push(`High immediate ${player.position === "GKP" || player.position === "DEF" ? "defensive" : "attacking"} fixture difficulty: ${difficulty}.`);
       levels.push(starting ? "medium" : "low");
     }
 
@@ -235,25 +251,29 @@ function buildStructureRisks(input: BuildSquadRiskReportInput) {
   const oddsSignalByTeam = new Map(input.oddsReport?.teamSignals.map((team) => [team.teamId, team]) ?? []);
   const highDifficultyStarters = recommendation.pickTeam.startingXI
     .map((playerId) => squadById.get(playerId))
-    .filter((player) => player && (difficultyByTeam.get(player.teamId) ?? 0) >= 4);
+    .filter((player) => player && (
+      horizonDifficultyByTeam(input.fixtureHorizonReport, player.position).get(player.teamId)
+      ?? difficultyByTeam.get(player.teamId)
+      ?? 0
+    ) >= 4);
   const benchSpend = recommendation.pickTeam.benchOrder
     .map((playerId) => squadById.get(playerId))
     .filter((player): player is WeeklyRecommendation["squadBefore"]["players"][number] => Boolean(player))
     .reduce((sum, player) => sum + player.price, 0);
   const selectedTeamIds = new Set(recommendation.squadBefore.players.map((player) => player.teamId));
-  const fixtureAttackTeams = (input.fixtureTicker?.teams ?? [])
-    .map((team) => {
-      const firstTwo = team.fixtures.slice(0, 2);
-      const average = firstTwo.length > 0
-        ? firstTwo.reduce((sum, fixture) => sum + fixture.difficulty, 0) / firstTwo.length
-        : null;
-
-      return {
-        team,
-        average
-      };
-    })
-    .filter((item) => item.average !== null && item.average <= 2);
+  const fixtureAttackTeams = input.fixtureHorizonReport
+    ? input.fixtureHorizonReport.teams
+      .map((team) => ({ team, average: team.horizons.find((horizon) => horizon.gameweeks === 3)?.attack.averageDifficulty ?? null }))
+      .filter((item) => item.average !== null && item.average <= 2.5)
+    : (input.fixtureTicker?.teams ?? [])
+      .map((team) => {
+        const firstTwo = team.fixtures.slice(0, 2);
+        const average = firstTwo.length > 0
+          ? firstTwo.reduce((sum, fixture) => sum + fixture.difficulty, 0) / firstTwo.length
+          : null;
+        return { team, average };
+      })
+      .filter((item) => item.average !== null && item.average <= 2);
   const missingFixtureAttackTeams = fixtureAttackTeams.filter((item) => !selectedTeamIds.has(item.team.teamId));
   const selectedFixtureAttackTeams = fixtureAttackTeams.filter((item) => selectedTeamIds.has(item.team.teamId));
   const starterWatchOrWorse = input.minutesRiskReport?.summary.starterWatchOrWorse ?? 0;

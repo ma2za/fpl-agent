@@ -392,6 +392,118 @@ export type FixtureTicker = {
   teams: FixtureTickerTeam[];
 };
 
+export type FixtureHorizonConfidence = "low" | "medium" | "high";
+export type FixtureHorizonCoverage = "complete" | "partial" | "missing";
+export type FixtureHorizonLabel = "favorable" | "neutral" | "difficult" | "blank" | "unavailable";
+
+export type FixtureDifficultyEvidence = {
+  value: number;
+  rawValue: number;
+  source: "fpl-team-strength" | "fpl-overall-strength-fallback" | "fpl-fixture-difficulty-fallback";
+  confidence: FixtureHorizonConfidence;
+};
+
+export type FixtureHorizonFixture = {
+  fixtureId: number;
+  event: number;
+  opponentTeamId: number;
+  opponentName: string;
+  venue: "H" | "A";
+  kickoffTime: string | null;
+  state: "scheduled" | "finished" | "unresolved";
+  rawDifficulty: number;
+  attackDifficulty: FixtureDifficultyEvidence;
+  defenceDifficulty: FixtureDifficultyEvidence;
+  restDaysBefore: number | null;
+  restDaysAfter: number | null;
+  shortRest: boolean;
+};
+
+export type FixtureHorizonMetric = {
+  averageDifficulty: number | null;
+  label: FixtureHorizonLabel;
+  confidence: FixtureHorizonConfidence;
+  coverage: FixtureHorizonCoverage;
+};
+
+export type TeamFixtureHorizon = {
+  gameweeks: 1 | 3 | 6;
+  startGameweek: number;
+  endGameweek: number;
+  fixtures: FixtureHorizonFixture[];
+  fixtureCount: number;
+  blankGameweeks: number[];
+  doubleGameweeks: number[];
+  unresolvedFixtureCount: number;
+  shortRestCount: number;
+  attack: FixtureHorizonMetric;
+  defence: FixtureHorizonMetric;
+};
+
+export type FixtureHorizonTeam = {
+  teamId: number;
+  teamName: string;
+  shortName: string;
+  horizons: TeamFixtureHorizon[];
+  unresolvedFixtures: Array<{
+    fixtureId: number;
+    opponentTeamId: number;
+    opponentName: string;
+    kickoffTime: string | null;
+    reason: "event-unassigned" | "kickoff-missing";
+  }>;
+  swing: {
+    attack: "in" | "out" | "stable" | "unavailable";
+    attackChange: number | null;
+    defence: "in" | "out" | "stable" | "unavailable";
+    defenceChange: number | null;
+  };
+};
+
+export type FixtureExposureInput = {
+  label: string;
+  kind: "configured" | "primary" | "variant";
+  players: Array<{
+    playerId: number;
+    teamId: number;
+    position: "GKP" | "DEF" | "MID" | "FWD";
+  }>;
+};
+
+export type FixtureHorizonExposure = {
+  label: string;
+  kind: "configured" | "primary" | "variant";
+  playerCount: number;
+  positionCounts: Record<"GKP" | "DEF" | "MID" | "FWD", number>;
+  horizons: Array<{
+    gameweeks: 1 | 3 | 6;
+    attackAverage: number | null;
+    defenceAverage: number | null;
+    coverage: FixtureHorizonCoverage;
+  }>;
+};
+
+export type FixtureHorizonReport = {
+  schemaVersion?: 1;
+  generatedAt: string;
+  gameweek: number;
+  source: {
+    provider: "Fantasy Premier League public API";
+    fixturesUrl: string;
+    teamsUrl: string;
+    schedulePolicy: "fpl-primary-no-silent-merge";
+  };
+  thresholds: {
+    favorableMaximum: 2.5;
+    difficultMinimum: 3.5;
+    swingMinimum: 0.75;
+    shortRestMaximumDays: 3;
+  };
+  teams: FixtureHorizonTeam[];
+  exposures: FixtureHorizonExposure[];
+  warnings: string[];
+};
+
 export type SquadComparison = {
   generatedAt: string;
   a: {

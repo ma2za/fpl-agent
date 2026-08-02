@@ -5,6 +5,7 @@ import { projectPlayers, type PlayerForEngine } from "../packages/engine/src";
 import {
   buildEvidencePack,
   buildStrategyEvidence,
+  FixtureHorizonReportSchema,
   readArtifactFileIfExists,
   RecommendationArtifactSchema,
   renderDecisionPrompts,
@@ -13,7 +14,8 @@ import {
   renderWeeklyStrategyTemplate,
   WeeklyStrategySchema,
   weeklyStrategyJsonTemplate,
-  type DecisionContext
+  type DecisionContext,
+  type FixtureHorizonReport
 } from "../packages/agent/src";
 import { DEFAULT_STARTING_BUDGET, REQUIRED_SQUAD_COUNTS, type DeadlineStatus } from "../packages/rules/src";
 import { CURRENT_SQUAD } from "../config/squad";
@@ -230,6 +232,7 @@ export async function generateRecommendationEvidence(input: {
   officialModeRequested?: boolean;
   provisionalModeRequested?: boolean;
   deadlineStatus?: DeadlineStatus;
+  fixtureHorizonReport?: FixtureHorizonReport | null;
   writeStrategyTemplates?: boolean;
   log?: boolean;
 } = {}) {
@@ -252,6 +255,10 @@ export async function generateRecommendationEvidence(input: {
   const effectiveDeadlineStatus = dataMode === "provisional" ? "unknown" : realDeadlineStatus;
   const projections = projectPlayers(players);
   const outputDir = input.outputDir ?? path.join("packages", "content", "recommendations", `gw-${gameweek}`);
+  const fixtureHorizonReport = input.fixtureHorizonReport ?? await readArtifactFileIfExists(
+    path.join(outputDir, "fixture-horizon-report.json"),
+    FixtureHorizonReportSchema
+  );
   const strategyDir = path.join("packages", "content", "strategy");
   const weeklyStrategyDir = path.join(strategyDir, "weekly");
   const seasonPlanPath = path.join(strategyDir, "season-plan.md");
@@ -299,7 +306,8 @@ export async function generateRecommendationEvidence(input: {
   const strategyEvidence = buildStrategyEvidence({
     evidencePack,
     seasonPlanExists: existingSeasonPlan !== null,
-    weeklyStrategyExists: existingWeeklyStrategy !== null
+    weeklyStrategyExists: existingWeeklyStrategy !== null,
+    fixtureHorizonReport
   });
 
   await mkdir(outputDir, { recursive: true });
@@ -325,7 +333,7 @@ export async function generateRecommendationEvidence(input: {
   await writeJson(path.join(outputDir, "strategy-evidence.json"), strategyEvidence);
   await writeJson(path.join(outputDir, "recommendation-template.json"), evidencePack.recommendationTemplate);
   await writeFile(path.join(outputDir, "projection-summary.md"), renderProjectionSummary(evidencePack), "utf8");
-  await writeFile(path.join(outputDir, "decision-prompts.md"), renderDecisionPrompts(evidencePack), "utf8");
+  await writeFile(path.join(outputDir, "decision-prompts.md"), renderDecisionPrompts(evidencePack, fixtureHorizonReport), "utf8");
 
   if (!authoredRecommendationExists) {
     await writeJson(recommendationPath, evidencePack.recommendationTemplate);

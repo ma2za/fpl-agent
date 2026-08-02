@@ -5,6 +5,7 @@ import {
   ArtifactSchemas,
   ArtifactValidationError,
   EvidenceReportSchema,
+  FixtureHorizonReportSchema,
   RecommendationArtifactSchema,
   WeeklyStrategySchema,
   canonicalArtifactJson,
@@ -57,9 +58,26 @@ describe("artifact schemas", () => {
     expect(() => WeeklyStrategySchema.parse({ ...fixture, schemaVersion: 2 })).toThrow();
   });
 
+  it("rejects malformed fixture horizon artifacts at the read boundary", () => {
+    expect(() => parseArtifactJson(
+      JSON.stringify({
+        generatedAt: "2026-08-01T00:00:00.000Z",
+        gameweek: 1,
+        source: {},
+        thresholds: {},
+        teams: "invalid",
+        exposures: [],
+        warnings: []
+      }),
+      FixtureHorizonReportSchema,
+      "fixture-horizon-report.json"
+    )).toThrow(/fixture-horizon-report\.json[\s\S]*teams/);
+  });
+
   it("exports every persisted artifact schema", () => {
     expect(Object.keys(ArtifactSchemas).sort()).toEqual([
       "evidenceReport",
+      "fixtureHorizonReport",
       "fixtureTicker",
       "legalityReport",
       "minutesRiskReport",

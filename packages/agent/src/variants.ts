@@ -6,6 +6,7 @@ import { compareSquads, renderSquadComparisonMarkdown } from "./squadComparison"
 import { verifyRecommendation, type VerifyRecommendationResult } from "./verification";
 import type {
   EvidenceReport,
+  FixtureHorizonReport,
   FixtureTicker,
   MinutesRiskReport,
   OddsReport,
@@ -21,6 +22,7 @@ import type {
 export const VARIANT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export type VariantSharedEvidence = {
+  fixtureHorizonReport?: FixtureHorizonReport | null;
   fixtureTicker?: FixtureTicker | null;
   teamNewsReport?: TeamNewsReport | null;
   setPieceReport?: SetPieceReport | null;
@@ -48,6 +50,12 @@ export type VariantVerificationReport = {
 export type VariantEvidenceSummary = {
   fixtureDifficulty: number | null;
   fixtureCount: number | null;
+  fixtureAttack1GW?: number | null;
+  fixtureDefence1GW?: number | null;
+  fixtureAttack3GW?: number | null;
+  fixtureDefence3GW?: number | null;
+  fixtureAttack6GW?: number | null;
+  fixtureDefence6GW?: number | null;
   minutesWatchOrWorse: number | null;
   playersWithOddsCoverage: number | null;
   setPieceRolePlayers: number | null;
@@ -166,6 +174,7 @@ export function verifyAuthoredVariant(input: {
     generatedAt: input.generatedAt,
     recommendation: input.recommendation,
     dataStatus: evidence.dataStatus,
+    fixtureHorizonReport: evidence.fixtureHorizonReport,
     fixtureTicker: evidence.fixtureTicker,
     teamNewsReport: evidence.teamNewsReport,
     setPieceReport: evidence.setPieceReport,
@@ -210,6 +219,18 @@ function summarizeEvidence(
   const teamIds = new Set(recommendation.squadBefore.players.map((player) => player.teamId));
   const fixtureTeams = evidence.fixtureTicker?.teams.filter((team) => teamIds.has(team.teamId)) ?? [];
   const fixtureDifficulties = fixtureTeams.flatMap((team) => team.fixtures.map((fixture) => fixture.difficulty));
+  const positionalHorizon = (gameweeks: 1 | 3 | 6, side: "attack" | "defence") => {
+    const positions = side === "attack" ? new Set(["MID", "FWD"]) : new Set(["GKP", "DEF"]);
+    const values = recommendation.squadBefore.players
+      .filter((player) => positions.has(player.position))
+      .map((player) => {
+        const team = evidence.fixtureHorizonReport?.teams.find((item) => item.teamId === player.teamId);
+        const horizon = team?.horizons.find((item) => item.gameweeks === gameweeks);
+        return side === "attack" ? horizon?.attack.averageDifficulty : horizon?.defence.averageDifficulty;
+      })
+      .filter((value): value is number => value !== null && value !== undefined);
+    return average(values);
+  };
   const minuteItems = evidence.minutesRiskReport?.items.filter((item) => playerIds.has(item.playerId));
   const oddsTeams = evidence.oddsReport?.teamSignals.filter((signal) => teamIds.has(signal.teamId));
   const coveredTeamIds = new Set(
@@ -222,7 +243,7 @@ function summarizeEvidence(
     .filter((gap) => gap.status === "missing")
     .map((gap) => gap.area);
 
-  if (!evidence.fixtureTicker) evidenceGaps.push("fixture-horizon");
+  if (!evidence.fixtureHorizonReport && !evidence.fixtureTicker) evidenceGaps.push("fixture-horizon");
   if (!evidence.minutesRiskReport) evidenceGaps.push("minutes");
   if (!evidence.oddsReport) evidenceGaps.push("odds");
   if (!evidence.setPieceReport) evidenceGaps.push("roles");
@@ -231,6 +252,12 @@ function summarizeEvidence(
   return {
     fixtureDifficulty: evidence.fixtureTicker ? average(fixtureDifficulties) : null,
     fixtureCount: evidence.fixtureTicker ? fixtureDifficulties.length : null,
+    fixtureAttack1GW: positionalHorizon(1, "attack"),
+    fixtureDefence1GW: positionalHorizon(1, "defence"),
+    fixtureAttack3GW: positionalHorizon(3, "attack"),
+    fixtureDefence3GW: positionalHorizon(3, "defence"),
+    fixtureAttack6GW: positionalHorizon(6, "attack"),
+    fixtureDefence6GW: positionalHorizon(6, "defence"),
     minutesWatchOrWorse: minuteItems
       ? minuteItems.filter((item) => item.riskLevel !== "secure").length
       : null,
@@ -329,6 +356,12 @@ export function renderVariantComparisonMarkdown(report: VariantComparisonReport)
 | --- | ---: | ---: |
 | Fixture difficulty | ${metric(a.fixtureDifficulty)} | ${metric(b.fixtureDifficulty)} |
 | Fixture count | ${metric(a.fixtureCount)} | ${metric(b.fixtureCount)} |
+| 1GW attack difficulty | ${metric(a.fixtureAttack1GW ?? null)} | ${metric(b.fixtureAttack1GW ?? null)} |
+| 1GW defence difficulty | ${metric(a.fixtureDefence1GW ?? null)} | ${metric(b.fixtureDefence1GW ?? null)} |
+| 3GW attack difficulty | ${metric(a.fixtureAttack3GW ?? null)} | ${metric(b.fixtureAttack3GW ?? null)} |
+| 3GW defence difficulty | ${metric(a.fixtureDefence3GW ?? null)} | ${metric(b.fixtureDefence3GW ?? null)} |
+| 6GW attack difficulty | ${metric(a.fixtureAttack6GW ?? null)} | ${metric(b.fixtureAttack6GW ?? null)} |
+| 6GW defence difficulty | ${metric(a.fixtureDefence6GW ?? null)} | ${metric(b.fixtureDefence6GW ?? null)} |
 | Minutes watch or worse | ${metric(a.minutesWatchOrWorse)} | ${metric(b.minutesWatchOrWorse)} |
 | Players with odds coverage | ${metric(a.playersWithOddsCoverage)} | ${metric(b.playersWithOddsCoverage)} |
 | Set-piece role players | ${metric(a.setPieceRolePlayers)} | ${metric(b.setPieceRolePlayers)} |

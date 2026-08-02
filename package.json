@@ -1,6 +1,6 @@
 {
   "name": "fpl-agent",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "private": true,
   "license": "Apache-2.0",
   "packageManager": "pnpm@11.9.0",
@@ -13,6 +13,7 @@
     "benchmark:rules": "tsx scripts/benchmark-rules.ts",
     "benchmark:refresh": "tsx scripts/benchmark-refresh.ts",
     "benchmark:variants": "tsx scripts/benchmark-variants.ts",
+    "benchmark:fixtures": "tsx scripts/benchmark-fixtures.ts",
     "refresh": "tsx scripts/refresh.ts",
     "fetch:data": "tsx scripts/fetch-fpl-data.ts",
     "fetch:pl-fixtures": "tsx scripts/fetch-premier-league-fixtures.ts",

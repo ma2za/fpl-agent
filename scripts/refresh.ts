@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   EvidenceReportSchema,
+  FixtureHorizonReportSchema,
   FixtureTickerSchema,
   MinutesRiskReportSchema,
   OddsReportSchema,
@@ -13,6 +14,7 @@ import {
   SetPieceReportSchema,
   StrategyEvidenceSchema,
   TeamNewsReportSchema,
+  buildFixtureHorizonReport,
   buildFixtureTicker,
   buildMinutesRiskReport,
   buildSetPieceReport,
@@ -21,6 +23,7 @@ import {
   readArtifactFile,
   readArtifactFileIfExists,
   renderEvidenceReportMarkdown,
+  renderFixtureHorizonMarkdown,
   renderFixtureTickerMarkdown,
   renderMinutesRiskReportMarkdown,
   renderSetPieceReportMarkdown,
@@ -42,7 +45,9 @@ import {
   type Fixture,
   type NormalizedPlayer
 } from "../packages/fpl-api/src";
+import { CURRENT_SQUAD } from "../config/squad";
 import { buildLocalEvidenceReport } from "./evidence-sources";
+import { loadFixtureExposures } from "./fixture-horizon-evidence";
 import { generateOddsEvidence } from "./generate-odds";
 import {
   defaultPublicEvidenceSources,
@@ -326,11 +331,52 @@ function buildStages(input: {
 
   return [
     {
-      id: "decision-evidence",
+      id: "fixtures",
       required: true,
       phase: 0,
+      artifacts: [
+        artifact("fixture-ticker.json", FixtureTickerSchema),
+        artifact("fixture-ticker.md"),
+        artifact("fixture-horizon-report.json", FixtureHorizonReportSchema),
+        artifact("fixture-horizon-report.md")
+      ],
+      run: async ({ outputDir }) => {
+        const ticker = buildFixtureTicker({
+          gameweek: input.gameweek,
+          horizon: 6,
+          generatedAt: input.generatedAt,
+          teams: input.data.bootstrap.teams,
+          fixtures: input.data.fixtures
+        });
+        const exposures = await loadFixtureExposures({
+          gameweek: input.gameweek,
+          gameweekDir: outputDir,
+          configuredPlayerIds: CURRENT_SQUAD.players,
+          players: input.data.players
+        });
+        const horizon = buildFixtureHorizonReport({
+          gameweek: input.gameweek,
+          generatedAt: input.generatedAt,
+          teams: input.data.bootstrap.teams,
+          fixtures: input.data.fixtures,
+          exposures
+        });
+        await Promise.all([
+          writeReport(outputDir, "fixture-ticker.json", "fixture-ticker.md", ticker, renderFixtureTickerMarkdown(ticker)),
+          writeReport(outputDir, "fixture-horizon-report.json", "fixture-horizon-report.md", horizon, renderFixtureHorizonMarkdown(horizon))
+        ]);
+      }
+    },
+    {
+      id: "decision-evidence",
+      required: true,
+      phase: 1,
       artifacts: recommendationArtifacts,
       run: async ({ outputDir }) => {
+        const fixtureHorizonReport = await readArtifactFile(
+          path.join(outputDir, "fixture-horizon-report.json"),
+          FixtureHorizonReportSchema
+        );
         await generateRecommendationEvidence({
           requestedGameweek: String(input.gameweek),
           players: input.data.players,
@@ -340,31 +386,16 @@ function buildStages(input: {
           now: input.now.getTime(),
           provisionalModeRequested: input.data.inputs.some((item) => item.freshness === "stale"),
           deadlineStatus: input.deadline.status,
+          fixtureHorizonReport,
           writeStrategyTemplates: false,
           log: false
         });
       }
     },
     {
-      id: "fixtures",
-      required: true,
-      phase: 1,
-      artifacts: [artifact("fixture-ticker.json", FixtureTickerSchema), artifact("fixture-ticker.md")],
-      run: async ({ outputDir }) => {
-        const report = buildFixtureTicker({
-          gameweek: input.gameweek,
-          horizon: 6,
-          generatedAt: input.generatedAt,
-          teams: input.data.bootstrap.teams,
-          fixtures: input.data.fixtures
-        });
-        await writeReport(outputDir, "fixture-ticker.json", "fixture-ticker.md", report, renderFixtureTickerMarkdown(report));
-      }
-    },
-    {
       id: "team-news",
       required: true,
-      phase: 1,
+      phase: 2,
       artifacts: [artifact("team-news-report.json", TeamNewsReportSchema), artifact("team-news-report.md")],
       run: async ({ outputDir }) => {
         const selected = await selectedPlayerState(outputDir);
@@ -394,7 +425,7 @@ function buildStages(input: {
     {
       id: "set-pieces",
       required: true,
-      phase: 1,
+      phase: 2,
       artifacts: [artifact("set-pieces-report.json", SetPieceReportSchema), artifact("set-pieces-report.md")],
       run: async ({ outputDir }) => {
         const selected = await selectedPlayerState(outputDir);
@@ -424,7 +455,7 @@ function buildStages(input: {
     {
       id: "minutes",
       required: true,
-      phase: 1,
+      phase: 2,
       artifacts: [artifact("minutes-risk-report.json", MinutesRiskReportSchema), artifact("minutes-risk-report.md")],
       run: async ({ outputDir }) => {
         const selected = await selectedPlayerState(outputDir);
@@ -456,7 +487,7 @@ function buildStages(input: {
     {
       id: "odds",
       required: false,
-      phase: 1,
+      phase: 2,
       artifacts: [artifact("odds-report.json", OddsReportSchema), artifact("odds-report.md")],
       run: async ({ outputDir }) => {
         await generateOddsEvidence({
@@ -476,7 +507,7 @@ function buildStages(input: {
     {
       id: "public-evidence",
       required: false,
-      phase: 1,
+      phase: 2,
       artifacts: [
         artifact("public-evidence-report.json", PublicEvidenceReportSchema),
         artifact("public-evidence-report.md")
@@ -507,7 +538,7 @@ function buildStages(input: {
     {
       id: "evidence-summary",
       required: true,
-      phase: 2,
+      phase: 3,
       artifacts: [artifact("evidence-report.json", EvidenceReportSchema), artifact("evidence-report.md")],
       run: async ({ outputDir }) => {
         const report = await buildLocalEvidenceReport({

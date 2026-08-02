@@ -30,6 +30,7 @@ export async function buildLocalEvidenceReport(input: {
   const reportDir = input.reportDir ?? outputDir;
   const dataStatusPath = path.join(outputDir, "data-status.json");
   const fixtureTickerPath = path.join(outputDir, "fixture-ticker.json");
+  const fixtureHorizonPath = path.join(outputDir, "fixture-horizon-report.json");
   const teamNewsReportPath = path.join(outputDir, "team-news-report.json");
   const setPiecesReportPath = path.join(outputDir, "set-pieces-report.json");
   const oddsReportPath = path.join(outputDir, "odds-report.json");
@@ -50,8 +51,8 @@ export async function buildLocalEvidenceReport(input: {
     },
     {
       id: "fixtures",
-      label: "Fixture evidence",
-      provider: "FPL fixtures and Premier League fixture release",
+      label: "FPL fixture ticker",
+      provider: "Fantasy Premier League public API",
       rawPath: path.join("data", "raw", "fixtures.json"),
       reportPath: path.join(reportDir, "fixture-ticker.json"),
       fetchedAt: await fileTimestamp(fixtureTickerPath, input.artifactTimestamp),
@@ -59,6 +60,18 @@ export async function buildLocalEvidenceReport(input: {
       confidence: "high",
       missingMessage: "Fixture evidence is missing.",
       staleMessage: "Fixture evidence is stale."
+    },
+    {
+      id: "fixture-horizon",
+      label: "Fixture horizon and team strength",
+      provider: "Fantasy Premier League public API",
+      rawPath: path.join("data", "raw", "fixtures.json"),
+      reportPath: path.join(reportDir, "fixture-horizon-report.json"),
+      fetchedAt: await fileTimestamp(fixtureHorizonPath, input.artifactTimestamp),
+      maxAgeHours: 168,
+      confidence: "medium",
+      missingMessage: "Fixture horizon evidence is missing; consumers must fall back to the fixture ticker.",
+      staleMessage: "Fixture horizon evidence is stale."
     },
     {
       id: "team-news",

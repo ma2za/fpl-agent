@@ -3,6 +3,7 @@ import path from "node:path";
 import {
   buildSquadRiskReport,
   evaluateWeeklyStrategyQuality,
+  FixtureHorizonReportSchema,
   FixtureTickerSchema,
   MinutesRiskReportSchema,
   OddsReportSchema,
@@ -19,6 +20,7 @@ import {
   verifyRecommendation,
   WeeklyStrategySchema,
   type FixtureTicker,
+  type FixtureHorizonReport,
   type MinutesRiskReport,
   type OddsReport,
   type PublicEvidenceReport,
@@ -142,6 +144,10 @@ async function main() {
       path.join(outputDir, "fixture-ticker.json"),
       FixtureTickerSchema
     );
+    const fixtureHorizonReport: FixtureHorizonReport | null = await readArtifactFileIfExists(
+      path.join(outputDir, "fixture-horizon-report.json"),
+      FixtureHorizonReportSchema
+    );
     const teamNewsReport: TeamNewsReport | null = await readArtifactFileIfExists(
       path.join(outputDir, "team-news-report.json"),
       TeamNewsReportSchema
@@ -166,6 +172,7 @@ async function main() {
       generatedAt: new Date().toISOString(),
       recommendation,
       dataStatus,
+      fixtureHorizonReport,
       fixtureTicker,
       teamNewsReport,
       setPieceReport,

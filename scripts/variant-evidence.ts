@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import {
   EvidenceReportSchema,
+  FixtureHorizonReportSchema,
   FixtureTickerSchema,
   MinutesRiskReportSchema,
   OddsReportSchema,
@@ -44,6 +45,7 @@ export async function loadVariantSharedEvidence(gameweek: number): Promise<Varia
   const contextDir = path.join("packages", "content", "context");
 
   const [
+    fixtureHorizonReport,
     fixtureTicker,
     teamNewsReport,
     setPieceReport,
@@ -58,6 +60,7 @@ export async function loadVariantSharedEvidence(gameweek: number): Promise<Varia
     setPieces,
     watchlist
   ] = await Promise.all([
+    readArtifactFileIfExists(path.join(gameweekDir, "fixture-horizon-report.json"), FixtureHorizonReportSchema),
     readArtifactFileIfExists(path.join(gameweekDir, "fixture-ticker.json"), FixtureTickerSchema),
     readArtifactFileIfExists(path.join(gameweekDir, "team-news-report.json"), TeamNewsReportSchema),
     readArtifactFileIfExists(path.join(gameweekDir, "set-pieces-report.json"), SetPieceReportSchema),
@@ -77,6 +80,7 @@ export async function loadVariantSharedEvidence(gameweek: number): Promise<Varia
   ]);
 
   return {
+    fixtureHorizonReport,
     fixtureTicker,
     teamNewsReport,
     setPieceReport,

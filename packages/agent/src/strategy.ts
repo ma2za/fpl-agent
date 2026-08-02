@@ -1,5 +1,6 @@
 import type {
   EvidencePack,
+  FixtureHorizonReport,
   QualityGateResult,
   SeasonStrategy,
   StrategyEvidence,
@@ -12,6 +13,7 @@ type BuildStrategyEvidenceInput = {
   evidencePack: EvidencePack;
   seasonPlanExists: boolean;
   weeklyStrategyExists: boolean;
+  fixtureHorizonReport?: FixtureHorizonReport | null;
 };
 
 type EvaluateWeeklyStrategyQualityInput = {
@@ -62,6 +64,14 @@ function topNames(evidencePack: EvidencePack, count: number) {
 
 export function buildStrategyEvidence(input: BuildStrategyEvidenceInput): StrategyEvidence {
   const context = input.evidencePack.context;
+  const horizonLines = (gameweeks: 1 | 3 | 6) => {
+    const teams = input.fixtureHorizonReport?.teams.map((team) => {
+      const horizon = team.horizons.find((item) => item.gameweeks === gameweeks);
+      return horizon ? `${team.teamName}: attack ${horizon.attack.label} ${horizon.attack.averageDifficulty ?? "n/a"}, defence ${horizon.defence.label} ${horizon.defence.averageDifficulty ?? "n/a"}, coverage ${horizon.attack.coverage}/${horizon.defence.coverage}.` : null;
+    }).filter((line): line is string => Boolean(line)) ?? [];
+
+    return teams.length > 0 ? teams : ["Fixture horizon report is unavailable; use the legacy fixture ticker."];
+  };
 
   return {
     gameweek: context.gameweek,
@@ -75,13 +85,16 @@ export function buildStrategyEvidence(input: BuildStrategyEvidenceInput): Strate
     horizonSummary: {
       oneGameweek: [
         "Use for captaincy, vice-captaincy, starting XI, and bench order.",
-        ...topNames(input.evidencePack, 5)
+        ...topNames(input.evidencePack, 5),
+        ...horizonLines(1)
       ],
       threeGameweeks: [
-        "Use for free transfers, short-term fixture attacks, and avoiding immediate reversals."
+        "Use for free transfers, short-term fixture attacks, and avoiding immediate reversals.",
+        ...horizonLines(3)
       ],
       sixGameweeks: [
-        "Use for squad structure, premium distribution, club exposure, and fixture-swing planning."
+        "Use for squad structure, premium distribution, club exposure, and fixture-swing planning.",
+        ...horizonLines(6)
       ]
     },
     prompts: [

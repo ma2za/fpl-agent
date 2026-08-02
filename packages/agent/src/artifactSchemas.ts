@@ -394,6 +394,102 @@ export const FixtureTickerSchema = looseObject({
   }))
 });
 
+const fixtureHorizonConfidence = z.enum(["low", "medium", "high"]);
+const fixtureHorizonCoverage = z.enum(["complete", "partial", "missing"]);
+const fixtureHorizonLabel = z.enum(["favorable", "neutral", "difficult", "blank", "unavailable"]);
+const fixtureDifficultyEvidence = looseObject({
+  value: z.number(),
+  rawValue: z.number(),
+  source: z.enum(["fpl-team-strength", "fpl-overall-strength-fallback", "fpl-fixture-difficulty-fallback"]),
+  confidence: fixtureHorizonConfidence
+});
+
+export const FixtureHorizonReportSchema = looseObject({
+  schemaVersion,
+  generatedAt: z.string(),
+  gameweek: z.number(),
+  source: looseObject({
+    provider: z.literal("Fantasy Premier League public API"),
+    fixturesUrl: z.string(),
+    teamsUrl: z.string(),
+    schedulePolicy: z.literal("fpl-primary-no-silent-merge")
+  }),
+  thresholds: looseObject({
+    favorableMaximum: z.literal(2.5),
+    difficultMinimum: z.literal(3.5),
+    swingMinimum: z.literal(0.75),
+    shortRestMaximumDays: z.literal(3)
+  }),
+  teams: z.array(looseObject({
+    teamId: z.number(),
+    teamName: z.string(),
+    shortName: z.string(),
+    horizons: z.array(looseObject({
+      gameweeks: z.union([z.literal(1), z.literal(3), z.literal(6)]),
+      startGameweek: z.number(),
+      endGameweek: z.number(),
+      fixtures: z.array(looseObject({
+        fixtureId: z.number(),
+        event: z.number(),
+        opponentTeamId: z.number(),
+        opponentName: z.string(),
+        venue: z.enum(["H", "A"]),
+        kickoffTime: z.string().nullable(),
+        state: z.enum(["scheduled", "finished", "unresolved"]),
+        rawDifficulty: z.number(),
+        attackDifficulty: fixtureDifficultyEvidence,
+        defenceDifficulty: fixtureDifficultyEvidence,
+        restDaysBefore: nullableNumber,
+        restDaysAfter: nullableNumber,
+        shortRest: z.boolean()
+      })),
+      fixtureCount: z.number(),
+      blankGameweeks: z.array(z.number()),
+      doubleGameweeks: z.array(z.number()),
+      unresolvedFixtureCount: z.number(),
+      shortRestCount: z.number(),
+      attack: looseObject({
+        averageDifficulty: nullableNumber,
+        label: fixtureHorizonLabel,
+        confidence: fixtureHorizonConfidence,
+        coverage: fixtureHorizonCoverage
+      }),
+      defence: looseObject({
+        averageDifficulty: nullableNumber,
+        label: fixtureHorizonLabel,
+        confidence: fixtureHorizonConfidence,
+        coverage: fixtureHorizonCoverage
+      })
+    })),
+    unresolvedFixtures: z.array(looseObject({
+      fixtureId: z.number(),
+      opponentTeamId: z.number(),
+      opponentName: z.string(),
+      kickoffTime: z.string().nullable(),
+      reason: z.enum(["event-unassigned", "kickoff-missing"])
+    })),
+    swing: looseObject({
+      attack: z.enum(["in", "out", "stable", "unavailable"]),
+      attackChange: nullableNumber,
+      defence: z.enum(["in", "out", "stable", "unavailable"]),
+      defenceChange: nullableNumber
+    })
+  })),
+  exposures: z.array(looseObject({
+    label: z.string(),
+    kind: z.enum(["configured", "primary", "variant"]),
+    playerCount: z.number(),
+    positionCounts: looseObject({ GKP: z.number(), DEF: z.number(), MID: z.number(), FWD: z.number() }),
+    horizons: z.array(looseObject({
+      gameweeks: z.union([z.literal(1), z.literal(3), z.literal(6)]),
+      attackAverage: nullableNumber,
+      defenceAverage: nullableNumber,
+      coverage: fixtureHorizonCoverage
+    }))
+  })),
+  warnings: stringArray
+});
+
 export const SquadRiskReportSchema = looseObject({
   schemaVersion,
   generatedAt: z.string(),
@@ -608,6 +704,12 @@ export const PlayerProjectionArraySchema = z.array(playerProjection);
 const variantEvidenceSummary = looseObject({
   fixtureDifficulty: nullableNumber,
   fixtureCount: nullableNumber,
+  fixtureAttack1GW: nullableNumber.optional(),
+  fixtureDefence1GW: nullableNumber.optional(),
+  fixtureAttack3GW: nullableNumber.optional(),
+  fixtureDefence3GW: nullableNumber.optional(),
+  fixtureAttack6GW: nullableNumber.optional(),
+  fixtureDefence6GW: nullableNumber.optional(),
   minutesWatchOrWorse: nullableNumber,
   playersWithOddsCoverage: nullableNumber,
   setPieceRolePlayers: nullableNumber,
@@ -680,6 +782,7 @@ export const VariantComparisonReportSchema = looseObject({
 
 export const ArtifactSchemas = {
   evidenceReport: EvidenceReportSchema,
+  fixtureHorizonReport: FixtureHorizonReportSchema,
   fixtureTicker: FixtureTickerSchema,
   legalityReport: LegalityReportSchema,
   minutesRiskReport: MinutesRiskReportSchema,

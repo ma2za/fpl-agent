@@ -42,6 +42,7 @@ The exact covered and uncovered rule behavior is listed in `docs/rules-coverage.
 - Starting XI and bench evidence.
 - Conservative chip evidence.
 - Fixture ticker and squad comparison.
+- Attack/defence fixture horizons for 1GW, 3GW, and 6GW, including schedule uncertainty, congestion, swings, and squad or variant exposure.
 - Authored variant discovery, independent verification, and neutral shared-evidence comparison.
 - Strategy templates and quality checks.
 - Recommendation templates that require coding-agent or human authorship.
@@ -79,7 +80,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ## Operational State
 
-- The locked local test suite passes 28 test files and 163 tests at the `0.0.5` status update.
+- The locked local test suite passes 30 test files and 171 tests at the `0.0.6` status update.
 - Evidence commands write local files for review.
 - Final squad, transfer, captaincy, bench, and chip decisions remain agent- or human-authored.
 - The human manager performs every change in the official FPL interface.
@@ -91,7 +92,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 - Individual evidence commands write directly when used outside the transactional refresh workflow.
 - Predicted-lineup confidence is unavailable unless supported by manually reviewed public evidence.
 - Odds coverage depends on public rows and lacks guaranteed direct player markets.
-- Projection and transfer-horizon models are intentionally simple.
+- Projection and transfer-horizon models are intentionally simple; fixture strength uses visible lower-confidence fallbacks when split FPL fields are unavailable.
 - Postmortem automation is not implemented.
 
 ## Safety Boundary

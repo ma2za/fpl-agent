@@ -133,6 +133,8 @@ Safety:
 Implemented:
 
 - Fixture ticker generation for a configurable horizon.
+- Attack- and defence-specific 1GW, 3GW, and 6GW fixture horizons with source confidence and explicit fallbacks.
+- Blank, double, unresolved-schedule, short-rest, fixture-swing, configured-squad, and authored-variant exposure summaries.
 - Official Premier League fixture-release parsing.
 - Player projections, position pools, budget tiers, and club exposure.
 - Squad comparison for two authored recommendation files.
@@ -142,7 +144,8 @@ Implemented:
 
 Current limitations:
 
-- Fixture strength is not separated into attacking and defensive models.
+- FPL attack and defence strength fields may be unavailable; venue-specific overall strength and raw FDR remain visibly labelled low-confidence fallbacks.
+- Official Premier League fixture-release evidence remains separate and is never silently merged with the FPL schedule.
 - Price-risk comparison remains unavailable until normalized price evidence exists; reports expose that gap explicitly.
 
 ## Recommendation and Strategy Quality
@@ -173,6 +176,7 @@ pnpm evidence -- --gw <n>
 pnpm odds -- --gw <n>
 pnpm set-pieces -- --gw <n>
 pnpm team-news -- --gw <n>
+pnpm fixtures -- --gw <n> --horizon <n>
 pnpm minutes -- --gw <n>
 pnpm public-evidence -- --gw <n>
 pnpm fixtures -- --gw <n> --horizon <n>

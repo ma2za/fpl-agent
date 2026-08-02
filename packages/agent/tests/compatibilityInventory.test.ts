@@ -50,12 +50,21 @@ describe("compatibility inventory", () => {
     });
   });
 
+  it("exposes the additive fixture horizon benchmark", () => {
+    const packageJson = JSON.parse(
+      readFileSync(resolve(root, "package.json"), "utf8"),
+    ) as { scripts: Record<string, string> };
+
+    expect(packageJson.scripts["benchmark:fixtures"]).toBe("tsx scripts/benchmark-fixtures.ts");
+  });
+
   it.each([
     [
       "agent",
       [
         "evidence",
         "evidenceReport",
+        "fixtureHorizon",
         "fixtureTicker",
         "markdown",
         "minutesRisk",

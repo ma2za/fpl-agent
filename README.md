@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.5`
+Version: `0.0.6`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -64,6 +64,7 @@ pnpm install
 ```bash
 pnpm dev
 pnpm test
+pnpm benchmark:fixtures
 pnpm refresh -- --gw auto
 pnpm fetch:data
 pnpm fetch:pl-fixtures -- --gw 1 --horizon 6
@@ -105,7 +106,7 @@ pnpm postmortem -- --gw 1
 
 For rendered-page capture, install the browser once with `corepack pnpm exec playwright install chromium`, then run `pnpm public-evidence -- --gw {n} --mode browser`.
 
-`pnpm fixtures -- --gw {n} --horizon {n}` writes a fixture ticker for agent review. It does not alter recommendations.
+`pnpm fixtures -- --gw {n} --horizon {n}` writes the existing fixture ticker plus attack/defence horizon evidence for 1GW, 3GW, and 6GW. The horizon report exposes raw FDR, source-backed strength inputs, fallbacks, blanks, doubles, unresolved schedules, congestion, fixture swings, and squad or variant exposure without altering recommendations.
 
 `pnpm recommend -- --gw {n}` prepares evidence for the coding agent. It does not select players or write a final recommendation.
 
@@ -223,6 +224,7 @@ pnpm dev
 - Player selection is intentionally agent-authored, not script-authored.
 - The repo captures selected public evidence pages, including official Premier League Scout articles, but does not log in or scrape authenticated FPL pages.
 - Public manager endpoints exist in the API client but are not wired into recommendation flow yet.
+- Venue-specific FPL attack/defence strengths can be unavailable or zero; horizon evidence then labels lower-confidence overall-strength or raw-FDR fallbacks instead of treating zero as real strength.
 
 ## Project Status
 

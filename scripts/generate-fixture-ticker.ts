@@ -1,11 +1,14 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { buildFixtureTicker, renderFixtureTickerMarkdown } from "../packages/agent/src";
-import type { Fixture, Team } from "../packages/fpl-api/src";
-
-type BootstrapStatic = {
-  teams: Team[];
-};
+import {
+  buildFixtureHorizonReport,
+  buildFixtureTicker,
+  renderFixtureHorizonMarkdown,
+  renderFixtureTickerMarkdown
+} from "../packages/agent/src";
+import { BootstrapStaticSchema, FixtureSchema, normalizePlayers } from "../packages/fpl-api/src";
+import { CURRENT_SQUAD } from "../config/squad";
+import { loadFixtureExposures } from "./fixture-horizon-evidence";
 
 function argValue(name: string) {
   const index = process.argv.indexOf(name);
@@ -28,8 +31,8 @@ async function writeJson(filePath: string, data: unknown) {
 async function main() {
   const gameweek = Number(argValue("--gw") ?? "1");
   const horizon = Number(argValue("--horizon") ?? "6");
-  const bootstrap = await readJson<BootstrapStatic>(path.join("data", "raw", "bootstrap-static.json"));
-  const fixtures = await readJson<Fixture[]>(path.join("data", "raw", "fixtures.json"));
+  const bootstrap = BootstrapStaticSchema.parse(await readJson<unknown>(path.join("data", "raw", "bootstrap-static.json")));
+  const fixtures = FixtureSchema.array().parse(await readJson<unknown>(path.join("data", "raw", "fixtures.json")));
   const ticker = buildFixtureTicker({
     gameweek,
     horizon,
@@ -38,12 +41,30 @@ async function main() {
     fixtures
   });
   const outputDir = path.join("packages", "content", "recommendations", `gw-${gameweek}`);
+  const players = normalizePlayers(bootstrap);
+  const exposures = await loadFixtureExposures({
+    gameweek,
+    gameweekDir: outputDir,
+    configuredPlayerIds: CURRENT_SQUAD.players,
+    players
+  });
+  const horizonReport = buildFixtureHorizonReport({
+    gameweek,
+    generatedAt: ticker.generatedAt,
+    teams: bootstrap.teams,
+    fixtures,
+    exposures
+  });
 
   await mkdir(outputDir, { recursive: true });
-  await writeJson(path.join(outputDir, "fixture-ticker.json"), ticker);
-  await writeFile(path.join(outputDir, "fixture-ticker.md"), renderFixtureTickerMarkdown(ticker), "utf8");
+  await Promise.all([
+    writeJson(path.join(outputDir, "fixture-ticker.json"), ticker),
+    writeFile(path.join(outputDir, "fixture-ticker.md"), renderFixtureTickerMarkdown(ticker), "utf8"),
+    writeJson(path.join(outputDir, "fixture-horizon-report.json"), horizonReport),
+    writeFile(path.join(outputDir, "fixture-horizon-report.md"), renderFixtureHorizonMarkdown(horizonReport), "utf8")
+  ]);
 
-  console.log(`Wrote fixture ticker to ${outputDir}`);
+  console.log(`Wrote fixture ticker and horizon report to ${outputDir}`);
 }
 
 main().catch((error) => {

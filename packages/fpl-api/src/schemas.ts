@@ -9,7 +9,13 @@ export const TeamSchema = z
   .object({
     id: z.number(),
     name: z.string(),
-    short_name: z.string().optional()
+    short_name: z.string().optional(),
+    strength_overall_home: NullableNumberSchema.optional(),
+    strength_overall_away: NullableNumberSchema.optional(),
+    strength_attack_home: NullableNumberSchema.optional(),
+    strength_attack_away: NullableNumberSchema.optional(),
+    strength_defence_home: NullableNumberSchema.optional(),
+    strength_defence_away: NullableNumberSchema.optional()
   })
   .passthrough();
 

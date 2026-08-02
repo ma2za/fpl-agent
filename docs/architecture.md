@@ -32,6 +32,8 @@ human manually applies accepted changes
 postmortem records outcome
 ```
 
+Fixture evidence keeps the validated FPL schedule primary. The legacy ticker remains unchanged, while the additive horizon report separates attack and defence difficulty, records strength fallbacks and confidence, and never silently merges the separate Premier League fixture-release evidence.
+
 Milestone 5 implements deterministic evidence output and recommendation templates.
 
 Milestone 6 implements a read-only verification gate for agent-authored recommendations.

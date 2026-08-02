@@ -4,6 +4,7 @@ export * from "./canonicalize";
 export * from "./evidence";
 export * from "./evidenceReport";
 export * from "./fixtureTicker";
+export * from "./fixtureHorizon";
 export * from "./markdown";
 export * from "./minutesRisk";
 export * from "./odds";

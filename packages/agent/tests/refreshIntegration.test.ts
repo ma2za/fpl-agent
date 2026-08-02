@@ -98,6 +98,12 @@ describe("refresh command integration", () => {
     )).status).toBe("success");
     expect(await readFile(path.join(recommendationsDir, "gw-1", "team-news-report.json"), "utf8"))
       .not.toContain(".refresh-");
+    const horizon = JSON.parse(await readFile(
+      path.join(recommendationsDir, "gw-1", "fixture-horizon-report.json"),
+      "utf8"
+    )) as { teams: unknown[]; source: { schedulePolicy: string } };
+    expect(horizon.teams).toHaveLength(1);
+    expect(horizon.source.schedulePolicy).toBe("fpl-primary-no-silent-merge");
   });
 
   it("fetches each shared FPL input once in a live-style mocked run", async () => {
@@ -121,6 +127,9 @@ describe("refresh command integration", () => {
     expect(calls.filter((url) => url.includes("bootstrap-static"))).toHaveLength(1);
     expect(calls.filter((url) => url.endsWith("/fixtures/"))).toHaveLength(1);
     expect(result.manifest.stages.every((stage) => stage.status === "success")).toBe(true);
+    expect(result.manifest.stages.find((stage) => stage.id === "fixtures")?.artifactPaths).toContain(
+      "fixture-horizon-report.json"
+    );
     expect(await readFile(path.join(root, "recommendations", "gw-1", "public-evidence-report.json"), "utf8"))
       .not.toContain(".refresh-");
     expect(await stat(path.join(root, "raw", "bootstrap-static.json"))).toBeDefined();

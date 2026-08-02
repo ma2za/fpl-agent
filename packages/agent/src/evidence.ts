@@ -3,7 +3,8 @@ import type {
   BudgetTier,
   DecisionContext,
   EvidencePack,
-  EvidencePlayer
+  EvidencePlayer,
+  FixtureHorizonReport
 } from "./types";
 import type { PlayerForEngine, PlayerProjection } from "../../engine/src";
 
@@ -217,7 +218,10 @@ ${lines.join("\n")}
 `;
 }
 
-export function renderDecisionPrompts(evidencePack: EvidencePack) {
+export function renderDecisionPrompts(evidencePack: EvidencePack, fixtureHorizonReport?: FixtureHorizonReport | null) {
+  const swingTeams = fixtureHorizonReport?.teams
+    .filter((team) => team.swing.attack !== "stable" || team.swing.defence !== "stable")
+    .map((team) => `${team.teamName} (${team.swing.attack}/${team.swing.defence})`) ?? [];
   return `# Decision Prompts: GW${evidencePack.context.gameweek}
 
 ## Current Context
@@ -227,6 +231,7 @@ export function renderDecisionPrompts(evidencePack: EvidencePack) {
 - Manual squad configured: ${evidencePack.context.manualSquadConfigured}
 - Budget: £${DEFAULT_STARTING_BUDGET.toFixed(1)}
 - Squad structure: ${REQUIRED_SQUAD_COUNTS.GKP} GKP, ${REQUIRED_SQUAD_COUNTS.DEF} DEF, ${REQUIRED_SQUAD_COUNTS.MID} MID, ${REQUIRED_SQUAD_COUNTS.FWD} FWD
+- Fixture horizon: ${fixtureHorizonReport ? `available; swings ${swingTeams.join(", ") || "none"}` : "unavailable; use the legacy fixture ticker"}
 
 ## Agent Questions
 
@@ -253,6 +258,7 @@ export function renderDecisionPrompts(evidencePack: EvidencePack) {
 - packages/content/recommendations/gw-${evidencePack.context.gameweek}/evidence-report.md
 - packages/content/recommendations/gw-${evidencePack.context.gameweek}/team-news-report.md
 - packages/content/recommendations/gw-${evidencePack.context.gameweek}/fixture-ticker.md
+- packages/content/recommendations/gw-${evidencePack.context.gameweek}/fixture-horizon-report.md
 - packages/content/context/fixtures.md
 - packages/content/context/team-news.md
 - packages/content/context/set-pieces.md
