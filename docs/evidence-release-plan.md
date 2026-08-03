@@ -108,6 +108,23 @@ Current limitations:
 - Predicted-lineup confidence is currently `unavailable` in the normalized report.
 - Historical minutes do not confirm current tactical role or starter status.
 
+## Current-Role Evidence
+
+Implemented:
+
+- `current-role-report.json` and `current-role-report.md`.
+- Configurable adapters for official availability, explicit manager confirmation, official club evidence, preseason lineups, predicted lineups, and reviewed manual evidence.
+- Independent dimensions for historical availability, historical starts, current manager preference, preseason start rate, predicted-lineup consensus, injury status, squad competition, substitution patterns, and set-piece roles.
+- Reliability hierarchy with 14-day current and 60-day historical half-life decay.
+- Reviewed manual overrides, visible source disagreement, and visible missing or failed adapters.
+- A historical-only confidence cap of `0.45`; historical evidence alone cannot produce `READY`.
+- Transactional refresh, recommendation prompts, aggregate evidence, and squad-risk integration.
+
+Current limitations:
+
+- Non-FPL adapters require reviewed normalized records; public page text is not silently mapped to player roles.
+- Current-role status is evidence for the coding agent and does not select a player or starting XI.
+
 ## Public Evidence Capture
 
 Implemented:
@@ -186,6 +203,7 @@ pnpm set-pieces -- --gw <n>
 pnpm team-news -- --gw <n>
 pnpm fixtures -- --gw <n> --horizon <n>
 pnpm minutes -- --gw <n>
+pnpm roles -- --gw <n> [--input <reviewed-evidence.json>]
 pnpm public-evidence -- --gw <n>
 pnpm fixtures -- --gw <n> --horizon <n>
 pnpm recommend -- --gw <n|auto>

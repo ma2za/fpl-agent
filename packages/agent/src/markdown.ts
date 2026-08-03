@@ -212,6 +212,7 @@ Manual execution required: ${recommendation.manualExecutionRequired}
 - projection-summary.md
 - fixture-ticker.md
 - minutes-risk-report.md
+- current-role-report.md
 - public-evidence-report.md
 - manual-checklist.md
 

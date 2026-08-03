@@ -2,6 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   buildSquadRiskReport,
+  CurrentRoleReportSchema,
   evaluateWeeklyStrategyQuality,
   FixtureHorizonReportSchema,
   FixtureTickerSchema,
@@ -20,6 +21,7 @@ import {
   verifyRecommendation,
   WeeklyStrategySchema,
   type FixtureTicker,
+  type CurrentRoleReport,
   type FixtureHorizonReport,
   type MinutesRiskReport,
   type OddsReport,
@@ -168,6 +170,10 @@ async function main() {
       path.join(outputDir, "public-evidence-report.json"),
       PublicEvidenceReportSchema
     );
+    const currentRoleReport: CurrentRoleReport | null = await readArtifactFileIfExists(
+      path.join(outputDir, "current-role-report.json"),
+      CurrentRoleReportSchema
+    );
     const riskReport: SquadRiskReport = buildSquadRiskReport({
       generatedAt: new Date().toISOString(),
       recommendation,
@@ -179,6 +185,7 @@ async function main() {
       oddsReport,
       minutesRiskReport,
       publicEvidenceReport,
+      currentRoleReport,
       contextNotes: {
         teamNews: await readTextIfExists(path.join("packages", "content", "context", "team-news.md")) ?? "",
         setPieces: await readTextIfExists(path.join("packages", "content", "context", "set-pieces.md")) ?? "",

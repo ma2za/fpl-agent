@@ -272,6 +272,7 @@ export function renderDecisionPrompts(evidencePack: EvidencePack, fixtureHorizon
 - Does this week require structure-building, information gathering, or fixture attack?
 - Which premium captain structure is best for the current fixtures?
 - Which cheap players are real starters rather than projection artifacts?
+- Which players have current-role evidence beyond historical minutes, and where do sources disagree?
 - Which clubs are worth double or triple exposure?
 - Which picks depend on set pieces or penalties?
 - Which players should be avoided because of minutes, injury, transfer, or rotation risk?

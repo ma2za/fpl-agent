@@ -1,6 +1,6 @@
 {
   "name": "fpl-agent",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "private": true,
   "license": "Apache-2.0",
   "packageManager": "pnpm@11.9.0",
@@ -23,6 +23,7 @@
     "team-news": "tsx scripts/generate-team-news.ts",
     "fixtures": "tsx scripts/generate-fixture-ticker.ts",
     "minutes": "tsx scripts/generate-minutes-risk.ts",
+    "roles": "tsx scripts/generate-current-role.ts",
     "public-evidence": "tsx scripts/generate-public-evidence.ts",
     "recommend": "tsx scripts/generate-recommendation.ts",
     "compare:squads": "tsx scripts/compare-squads.ts",

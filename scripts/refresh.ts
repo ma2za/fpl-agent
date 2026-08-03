@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   EvidenceReportSchema,
+  CurrentRoleReportSchema,
   FixtureHorizonReportSchema,
   FixtureTickerSchema,
   MinutesRiskReportSchema,
@@ -15,6 +16,7 @@ import {
   StrategyEvidenceSchema,
   TeamNewsReportSchema,
   buildFixtureHorizonReport,
+  buildCurrentRoleReport,
   buildFixtureTicker,
   buildMinutesRiskReport,
   buildSetPieceReport,
@@ -23,6 +25,7 @@ import {
   readArtifactFile,
   readArtifactFileIfExists,
   renderEvidenceReportMarkdown,
+  renderCurrentRoleReportMarkdown,
   renderFixtureHorizonMarkdown,
   renderFixtureTickerMarkdown,
   renderMinutesRiskReportMarkdown,
@@ -46,7 +49,9 @@ import {
   type NormalizedPlayer
 } from "../packages/fpl-api/src";
 import { CURRENT_SQUAD } from "../config/squad";
+import { CURRENT_ROLE_ADAPTERS } from "../config/current-role";
 import { buildLocalEvidenceReport } from "./evidence-sources";
+import { currentRoleAdapterInputs } from "./current-role-evidence";
 import { loadFixtureExposures } from "./fixture-horizon-evidence";
 import { generateOddsEvidence } from "./generate-odds";
 import {
@@ -482,6 +487,27 @@ function buildStages(input: {
           benchOrder: selected.benchOrder
         });
         await writeReport(outputDir, "minutes-risk-report.json", "minutes-risk-report.md", report, renderMinutesRiskReportMarkdown(report));
+      }
+    },
+    {
+      id: "current-role",
+      required: true,
+      phase: 2,
+      artifacts: [artifact("current-role-report.json", CurrentRoleReportSchema), artifact("current-role-report.md")],
+      run: async ({ outputDir }) => {
+        const selected = await selectedPlayerState(outputDir);
+        const report = buildCurrentRoleReport({
+          generatedAt: input.generatedAt,
+          gameweek: input.gameweek,
+          players: input.data.bootstrap.elements,
+          adapters: currentRoleAdapterInputs(
+            CURRENT_ROLE_ADAPTERS,
+            input.data.bootstrap.elements,
+            input.generatedAt
+          ),
+          selectedPlayerIds: selected.selectedPlayerIds
+        });
+        await writeReport(outputDir, "current-role-report.json", "current-role-report.md", report, renderCurrentRoleReportMarkdown(report));
       }
     },
     {

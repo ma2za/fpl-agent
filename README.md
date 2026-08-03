@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.8`
+Version: `0.0.9`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -73,6 +73,7 @@ pnpm odds -- --gw 1
 pnpm set-pieces -- --gw 1
 pnpm team-news -- --gw 1
 pnpm minutes -- --gw 1
+pnpm roles -- --gw 1
 pnpm public-evidence -- --gw 1
 pnpm fixtures -- --gw 1 --horizon 6
 pnpm recommend -- --gw auto
@@ -92,7 +93,7 @@ pnpm postmortem -- --gw 1
 
 `pnpm fetch:pl-fixtures -- --gw {n} --horizon {n}` fetches the official Premier League fixture release and writes current-season fixture evidence. It does not provide FPL prices, player IDs, deadlines, or availability.
 
-`pnpm evidence -- --gw {n}` writes a compact evidence freshness report for current FPL data, fixtures, team news, set pieces, odds, minutes evidence, and public browser evidence.
+`pnpm evidence -- --gw {n}` writes a compact evidence freshness report for current FPL data, fixtures, team news, set pieces, odds, historical minutes, current roles, and public browser evidence.
 
 `pnpm odds -- --gw {n}` fetches the public Football-Data fixtures CSV and writes an odds coverage report. It records match-level win/draw/loss and over/under evidence when rows are available, but it does not provide player anytime-scorer odds or direct clean-sheet markets.
 
@@ -101,6 +102,8 @@ pnpm postmortem -- --gw 1
 `pnpm team-news -- --gw {n}` writes an automated team-news report from public FPL availability fields. It does not scrape news sites or select players.
 
 `pnpm minutes -- --gw {n}` writes a minutes risk report from public FPL historical minutes and availability fields. Predicted-lineup coverage is marked unavailable until a public source adapter is added.
+
+`pnpm roles -- --gw {n}` writes current-role evidence separately from historical minutes. Configurable adapters cover official availability, explicit manager confirmation, official club evidence, preseason lineups, predicted lineups, and reviewed manual evidence. Missing and failed adapters remain visible, and historical-only evidence cannot produce `READY`.
 
 `pnpm public-evidence -- --gw {n}` captures read-only public evidence pages for fixtures, player news, official Premier League Scout articles, predicted lineups, and price-risk context. It uses Playwright when available and otherwise falls back to plain public HTTP. It does not log in, persist cookies, click FPL management controls, or select players.
 
@@ -125,6 +128,7 @@ Manual squad config is the default source of truth.
 - `config/squad.ts` contains the editable squad shape.
 - `config/manager.ts` documents optional public manager ID support for later milestones.
 - `config/risk-profile.ts` stores risk preferences for future recommendation logic.
+- `config/current-role.ts` configures public and reviewed current-role evidence adapters.
 
 No private FPL credentials belong in this repo.
 

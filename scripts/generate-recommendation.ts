@@ -185,6 +185,8 @@ The coding agent must read the evidence files, reason from current public inform
 - evidence-report.md
 - team-news-report.json
 - team-news-report.md
+- current-role-report.json
+- current-role-report.md
 - player-pool.json
 - projections.json
 - projection-summary.md

@@ -35,6 +35,7 @@ export async function buildLocalEvidenceReport(input: {
   const setPiecesReportPath = path.join(outputDir, "set-pieces-report.json");
   const oddsReportPath = path.join(outputDir, "odds-report.json");
   const minutesRiskReportPath = path.join(outputDir, "minutes-risk-report.json");
+  const currentRoleReportPath = path.join(outputDir, "current-role-report.json");
   const publicEvidenceReportPath = path.join(outputDir, "public-evidence-report.json");
   const sources: EvidenceSourceInput[] = [
     {
@@ -127,6 +128,17 @@ export async function buildLocalEvidenceReport(input: {
       confidence: "medium",
       missingMessage: "Public browser evidence is missing.",
       staleMessage: "Public browser evidence is stale."
+    },
+    {
+      id: "current-role",
+      label: "Current-role evidence",
+      provider: "Configurable public and reviewed role adapters",
+      reportPath: path.join(reportDir, "current-role-report.json"),
+      fetchedAt: await fileTimestamp(currentRoleReportPath, input.artifactTimestamp),
+      maxAgeHours: 24,
+      confidence: "medium",
+      missingMessage: "Current-role evidence is missing.",
+      staleMessage: "Current-role evidence is stale."
     }
   ];
 

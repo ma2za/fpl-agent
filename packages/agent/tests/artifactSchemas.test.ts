@@ -109,6 +109,7 @@ describe("artifact schemas", () => {
       "agentDecision",
       "candidate",
       "claimLedger",
+      "currentRoleReport",
       "evidenceReport",
       "fixtureHorizonReport",
       "fixtureTicker",

@@ -24,7 +24,7 @@ public FPL API and local config
 cached raw data
 normalized data
 rules validation
-deterministic evidence generation
+deterministic evidence generation with separate historical and current-role signals
 manual context notes
 schema-v2 coding-agent-authored decision with claim lineage and manual checklist
 legality and quality verification

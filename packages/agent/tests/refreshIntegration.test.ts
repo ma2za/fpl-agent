@@ -98,6 +98,10 @@ describe("refresh command integration", () => {
     )).status).toBe("success");
     expect(await readFile(path.join(recommendationsDir, "gw-1", "team-news-report.json"), "utf8"))
       .not.toContain(".refresh-");
+    expect(JSON.parse(await readFile(
+      path.join(recommendationsDir, "gw-1", "current-role-report.json"),
+      "utf8"
+    ))).toMatchObject({ policy: { historicalOnlyConfidenceCap: 0.45 } });
     const horizon = JSON.parse(await readFile(
       path.join(recommendationsDir, "gw-1", "fixture-horizon-report.json"),
       "utf8"

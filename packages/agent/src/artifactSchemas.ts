@@ -841,6 +841,73 @@ export const MinutesRiskReportSchema = looseObject({
   }))
 });
 
+const roleAdapterKind = z.enum([
+  "official_availability", "manager_confirmation", "official_club", "preseason_lineup", "predicted_lineup", "reviewed_manual"
+]);
+const roleDimension = z.enum([
+  "historical_availability", "historical_starts", "current_manager_preference", "preseason_start_rate",
+  "predicted_lineup_consensus", "injury_status", "squad_competition", "substitution_patterns", "set_piece_roles"
+]);
+const roleSignal = z.enum(["supports_start", "opposes_start", "neutral"]);
+const normalizedRoleEvidence = looseObject({
+  playerId: z.number(),
+  dimension: roleDimension,
+  signal: roleSignal,
+  value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+  observedAt: z.string(),
+  override: z.boolean().optional(),
+  note: z.string(),
+  sourceId: z.string(),
+  provider: z.string(),
+  sourceKind: z.union([roleAdapterKind, z.enum(["previous_season_starts", "historical_minutes"])]),
+  baseWeight: z.number(),
+  effectiveWeight: z.number(),
+  ageDays: z.number()
+});
+
+export const CurrentRoleReportSchema = looseObject({
+  schemaVersion: z.literal(1),
+  generatedAt: z.string(),
+  gameweek: z.number(),
+  policy: looseObject({
+    currentHalfLifeDays: z.literal(14),
+    historicalHalfLifeDays: z.literal(60),
+    historicalOnlyConfidenceCap: z.literal(0.45)
+  }),
+  adapters: z.array(looseObject({
+    id: z.string(),
+    kind: roleAdapterKind,
+    provider: z.string(),
+    status: z.enum(["loaded", "missing", "failed", "disabled"]),
+    recordCount: z.number(),
+    message: z.string()
+  })),
+  summary: looseObject({
+    playersReviewed: z.number(),
+    selectedPlayers: z.number(),
+    ready: z.number(),
+    caution: z.number(),
+    insufficient: z.number(),
+    disagreements: z.number(),
+    missingAdapters: z.number(),
+    failedAdapters: z.number()
+  }),
+  items: z.array(looseObject({
+    playerId: z.number(),
+    name: z.string(),
+    selected: z.boolean(),
+    status: z.enum(["READY", "CAUTION", "INSUFFICIENT"]),
+    supportScore: z.number(),
+    confidence: z.number(),
+    currentEvidencePresent: z.boolean(),
+    manualOverride: roleSignal.exclude(["neutral"]).nullable(),
+    disagreement: z.boolean(),
+    dimensions: z.record(roleDimension, z.array(normalizedRoleEvidence)),
+    warnings: stringArray
+  })),
+  warnings: stringArray
+});
+
 export const PlayerProjectionArraySchema = z.array(playerProjection);
 
 const variantEvidenceSummary = looseObject({
@@ -926,6 +993,7 @@ export const ArtifactSchemas = {
   agentDecision: AgentDecisionArtifactSchema,
   candidate: CandidateArtifactSchema,
   claimLedger: ClaimLedgerSchema,
+  currentRoleReport: CurrentRoleReportSchema,
   evidenceReport: EvidenceReportSchema,
   fixtureHorizonReport: FixtureHorizonReportSchema,
   fixtureTicker: FixtureTickerSchema,

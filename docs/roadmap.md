@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present in the repository and the planned releases from `0.0.8` through `0.0.16`.
+This document records the capabilities present in the repository and the planned releases from `0.0.9` through `0.0.16`.
 
 ## Permanent Decision Boundary
 
@@ -12,7 +12,7 @@ This document records the capabilities present in the repository and the planned
 - Tool-produced evidence and candidate artifacts must remain structurally separate from agent-authored decision artifacts.
 - Verification may reject illegal or unsupported decisions, but it must never replace them or choose an alternative.
 
-## Current State: 0.0.8
+## Current State: 0.0.9
 
 ### Workspace
 
@@ -92,7 +92,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Operational State
 
-- The locked local test suite passes 32 test files and 256 tests at the `0.0.8` status update.
+- The locked local test suite passes 33 test files and 261 tests at the `0.0.9` status update.
 - Evidence commands write local files for review.
 - Final squad, transfer, captaincy, bench, and chip decisions remain coding-agent-authored.
 - The human manager performs every change in the official FPL interface.
@@ -115,6 +115,15 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 - Source independence counted by originating publisher and claim.
 - Required fact and assumption dependencies for every referenced agent decision.
 - Legacy recommendation adaptation without invented provenance.
+
+### Current-Role Evidence
+
+- Configurable official availability, manager confirmation, club, preseason, predicted-lineup, and reviewed manual adapters.
+- Independent normalization of nine historical and current-role evidence dimensions.
+- Explicit reliability hierarchy and recency decay for current and historical evidence.
+- Reviewed manual override precedence and visible source disagreement.
+- Missing and failed adapter coverage retained as first-class output.
+- Historical-only confidence capped at `0.45` and prohibited from producing `READY`.
 
 ## Delivered Releases
 
@@ -155,8 +164,6 @@ Release gate:
 
 Status: delivered.
 
-## Planned Releases
-
 ### 0.0.9: Current-Role Evidence
 
 Stop treating historical minutes as current-role certainty.
@@ -171,6 +178,10 @@ Release gate:
 
 - Test evidence precedence, recency decay, manual overrides, source disagreement, and missing-source behavior.
 - Verify that historical-only evidence cannot produce a current-role `READY` result.
+
+Status: delivered.
+
+## Planned Releases
 
 ### 0.0.10: Probabilistic Projection Tools
 

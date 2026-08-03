@@ -1,6 +1,7 @@
 import { DEFAULT_STARTING_BUDGET, MAX_PLAYERS_PER_CLUB } from "../../rules/src";
 import type {
   EvidenceGap,
+  CurrentRoleReport,
   FixtureHorizonReport,
   FixtureTicker,
   MinutesRiskReport,
@@ -28,6 +29,7 @@ type BuildSquadRiskReportInput = {
   oddsReport?: OddsReport | null;
   minutesRiskReport?: MinutesRiskReport | null;
   publicEvidenceReport?: PublicEvidenceReport | null;
+  currentRoleReport?: CurrentRoleReport | null;
   contextNotes: {
     teamNews: string;
     setPieces: string;
@@ -229,6 +231,31 @@ function buildPlayerRisks(input: BuildSquadRiskReportInput) {
       benchPosition: item.benchPosition,
       reasons: [reason]
     });
+  }
+
+  for (const item of input.currentRoleReport?.items ?? []) {
+    if (!item.selected || item.status === "READY") continue;
+    const existing = risks.find((risk) => risk.playerId === item.playerId);
+    const starting = startingIds.has(item.playerId);
+    const level: RiskLevel = item.status === "INSUFFICIENT" ? (starting ? "high" : "medium") : (starting ? "medium" : "low");
+    const reason = `Current-role evidence is ${item.status}: confidence ${item.confidence.toFixed(2)}, support ${item.supportScore.toFixed(2)}.`;
+    if (existing) {
+      existing.reasons.push(reason);
+      existing.level = highestLevel([existing.level, level]);
+    } else {
+      const player = input.recommendation.squadBefore.players.find((candidate) => candidate.id === item.playerId);
+      if (!player) continue;
+      risks.push({
+        playerId: item.playerId,
+        name: item.name,
+        position: player.position,
+        teamId: player.teamId,
+        level,
+        starting,
+        benchPosition: benchPosition(input.recommendation, item.playerId),
+        reasons: [reason]
+      });
+    }
   }
 
   return risks.sort((a, b) => levelScore(b.level) - levelScore(a.level) || a.playerId - b.playerId);

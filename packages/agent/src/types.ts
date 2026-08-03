@@ -889,3 +889,103 @@ export type MinutesRiskReport = {
   items: MinutesRiskItem[];
   warnings: string[];
 };
+
+export type RoleEvidenceAdapterKind =
+  | "official_availability"
+  | "manager_confirmation"
+  | "official_club"
+  | "preseason_lineup"
+  | "predicted_lineup"
+  | "reviewed_manual";
+
+export type RoleEvidenceDimension =
+  | "historical_availability"
+  | "historical_starts"
+  | "current_manager_preference"
+  | "preseason_start_rate"
+  | "predicted_lineup_consensus"
+  | "injury_status"
+  | "squad_competition"
+  | "substitution_patterns"
+  | "set_piece_roles";
+
+export type RoleEvidenceAdapterConfig = {
+  id: string;
+  kind: RoleEvidenceAdapterKind;
+  provider: string;
+  url: string | null;
+  enabled: boolean;
+  reliability: number;
+};
+
+export type RoleEvidenceRecord = {
+  playerId: number;
+  dimension: RoleEvidenceDimension;
+  signal: "supports_start" | "opposes_start" | "neutral";
+  value: string | number | boolean | null;
+  observedAt: string;
+  override?: boolean;
+  note: string;
+};
+
+export type RoleEvidenceAdapterInput = {
+  config: RoleEvidenceAdapterConfig;
+  records?: RoleEvidenceRecord[];
+  error?: string;
+};
+
+export type NormalizedRoleEvidence = RoleEvidenceRecord & {
+  sourceId: string;
+  provider: string;
+  sourceKind: RoleEvidenceAdapterKind | "previous_season_starts" | "historical_minutes";
+  baseWeight: number;
+  effectiveWeight: number;
+  ageDays: number;
+};
+
+export type CurrentRoleStatus = "READY" | "CAUTION" | "INSUFFICIENT";
+
+export type CurrentRoleItem = {
+  playerId: number;
+  name: string;
+  selected: boolean;
+  status: CurrentRoleStatus;
+  supportScore: number;
+  confidence: number;
+  currentEvidencePresent: boolean;
+  manualOverride: "supports_start" | "opposes_start" | null;
+  disagreement: boolean;
+  dimensions: Record<RoleEvidenceDimension, NormalizedRoleEvidence[]>;
+  warnings: string[];
+};
+
+export type CurrentRoleReport = {
+  schemaVersion: 1;
+  generatedAt: string;
+  gameweek: number;
+  policy: {
+    currentHalfLifeDays: 14;
+    historicalHalfLifeDays: 60;
+    historicalOnlyConfidenceCap: 0.45;
+  };
+  adapters: Array<{
+    id: string;
+    kind: RoleEvidenceAdapterKind;
+    provider: string;
+    status: "loaded" | "missing" | "failed" | "disabled";
+    recordCount: number;
+    message: string;
+  }>;
+  summary: {
+    playersReviewed: number;
+    selectedPlayers: number;
+    ready: number;
+    caution: number;
+    insufficient: number;
+    disagreements: number;
+    missingAdapters: number;
+    failedAdapters: number;
+  };
+  items: CurrentRoleItem[];
+  warnings: string[];
+};
