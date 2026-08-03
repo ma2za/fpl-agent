@@ -1,4 +1,4 @@
-import type { EvidenceConfidence, EvidenceSource, MinutesRiskItem, MinutesRiskLevel, MinutesRiskReport } from "./types";
+import type { EvidenceConfidence, EvidenceSource, MinutesRiskItem, MinutesRiskLevel, MinutesRiskReport, RoleEvidenceRecord } from "./types";
 
 type BootstrapPlayer = {
   id: number;
@@ -33,6 +33,7 @@ type BuildMinutesRiskReportInput = {
   selectedPlayerIds?: number[];
   startingPlayerIds?: number[];
   benchOrder?: number[];
+  predictedLineups?: RoleEvidenceRecord[];
 };
 
 function playerName(player: BootstrapPlayer) {
@@ -55,9 +56,18 @@ function riskLevel(input: {
   minutes: number | null;
   status: string;
   chanceOfPlayingNextRound: number | null;
+  predictedLineupSignal?: RoleEvidenceRecord["signal"];
 }): MinutesRiskLevel {
   if (input.status !== "a") {
     return input.chanceOfPlayingNextRound !== null && input.chanceOfPlayingNextRound >= 75 ? "watch" : "risky";
+  }
+
+  if (input.predictedLineupSignal === "opposes_start") {
+    return "risky";
+  }
+
+  if (input.predictedLineupSignal === "supports_start" && (input.minutes === null || input.minutes === 0)) {
+    return "watch";
   }
 
   if (input.minutes === null) {
@@ -84,8 +94,15 @@ function reasons(input: {
   status: string;
   chanceOfPlayingNextRound: number | null;
   news: string;
+  predictedLineup?: RoleEvidenceRecord;
 }) {
-  const result: string[] = ["Predicted-lineup source is not connected; using historical FPL minutes and availability only."];
+  const result: string[] = [];
+
+  if (input.predictedLineup) {
+    result.push(input.predictedLineup.note);
+  } else {
+    result.push("No coding-agent-reviewed predicted-lineup evidence is available for this player.");
+  }
 
   if (input.status !== "a") {
     result.push(`FPL availability status is ${input.status}.`);
@@ -120,8 +137,14 @@ function benchPosition(benchOrder: number[], playerId: number) {
   return index === -1 ? null : index;
 }
 
+function lineupConfidence(record: RoleEvidenceRecord | undefined): EvidenceConfidence | "unavailable" {
+  if (!record) return "unavailable";
+  const score = Math.min(record.credibility?.score ?? 0.5, record.sourceReliability ?? 1);
+  return score >= 0.85 ? "high" : score >= 0.6 ? "medium" : "low";
+}
+
 function summary(item: MinutesRiskItem) {
-  return `${item.webName}: ${item.riskLevel} minutes risk, ${item.historicalConfidence} historical confidence, predicted-lineup confidence unavailable.`;
+  return `${item.webName}: ${item.riskLevel} minutes risk, ${item.historicalConfidence} historical confidence, ${item.predictedLineupConfidence} predicted-lineup confidence.`;
 }
 
 export function buildMinutesRiskReport(input: BuildMinutesRiskReportInput): MinutesRiskReport {
@@ -130,9 +153,15 @@ export function buildMinutesRiskReport(input: BuildMinutesRiskReportInput): Minu
   const selectedIds = new Set(input.selectedPlayerIds ?? []);
   const startingIds = new Set(input.startingPlayerIds ?? []);
   const benchOrder = input.benchOrder ?? [];
+  const predictedLineupByPlayer = new Map(
+    (input.predictedLineups ?? [])
+      .filter((record) => record.dimension === "predicted_lineup_consensus")
+      .map((record) => [record.playerId, record])
+  );
   const items = input.players.map((player) => {
     const minutes = typeof player.minutes === "number" ? player.minutes : null;
     const chanceOfPlayingNextRound = player.chance_of_playing_next_round ?? null;
+    const predictedLineup = predictedLineupByPlayer.get(player.id);
     const item: MinutesRiskItem = {
       playerId: player.id,
       name: playerName(player),
@@ -146,17 +175,19 @@ export function buildMinutesRiskReport(input: BuildMinutesRiskReportInput): Minu
       starting: startingIds.has(player.id),
       benchPosition: benchPosition(benchOrder, player.id),
       historicalConfidence: historicalConfidence(minutes, player.status),
-      predictedLineupConfidence: "unavailable",
+      predictedLineupConfidence: lineupConfidence(predictedLineup),
       riskLevel: riskLevel({
         minutes,
         status: player.status,
-        chanceOfPlayingNextRound
+        chanceOfPlayingNextRound,
+        predictedLineupSignal: predictedLineup?.signal
       }),
       reasons: reasons({
         minutes,
         status: player.status,
         chanceOfPlayingNextRound,
-        news: player.news ?? ""
+        news: player.news ?? "",
+        predictedLineup
       }),
       summary: ""
     };
@@ -180,7 +211,9 @@ export function buildMinutesRiskReport(input: BuildMinutesRiskReportInput): Minu
   const starterWatchOrWorse = selectedItems.filter((item) => item.starting && item.riskLevel !== "secure");
   const selectedWatchOrWorse = selectedItems.filter((item) => item.riskLevel !== "secure");
   const warnings = [
-    "Predicted-lineup evidence is unavailable; minutes risk uses historical FPL minutes and availability only.",
+    ...(predictedLineupByPlayer.size === 0
+      ? ["Predicted-lineup evidence is unavailable; minutes risk uses historical FPL minutes and availability only."]
+      : []),
     ...starterWatchOrWorse.map((item) => `Selected starter ${item.webName} has ${item.riskLevel} minutes risk.`),
     ...selectedWatchOrWorse
       .filter((item) => !item.starting)

@@ -132,7 +132,7 @@ export async function buildLocalEvidenceReport(input: {
     {
       id: "current-role",
       label: "Current-role evidence",
-      provider: "Configurable public and reviewed role adapters",
+      provider: "Configurable public and coding-agent-reviewed role adapters",
       reportPath: path.join(reportDir, "current-role-report.json"),
       fetchedAt: await fileTimestamp(currentRoleReportPath, input.artifactTimestamp),
       maxAgeHours: 24,

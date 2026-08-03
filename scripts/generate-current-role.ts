@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
+  AgentRoleEvidenceInputSchema,
   RecommendationArtifactSchema,
   buildCurrentRoleReport,
   isWeeklyRecommendationArtifact,
@@ -8,7 +9,7 @@ import {
   renderCurrentRoleReportMarkdown
 } from "../packages/agent/src";
 import { CURRENT_ROLE_ADAPTERS } from "../config/current-role";
-import { currentRoleAdapterInputs, type ReviewedRoleEvidenceInput } from "./current-role-evidence";
+import { currentRoleAdapterInputs } from "./current-role-evidence";
 
 function argValue(name: string) {
   const index = process.argv.indexOf(name);
@@ -31,13 +32,13 @@ async function readJsonIfExists<T>(filePath: string) {
 async function main() {
   const gameweek = Number(argValue("--gw") ?? 1);
   if (!Number.isInteger(gameweek) || gameweek < 1) {
-    console.error("Usage: pnpm roles -- --gw <gameweek> [--input <reviewed-evidence.json>]");
+    console.error("Usage: pnpm roles -- --gw <gameweek> [--input <agent-role-evidence.json>]");
     process.exitCode = 1;
     return;
   }
 
   const outputDir = path.join("packages", "content", "recommendations", `gw-${gameweek}`);
-  const inputPath = argValue("--input") ?? path.join("packages", "content", "context", "current-role-evidence.json");
+  const inputPath = argValue("--input") ?? path.join("packages", "content", "context", "agent-role-evidence.json");
   const bootstrap = await readJson<{ elements: Parameters<typeof buildCurrentRoleReport>[0]["players"] }>(
     path.join("data", "raw", "bootstrap-static.json")
   );
@@ -49,12 +50,13 @@ async function main() {
     ? recommendationArtifact
     : null;
   const generatedAt = new Date().toISOString();
-  const reviewed = await readJsonIfExists<ReviewedRoleEvidenceInput>(inputPath);
+  const input = await readJsonIfExists<unknown>(inputPath);
+  const agentEvidence = input === null ? null : AgentRoleEvidenceInputSchema.parse(input);
   const report = buildCurrentRoleReport({
     generatedAt,
     gameweek,
     players: bootstrap.elements,
-    adapters: currentRoleAdapterInputs(CURRENT_ROLE_ADAPTERS, bootstrap.elements, generatedAt, reviewed),
+    adapters: currentRoleAdapterInputs(CURRENT_ROLE_ADAPTERS, bootstrap.elements, generatedAt, agentEvidence),
     selectedPlayerIds: recommendation?.squadBefore.players.map((player) => player.id) ?? []
   });
 

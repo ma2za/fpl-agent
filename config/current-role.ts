@@ -12,7 +12,7 @@ export const CURRENT_ROLE_ADAPTERS: RoleEvidenceAdapterConfig[] = [
   {
     id: "manager-confirmation",
     kind: "manager_confirmation",
-    provider: "Reviewed explicit manager confirmation",
+    provider: "Coding-agent-reviewed manager confirmation",
     url: null,
     enabled: true,
     reliability: 1
@@ -20,7 +20,7 @@ export const CURRENT_ROLE_ADAPTERS: RoleEvidenceAdapterConfig[] = [
   {
     id: "official-club-role",
     kind: "official_club",
-    provider: "Reviewed official club role evidence",
+    provider: "Coding-agent-reviewed official club role evidence",
     url: null,
     enabled: true,
     reliability: 1
@@ -28,7 +28,7 @@ export const CURRENT_ROLE_ADAPTERS: RoleEvidenceAdapterConfig[] = [
   {
     id: "preseason-lineups",
     kind: "preseason_lineup",
-    provider: "Reviewed public preseason lineups",
+    provider: "Coding-agent-reviewed public preseason lineups",
     url: null,
     enabled: true,
     reliability: 1
@@ -36,7 +36,7 @@ export const CURRENT_ROLE_ADAPTERS: RoleEvidenceAdapterConfig[] = [
   {
     id: "predicted-lineups",
     kind: "predicted_lineup",
-    provider: "Reviewed public predicted-lineup sources",
+    provider: "Coding-agent-reviewed public predicted-lineup sources",
     url: null,
     enabled: true,
     reliability: 1
@@ -44,7 +44,7 @@ export const CURRENT_ROLE_ADAPTERS: RoleEvidenceAdapterConfig[] = [
   {
     id: "manual-review",
     kind: "reviewed_manual",
-    provider: "Reviewed manual evidence",
+    provider: "Coding-agent evidence assessment",
     url: null,
     enabled: true,
     reliability: 1

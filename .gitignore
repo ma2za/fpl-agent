@@ -242,6 +242,7 @@ data/cache/**/*.json
 # Local season workspace
 docs/agent-handoff.md
 packages/content/context/*.md
+packages/content/context/*.json
 packages/content/postmortems/*
 packages/content/recommendations/gw-*/
 packages/content/strategy/season-plan.md

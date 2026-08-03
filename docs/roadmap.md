@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present in the repository and the planned releases from `0.0.9` through `0.0.16`.
+This document records the capabilities present through `0.0.9` and the dependency-ordered plan from `0.0.10` through `0.0.18`.
 
 ## Permanent Decision Boundary
 
@@ -118,12 +118,19 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Current-Role Evidence
 
-- Configurable official availability, manager confirmation, club, preseason, predicted-lineup, and reviewed manual adapters.
+- Configurable official availability, manager confirmation, club, preseason, predicted-lineup, and coding-agent-reviewed evidence adapters.
 - Independent normalization of nine historical and current-role evidence dimensions.
 - Explicit reliability hierarchy and recency decay for current and historical evidence.
-- Reviewed manual override precedence and visible source disagreement.
+- Coding-agent evidence override precedence and visible source disagreement.
 - Missing and failed adapter coverage retained as first-class output.
 - Historical-only confidence capped at `0.45` and prohibited from producing `READY`.
+
+Current limitation:
+
+- Most players still lack independent current-role evidence beyond official availability and historical FPL data.
+- Generated current-role reports expose that gap, but recommendation projections do not yet propagate it numerically.
+- Root provenance for club statements, press conferences, preseason lineups, predicted lineups, injuries, transfers, and odds is not yet complete enough to support strong role-security claims.
+- Historical minutes remain a fallback input and must not be described as current-role confirmation.
 
 ## Delivered Releases
 
@@ -168,7 +175,7 @@ Status: delivered.
 
 Stop treating historical minutes as current-role certainty.
 
-- Add configurable public adapters for official availability, official club or manager evidence, preseason lineups, public predicted-lineup sources, and reviewed manual evidence.
+- Add configurable public adapters for official availability, official club or manager evidence, preseason lineups, public predicted-lineup sources, and coding-agent-reviewed evidence.
 - Normalize historical availability, historical starts, current manager preference, preseason start rate, predicted-lineup consensus, injury status, squad competition, substitution patterns, and set-piece roles independently.
 - Apply the evidence hierarchy from current confirmation through historical minutes.
 - Prevent raw historical minutes from producing high current-role confidence by themselves.
@@ -183,137 +190,334 @@ Status: delivered.
 
 ## Planned Releases
 
-### 0.0.10: Probabilistic Projection Tools
+### 0.0.10: Epistemic Integrity and Phase-Aware Language
 
-Propagate uncertainty into evidence without making selections.
+Prevent interpretations, forecasts, and generic prose from being presented as facts.
 
-- Produce start probability, appearance probability, substitute probability, expected minutes, conditional start points, conditional substitute points, role-adjusted expected points, median, p10, p90, and evidence confidence.
-- Use cached player history for empirical distributions when sufficient history exists.
-- Use explicitly labelled position-price cohorts for players without sufficient history.
-- Use deterministic seeds so identical inputs produce identical distributions.
-- Keep evidence confidence distinct from football outcome variance.
-- Replace clean squad totals with role-adjusted totals and probability ranges.
+Scope:
 
-Release gate:
+- Replace the ambiguous fact layer with strict claim kinds: `OBSERVATION`, `DERIVED_FACT`, `ASSUMPTION`, `FORECAST`, and `DECISION`.
+- Define `OBSERVATION` as a source-attributed statement or measurement and `DERIVED_FACT` as a deterministic transformation whose result does not depend on a football-strength or decision-utility assumption.
+- Require every `FORECAST` to name its model, model version, input facts, input assumptions, output value, uncertainty, and horizon.
+- Prohibit evaluative language such as `favorable`, `secure`, `safe`, `strong`, `weak`, `value`, or `acceptable` in observations and derived facts unless the source itself is being quoted and attributed.
+- Migrate claims such as “fixtures favor triple Manchester United” from facts to forecasts or decisions. Preserve “Manchester United play Hull and Ipswich in GW1-2” as an observation.
+- Add a phase-aware statement policy keyed by `DecisionContext.phase`.
+- Suppress preseason price-rise and transfer-hit warnings in `PRESEASON_DRAFT`; replace them with valid flexibility statements such as unavailable upgrade paths or price-tier constraints.
+- Add rationale lint rules for unsupported causality, ownership-as-safety, historical-minutes guarantees, and model interpretations phrased as external facts.
+- Emit structured validation findings with claim ID, phrase, rule, severity, and suggested claim kind. Do not rewrite agent-authored rationale automatically.
+- Extend the provenance graph so decisions can depend on forecasts as well as facts and assumptions.
 
-- Test probability invariants, deterministic output, distribution fallbacks, missing evidence, and conditional expectation arithmetic.
-- Verify that a lower-projection secure player can outrank an uncertain player within a requested tool objective without becoming the final recommendation.
+Artifacts:
 
-### 0.0.11: Evidence Readiness and Operational Triggers
-
-Make evidence gaps operational while leaving every decision to the agent.
-
-- Calculate `READY`, `CAUTION`, or `INSUFFICIENT` readiness for each player and decision area.
-- Let the agent assign `LOCK`, `LIKELY`, `PROVISIONAL`, or `AVOID` decision statuses.
-- Reject agent classifications that are unsupported by evidence readiness.
-- Block final verification when required rules, prices, or fixtures are stale, a starter is unsupported, or more than two intended starters have insufficient role evidence.
-- Emit a provisional workspace instead of a final recommendation when a final gate fails.
-- Replace prose-only change conditions with trigger evidence containing a metric, operator, threshold, affected decisions, candidate response set, re-analysis scope, and next check time.
-- Evaluate triggers on every refresh and at T-48h, T-24h, and T-2h when scheduled.
-- Require the agent to choose every trigger response.
+- `EpistemicClaim`
+- `ForecastClaim`
+- `LanguageValidationReport`
+- `PhaseStatementPolicy`
+- claim-ledger v3 migration adapter
 
 Release gate:
 
-- Test all readiness boundaries, gate failures, time-based checks, and trigger transitions.
-- Verify that no tool-generated trigger contains a chosen squad action.
+- Reject a derived fact containing “fixtures favor triple United.”
+- Accept the fixture observation, weaker-opponent assumption, attack forecast, and exposure decision when represented separately.
+- Reject “Bruno costs more because he anchors captaincy” as unsupported causal language.
+- Reject “historical minutes guarantee starts” and flag “ownership makes this pick safe.”
+- Suppress preseason price-change warnings while retaining post-deadline price-movement risks.
+- Preserve read compatibility for v1 and v2 claim ledgers without inventing missing epistemic types.
 
-### 0.0.12: Substitution-Aware Utility Tools
+### 0.0.11: Source-Grounded Current-Role Evidence
 
-Give the agent mathematically correct bench evidence.
+Make every current-role conclusion traceable to independent root evidence rather than to authoritative-sounding local reports.
 
-- Calculate role-adjusted starting-XI expected points plus expected legal automatic-substitution value.
-- Use deterministic dynamic programming over appearance states, positions, formations, and bench order.
-- Report first-, second-, and third-substitute marginal value separately.
-- Report bench cost, formation coverage, expected substitution value, and downside range.
-- Assume independent appearances initially and disclose that assumption in the artifact.
-- Avoid tool-authored labels such as strong bench, weak bench, or optimal bench.
+Scope:
+
+- Create source records for club press conferences, official injury updates, manager comments, preseason match lineups, substitution events, reliable predicted lineups, credible transfer reporting, and bookmaker markets.
+- Store the original publisher, canonical URL, publication time, retrieval time, captured excerpt or structured value, adapter version, and content hash for every observation.
+- Record a report as a transformation over root observations, never as an independent source.
+- Retain source disagreement by dimension instead of collapsing it into one role label.
+- Deduplicate syndicated stories and copied predicted lineups by publisher and underlying claim.
+- Add per-dimension confidence for `historicalRole`, `currentManagerPreference`, `preseasonUsage`, `predictedLineupConsensus`, `availability`, `squadCompetition`, `transferRisk`, and `setPieceRole`.
+- Separate evidence confidence from the estimated probability of starting.
+- Keep historical minutes as a fallback with a hard confidence cap and an explicit `historical_only` reason code.
+- Require selected-player evidence reports to show which dimensions have current sources, historical-only sources, conflicting sources, or no coverage.
+- Add adapter health metrics: configured, fetched, parsed, matched, stale, failed, and unsupported.
+
+Artifacts:
+
+- `RootEvidenceSource`
+- `RoleObservation`
+- `RoleDimensionAssessment`
+- `RoleEvidenceReport`
+- `AdapterCoverageReport`
 
 Release gate:
 
-- Match hand-calculated substitution cases, including several simultaneous nonappearances and formation restoration.
+- Trace every non-historical role claim to at least one root observation and publisher.
+- Prove that three local reports derived from one club statement count as one independent source.
+- Cap historical-only current-role confidence at `0.45`.
+- Preserve conflicting manager, lineup, and transfer evidence without silently averaging it away.
+- Mark missing predicted-lineup or odds coverage as missing rather than replacing it with historical confidence.
+
+### 0.0.12: Start Probability and Role-Adjusted Projections
+
+Make uncertain role evidence change the numbers used downstream.
+
+Scope:
+
+- Estimate mutually exclusive `startProbability`, `subAppearanceProbability`, and `noAppearanceProbability` values that sum to one.
+- Derive `appearanceProbability`, expected minutes, and a minutes distribution from those states.
+- Keep separate `historicalRoleConfidence`, `currentRoleEvidenceConfidence`, `availabilityConfidence`, and `overallEvidenceConfidence` fields.
+- Produce `rawProjectionIfStarting`, `conditionalSubstitutePoints`, `roleAdjustedProjection`, median, p10, p90, and projection standard deviation.
+- Define role-adjusted points as the probability-weighted expectation across start, substitute, and no-appearance states.
+- Use cached player history for empirical conditional distributions when sample coverage is sufficient.
+- Use explicitly labeled position, price, team-strength, and role cohorts when history is insufficient.
+- Apply deterministic seeds and persist model inputs so identical evidence produces identical distributions.
+- Keep evidence uncertainty distinct from football outcome variance and report both.
+- Prevent a high raw projection from bypassing a low start probability in tool objectives.
+
+Artifacts:
+
+- `AppearanceStateForecast`
+- `MinutesDistribution`
+- `ProbabilisticProjection`
+- `ProjectionUncertaintyReport`
+
+Release gate:
+
+- Test probability invariants, deterministic output, missing-evidence behavior, cohort fallbacks, and conditional expectation arithmetic.
+- Verify that reducing start probability lowers role-adjusted expected points without changing conditional-start points.
+- Verify that a lower raw-projection secure player can outrank an uncertain player under a role-adjusted objective.
+- Snapshot examples for an established starter, a transfer-threatened starter, a preseason challenger, and a new promoted player.
+
+### 0.0.13: Role-Adjusted Squad Utility and Robustness
+
+Quantify what raw expected points are exchanged for when the agent chooses a more reliable structure.
+
+Scope:
+
+- Calculate raw starting-XI projection, role-adjusted starting-XI projection, expected starters, expected appearances, and unresolved-role count.
+- Calculate p10, median, p90, standard deviation, and probability of falling below configurable squad-point thresholds.
+- Add legal automatic-substitution value using deterministic dynamic programming over appearance states, positions, formations, and bench order.
+- Report first-, second-, and third-substitute marginal values separately.
+- Report bench cost, formation coverage, expected autosub value, and downside protection without labeling a bench good or bad.
+- Compare every authored draft against its immediately preceding draft when available.
+- Show raw projection delta, role-adjusted delta, expected-starter delta, autosub delta, downside delta, and bench-cost delta.
+- Store metric vectors rather than collapsing robustness into an undisclosed overall score.
+- Disclose the initial independent-appearance assumption until correlated appearance scenarios are delivered in `0.0.15`.
+
+Artifacts:
+
+- `SquadUtilityVector`
+- `SubstitutionUtilityReport`
+- `DraftDeltaReport`
+- `RobustnessReport`
+
+Release gate:
+
+- Match hand-calculated substitution cases, including simultaneous nonappearances and formation restoration.
 - Verify that deeper bench slots receive value only through valid conditional substitution paths.
+- Reproduce an explicit old-versus-new comparison showing whether a raw projection sacrifice buys role-adjusted value or downside protection.
+- Reject prose claims such as “more robust” when no cited robustness metric supports them.
 
-### 0.0.13: Complete Counterfactual Generator
+### 0.0.14: Complete Counterfactual Optimization
 
-Give the agent optimized legal alternatives rather than abstract player comparisons.
+Generate the strongest legal version of every material structure before the agent compares them.
+
+Scope:
 
 - Add an exact deterministic branch-and-bound generator with budget, position, club, formation, availability, inclusion, exclusion, and structural constraints.
-- Generate complete legal candidates for requested premium combinations, no-premium structures, premium versus cheap defence, bench-depth structures, and agent-supplied constraints.
-- Optimize every scenario independently for GW1, GW1-GW3, and GW1-GW6 evidence horizons.
-- Compare role-adjusted points, ranges, expected minutes, captaincy options, substitution value, uncertain starters, ownership, price coverage, and fixture exposure.
-- Keep comparisons neutral and prohibit winner, recommendation, and selected-variant fields.
-- Require agent-authored decisions to compare optimized alternatives rather than unoptimized descriptions.
+- Optimize using role-adjusted squad utility, with the raw projection retained as a reported metric rather than the default objective.
+- Generate independent constrained candidates for major premium inclusions, premium combinations, no-premium structures, premium versus cheap defence, bench-depth policies, and club-exposure limits.
+- Support explicit scenarios such as `Saka included`, `Gabriel included`, `triple Man Utd`, and `maximum two Man Utd`.
+- Re-optimize all unrelated slots inside each scenario. Never derive a rejected structure by swapping one player into the selected squad.
+- Run requested objectives independently for GW1, GW1-GW3, and GW1-GW6 horizons.
+- Preserve multiple Pareto candidates when expected points, downside, bench value, and role confidence conflict.
+- Compare complete metric vectors, constraint differences, and player deltas neutrally.
+- Prohibit `winner`, `recommendedVariant`, `selectedVariant`, and equivalent final-choice fields.
+- Require an agent-authored recommendation to cite optimized counterfactual IDs for every material structural rejection.
+
+Artifacts:
+
+- `OptimizationRequest`
+- `SquadCandidate`
+- `CounterfactualSet`
+- `CounterfactualComparison`
+- `OptimizationProof`
 
 Release gate:
 
-- Match brute-force results on small player pools.
-- Validate legality, determinism, and bounded performance on the full player pool.
-- Verify that comparison artifacts cannot express a final choice.
+- Match exhaustive brute-force results on small player pools.
+- Prove that each constrained scenario is independently optimized.
+- Validate legality, determinism, objective bounds, and bounded full-pool performance.
+- Fail recommendation quality when a major rejected premium or club-exposure structure is represented only by prose or an unoptimized squad.
+- Verify that candidate and comparison artifacts cannot parse as final decisions.
 
-### 0.0.14: Transfer Graph and Replacement Liquidity
+### 0.0.15: Concentration and Correlated Scenario Analysis
 
-Replace vague flexibility language with reachability evidence.
+Measure portfolio risk when several selections depend on the same team-strength or tactical assumption.
 
-- Build one-transfer and two-transfer reachability using selling price, bank, positions, club limits, and full squad legality.
-- Exclude targets that fail configurable availability gates.
-- Report credible reachable targets, same-price replacements, required moves, required bank, structural replacement cost, and replacement liquidity.
-- Add transfer-path evidence to every counterfactual comparison.
-- Leave the value placed on flexibility to the agent.
+Scope:
+
+- Represent shared assumptions for team attack, team defense, tactical role, clean-sheet environment, penalties, and manager selection.
+- Generate configurable strong, baseline, and weak scenarios for each concentrated club exposure.
+- Recalculate candidate utility under each scenario rather than summing independent player projections.
+- Report pairwise and squad-level covariance, club concentration, assumption concentration, scenario regret, and downside contribution.
+- Compare double-up and triple-up structures using the independently optimized candidates from `0.0.14`.
+- Add a configurable concentration-penalty objective for candidate generation, but expose the penalty separately from expected points.
+- Never assert that a triple-up is acceptable solely because individual fixtures are rated favorably.
+- Require the agent to state which scenario tradeoff justified accepting or rejecting concentrated exposure.
+
+Artifacts:
+
+- `SharedAssumptionGraph`
+- `ClubScenarioSet`
+- `ConcentrationRiskReport`
+- `ScenarioComparison`
 
 Release gate:
 
-- Test reachability across bank, selling price, position changes, club limits, and paired structural moves.
-- Verify that an unreachable target cannot contribute to replacement liquidity.
+- Test a three-player club exposure under strong, baseline, and weak team scenarios.
+- Verify that shared team-strength shocks affect every dependent player and are not counted as independent events.
+- Compare optimal maximum-two and triple-club candidates with expected utility, p10, and scenario regret.
+- Reject an unsupported “fixtures justify triple exposure” rationale when no concentration evidence is cited.
 
-### 0.0.15: Captaincy Sensitivity and Agent Decision Workspace
+### 0.0.16: Evidence Readiness and Executable Triggers
 
-Show whether captaincy differences are meaningful without selecting the captain.
+Turn uncertainty and change conditions into machine-evaluable monitoring plans while leaving responses to the agent.
 
-- Calculate expected doubled value, probability of being the highest scorer, pairwise win probability, regret, and sensitivity to minutes, penalty, and fixture assumptions.
-- Report statistical edge strength as evidence but never populate captain or vice-captain decisions.
-- Mark an evidence edge `clear` only when the leader has at least a 60 percent probability of being best and remains first under configured sensitivity scenarios.
+Scope:
+
+- Calculate `READY`, `CAUTION`, or `INSUFFICIENT` readiness for each player and decision area from current-role evidence, appearance probabilities, data freshness, and source coverage.
+- Let the agent assign `LOCK`, `LIKELY`, `PROVISIONAL`, or `AVOID` decision statuses.
+- Reject agent classifications that are stronger than their evidence readiness permits.
+- Block final verification when required rules, prices, or fixtures are stale, a starter is unsupported, or more than two intended starters have insufficient role evidence.
+- Emit a provisional workspace instead of a final recommendation when a final gate fails.
+- Replace each prose-only change condition with a trigger containing `triggerId`, metric, subject, operator, threshold, evidence dependency, affected decision IDs, candidate response set, re-analysis scope, next check time, and expiry.
+- Support triggers for start probability, availability, price tier, source disagreement, transfer status, lineup consensus, odds movement, and competition phase.
+- Evaluate triggers after every successful refresh and at scheduled T-48h, T-24h, and T-2h checkpoints.
+- Record `inactive`, `armed`, `fired`, `acknowledged`, `expired`, and `superseded` states.
+- Require the coding agent to select every response; a fired trigger may request re-analysis but cannot transfer, lock, or replace a player.
+
+Artifacts:
+
+- `EvidenceReadinessReport`
+- `DecisionStatusReport`
+- `TriggerPlan`
+- `TriggerEvaluation`
+- `ProvisionalDecisionWorkspace`
+
+Release gate:
+
+- Test readiness boundaries, stale-data failures, scheduled evaluations, idempotent refreshes, and every trigger-state transition.
+- Exercise concrete Kinsky first-choice, Osula start-probability, secure £4.0m defender, and Slater role-loss triggers.
+- Verify that a fired trigger identifies affected decisions and counterfactual requests without choosing a squad action.
+- Prove that phase changes expire or rewrite invalid trigger conditions.
+
+### 0.0.17: Replacement Liquidity, Captaincy Sensitivity, and Decision Workspace
+
+Replace vague flexibility and captaincy language with reachable alternatives and sensitivity evidence.
+
+Scope:
+
+- Build one-transfer and two-transfer reachability using selling price, bank, positions, club limits, availability gates, and complete squad legality.
+- Distinguish preseason budget reachability from post-deadline selling-price reachability.
+- Report credible same-tier targets, required bank, required paired moves, structural replacement cost, and replacement liquidity.
+- Add transfer-path evidence to every counterfactual without treating higher liquidity as automatically better.
+- Calculate captaincy expected doubled value, probability of being highest scorer, pairwise win probability, regret, and sensitivity to minutes, penalties, fixtures, and role assumptions.
+- Mark a captaincy evidence edge `clear` only when the leader has at least a 60 percent probability of being best and remains first across configured sensitivity scenarios.
 - Otherwise report the edge as `marginal` or `unresolved`.
-- Build an agent decision workspace containing complete candidate comparisons, evidence readiness, unresolved assumptions, sensitivity results, and dependency prompts.
+- Build an agent decision workspace containing optimized counterfactuals, utility vectors, concentration scenarios, readiness, triggers, liquidity, captaincy sensitivity, unresolved assumptions, and dependency prompts.
 - Require the agent to author squad, transfers, XI, bench, captaincy, chip, statuses, trigger responses, and rationale.
 
+Artifacts:
+
+- `TransferGraph`
+- `ReplacementLiquidityReport`
+- `CaptaincySensitivity`
+- `AgentDecisionWorkspace`
+
 Release gate:
 
-- Test ties, marginal edges, sensitivity reversals, and missing-distribution behavior.
-- Reject final decisions with missing fact or assumption dependencies.
+- Test reachability across bank, selling price, position changes, club limits, paired moves, and preseason phase semantics.
+- Verify that an unreachable target cannot contribute to replacement liquidity.
+- Test captaincy ties, marginal edges, sensitivity reversals, and missing-distribution behavior.
 - Verify that workspace generation never writes final player choices.
 
-### 0.0.16: Calibration and Decision Postmortems
+### 0.0.18: Calibration and Decision Postmortems
 
-Measure whether evidence and agent decisions improve without learning incorrectly from outcomes.
+Measure whether evidence, forecasts, candidate generation, and agent decisions improve without learning incorrectly from outcomes.
 
-- Freeze pre-deadline evidence, assumptions, distributions, candidates, and the agent-authored decision.
-- Measure projected-points error, expected-minutes error, start and appearance Brier scores, interval coverage, captaincy regret, transfer regret, substitution value, bench-spend efficiency, and decision regret.
-- Calculate decision regret only against legal alternatives available from the frozen pre-deadline evidence.
-- Separate model error, evidence error, decision error, and normal outcome variance.
-- Publish rolling calibration by source and model version.
+Scope:
+
+- Freeze pre-deadline observations, assumptions, forecasts, distributions, candidates, scenarios, triggers, and the agent-authored decision.
+- Measure projected-points error, expected-minutes error, start and appearance Brier scores, interval coverage, calibration by probability band, captaincy regret, transfer regret, substitution value, bench-spend efficiency, concentration regret, and decision regret.
+- Calculate decision regret only against legal optimized alternatives available from frozen pre-deadline evidence.
+- Separate source error, transformation error, forecast error, evidence-gap error, decision error, and normal outcome variance.
+- Compare forecast calibration by evidence dimension, source publisher, adapter version, and model version.
+- Audit fired and missed triggers against frozen evidence arrival times.
 - Require at least 100 player-gameweek observations before proposing parameter changes.
-- Keep parameter adoption agent-authored, reviewed, and versioned; never self-apply changes.
-- Generalize the website from hard-coded GW1 paths to current and historical gameweeks.
+- Keep parameter adoption agent-authored, reviewed, versioned, and reversible; never self-apply changes.
+- Generalize the website from hard-coded GW1 paths to current and historical gameweeks, including uncertainty, counterfactual, trigger, and calibration views.
 
 Release gate:
 
-- Prove that post-deadline information cannot enter frozen decision-regret calculations.
-- Test calibration sample thresholds, versioning, archive rendering, and missing-outcome handling.
+- Prove that post-deadline information cannot enter frozen forecast or decision-regret calculations.
+- Test calibration sample thresholds, versioning, trigger audits, archive rendering, and missing-outcome handling.
+- Reconstruct whether a failure originated in source evidence, transformation, assumption, forecast, optimization request, or agent decision.
+
+## Delivery Dependencies and Migration
+
+| Release | Depends on | Migration rule | Exit artifact used by next release |
+| --- | --- | --- | --- |
+| `0.0.10` | claim ledger v2 and competition state | Read v1/v2; write claim-ledger v3; report untyped legacy claims without guessing their type | Typed observations, assumptions, forecasts, decisions, and phase-valid language |
+| `0.0.11` | typed claims | Convert existing adapters to root observations incrementally; uncovered adapters remain explicit gaps | Dimension-level role evidence and confidence |
+| `0.0.12` | role dimensions and source confidence | Keep legacy deterministic projections for comparison only; new consumers use probabilistic projections | Appearance-state and role-adjusted player distributions |
+| `0.0.13` | probabilistic projections | Generate both legacy raw totals and new utility vectors for one release | Squad utility and substitution metrics |
+| `0.0.14` | squad utility | Preserve authored variants; mark unoptimized variants ineligible for structural-comparison evidence | Independently optimized legal candidate sets |
+| `0.0.15` | counterfactual sets | Treat independent-player totals as baseline-only and disclose missing covariance | Concentration scenarios and shared-assumption risk |
+| `0.0.16` | probabilities, scenarios, and candidate requests | Convert prose conditions to draft triggers for agent review; never infer thresholds silently | Evaluated readiness and trigger states |
+| `0.0.17` | optimized candidates and trigger scopes | Keep existing transfer evidence readable; add phase-specific reachability | Liquidity, captaincy sensitivity, and complete decision workspace |
+| `0.0.18` | frozen outputs from all prior releases | Archive schema and model versions with every decision state | Calibration and attributable postmortems |
+
+Implementation order is strict where the downstream calculation would otherwise manufacture precision. In particular:
+
+- Counterfactual optimization does not ship before role-adjusted projections.
+- Concentration penalties do not ship before independently optimized double-up and triple-up candidates exist.
+- Readiness triggers do not ship before their metrics have stable, versioned definitions.
+- Calibration does not alter model parameters automatically.
+
+Review-derived regression fixtures remain pinned through the migration:
+
+- A fixture list can be an observation; “the fixtures justify triple exposure” cannot be a fact.
+- An established historical player with weak current evidence retains high historical confidence but lower current-role confidence and start probability.
+- A draft with lower raw points can only be described as more robust when its role-adjusted, expected-starter, autosub, or downside metrics improve.
+- The best legal Saka-included squad and best legal Gabriel-included squad are generated independently.
+- Maximum-two and triple-Man-Utd candidates are evaluated under the same strong, baseline, and weak United scenarios.
+- A `PRESEASON_DRAFT` recommendation cannot warn about pre-deadline price changes.
+- Kinsky role confirmation, Osula start probability, a secure £4.0m defender, and Slater role loss are represented as typed trigger evaluations rather than prose alone.
 
 ## Planned Interfaces and Enforcement
 
-Artifact schema v2 will add versioned contracts for:
+Planned releases add versioned contracts for:
 
 - `DecisionContext`
-- `ClaimLedger`
-- `RoleEvidence`
+- `EpistemicClaim`
+- `ForecastClaim`
+- `ClaimLedgerV3`
+- `RootEvidenceSource`
+- `RoleDimensionAssessment`
+- `AppearanceStateForecast`
 - `ProbabilisticProjection`
+- `SquadUtilityVector`
+- `SubstitutionUtilityReport`
+- `OptimizationRequest`
 - `EvidenceReadinessReport`
 - `TriggerPlan`
 - `SquadCandidate`
 - `CounterfactualComparison`
+- `ConcentrationRiskReport`
 - `TransferGraph`
 - `CaptaincySensitivity`
+- `AgentDecisionWorkspace`
 - `AgentDecisionArtifact`
 - `CalibrationReport`
 
@@ -322,21 +526,56 @@ Artifact schema v2 will add versioned contracts for:
 - agent authorship;
 - competition phase;
 - selected action and considered alternatives;
-- fact and assumption dependencies;
+- observation, derived-fact, assumption, and forecast dependencies;
 - unresolved uncertainty;
 - evidence-readiness results;
+- optimized counterfactual IDs for material structural comparisons;
+- concentration and robustness evidence for concentrated exposures;
 - agent rationale;
 - agent-authored operational trigger responses.
 
 Enforcement rules:
 
 - Tool outputs use evidence or candidate types that cannot be parsed as final recommendations.
-- Scripts may calculate legality, projections, probabilities, sensitivity, substitution utility, transfer reachability, and optimized counterfactuals.
+- Scripts may calculate legality, projections, probabilities, robustness, concentration scenarios, sensitivity, substitution utility, transfer reachability, and optimized counterfactuals.
 - Scripts must never populate final squad IDs, transfers, formation, XI, bench order, captain, vice-captain, or chip in an agent decision artifact.
 - Verification rejects unsupported or illegal decisions without replacing them.
 - Comparison reports may expose Pareto dominance and metric differences but must not contain `winner`, `recommendedVariant`, `selectedVariant`, or equivalent fields.
 - Agent prompts require legal full-squad counterfactuals for major structural choices.
-- Artifact v1 remains readable through `0.0.16`; v2 becomes authoritative incrementally.
+- Phase-aware validation rejects risks and rationales that are impossible in the current competition state.
+- A local report cannot count as a root source when evaluating source independence.
+- Artifact v1 and v2 remain readable through `0.0.18`; new claim-ledger writes use v3 after `0.0.10`.
+
+## Epistemic Contract
+
+| Claim kind | Meaning | Allowed dependencies | Example |
+| --- | --- | --- | --- |
+| `OBSERVATION` | Source-attributed statement or measurement | One root source | Man Utd play Hull and Ipswich in GW1-2. |
+| `DERIVED_FACT` | Deterministic result that does not require a football or utility assumption | Observations and deterministic transformations | The squad costs £100.0m and uses three Man Utd slots. |
+| `ASSUMPTION` | Contestable premise used by a model or decision | Observations or derived facts | Promoted teams begin materially below league-average strength. |
+| `FORECAST` | Model output about an uncertain future state | Observations, facts, assumptions, and a versioned model | Man Utd have a 1.7 expected-goal baseline at Hull. |
+| `DECISION` | Agent-authored choice or judgment | Any upstream claim except another final decision | Use three Man Utd players in the provisional draft. |
+
+Rules:
+
+- A statement does not become a fact because an internal report generated it.
+- Model transformations output forecasts when any football-strength, role, or utility assumption is involved.
+- A source quotation retains its source attribution and does not become a repository-endorsed fact.
+- Forecast confidence and source confidence remain separate.
+- Decisions may be supported by uncertain forecasts, but the uncertainty must remain visible.
+- Validators report invalid claim types and language; they do not silently recast or rewrite agent-authored claims.
+
+## Phase-Aware Statement Policy
+
+| Phase | Allowed financial risks | Suppressed or rejected language |
+| --- | --- | --- |
+| `PRESEASON_DRAFT` | Budget ceiling, price-tier reachability, upgrade-path shortfall | Price rises, price falls, selling-price loss, transfer hits |
+| `LIVE_GAMEWEEK` | None until the next transfer window is active | Immediate transfer execution or price action during a locked deadline |
+| `TRANSFER_WINDOW` | Price movement, selling price, bank, transfer cost, replacement reachability | Preseason-only draft language |
+| `FINAL_LOCKDOWN` | Deadline and late-news execution risk | Unscheduled long-horizon monitoring presented as actionable before lock |
+| `SEASON_COMPLETE` | None | Transfers, chips, price movement, or deadline actions |
+
+Every generated risk and rationale template must declare its allowed phases. Verification rejects a template instance when the active phase is not allowed.
 
 ## Mathematical Defaults
 
@@ -365,33 +604,79 @@ Initial readiness thresholds:
 
 Squad evidence is a metric vector rather than a hidden overall score:
 
+- raw starting-XI expected points conditional on the configured minutes baseline;
 - role-adjusted starting-XI expected points;
 - automatic-substitution expected points;
+- expected starters and expected appearances;
 - p10, median, and p90 squad points;
+- projection standard deviation and probability below configured downside thresholds;
 - unresolved-role count;
 - bench-slot marginal values;
+- club and shared-assumption concentration;
+- scenario regret;
 - replacement liquidity;
 - structural replacement cost.
 
+Role-adjusted player projection uses mutually exclusive appearance states:
+
+```text
+P(start) + P(substitute appearance) + P(no appearance) = 1
+
+roleAdjustedPoints
+  = P(start) * E[points | start]
+  + P(substitute appearance) * E[points | substitute appearance]
+```
+
+The projection stores the conditional values and probabilities separately so reviewers can identify whether a difference comes from football output, role probability, or evidence confidence.
+
 Candidate generation exposes separate tool objectives:
 
-- maximum expected points;
-- maximum downside protection among squads within 1.0 expected point of the maximum;
+- maximum role-adjusted expected points;
+- maximum p10 downside protection among squads within 1.0 role-adjusted expected point of the maximum;
 - minimum bench cost subject to first-substitute appearance probability of at least 0.85;
 - maximum replacement liquidity among squads within 1.0 expected point of the maximum.
 
+Every material structural comparison runs at least these independent constraints when applicable:
+
+- included premium A;
+- included premium B;
+- concentrated club exposure allowed;
+- maximum two players from the concentrated club;
+- minimum bench-role threshold;
+- agent-supplied inclusion and exclusion constraints.
+
+Each run returns the best legal candidate for its own constraints plus any non-dominated alternatives. A rejected candidate cannot be produced by degrading the selected candidate manually.
+
 The agent decides which evidence and tradeoffs determine the final recommendation.
+
+## Criticism Traceability
+
+| Criticism | Primary release | Required proof |
+| --- | --- | --- |
+| Interpretations promoted to facts | `0.0.10` | Invalid fact classification is rejected and migrated to forecast or decision. |
+| Shallow root provenance | `0.0.11` | Role claims resolve to independent publisher observations rather than local report names. |
+| Historical minutes dominate role certainty | `0.0.11` | Historical and current-role confidence are separate; historical-only confidence remains capped. |
+| Role uncertainty absent from projections | `0.0.12` | Start, substitute, and no-appearance probabilities change role-adjusted points. |
+| Alternative squads are manually weakened | `0.0.14` | Every major structure is independently optimized under explicit constraints. |
+| Robustness is qualitative | `0.0.13` | Draft deltas quantify raw points, adjusted points, starters, autosubs, and downside. |
+| Triple-club exposure ignores correlation | `0.0.15` | Maximum-two and triple-up candidates are compared across shared strong, baseline, and weak scenarios. |
+| Explanations contain false causality | `0.0.10` | Language validation reports unsupported causal and safety claims. |
+| Preseason price-change warning is invalid | `0.0.10` | Phase policy suppresses price-movement risk before the opening deadline. |
+| Change conditions are not executable | `0.0.16` | Typed triggers fire from measurable thresholds and request agent re-analysis without choosing an action. |
 
 ## Cross-Release Acceptance Requirements
 
 - Preserve the authenticated-action safety boundary.
 - Preserve transactional and offline evidence refresh behavior.
 - Keep public adapters configurable and usable without paid credentials.
+- Preserve root-source attribution and content hashes through every transformation.
 - Treat missing evidence as a first-class result rather than historical certainty.
+- Keep evidence confidence, appearance probability, and outcome variance as separate values.
 - Validate new artifacts at transactional refresh boundaries.
+- Require every generated sentence template to declare compatible competition phases.
 - Add unit, integration, schema, compatibility, and deterministic snapshot coverage for every release.
 - Preserve existing benchmarked paths within 20 percent of their committed baselines or document and approve a new baseline.
-- Add dedicated full-pool performance baselines for counterfactual generation and transfer graphs.
+- Add dedicated full-pool performance baselines for probability simulation, substitution utility, counterfactual generation, scenario analysis, and transfer graphs.
 - Update this roadmap's current-state section only after a release passes all of its acceptance gates.
 
 ## Deferred Limitations

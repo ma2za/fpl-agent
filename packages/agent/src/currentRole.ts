@@ -72,6 +72,9 @@ function normalizeRecord(
   const ageDays = Math.max(0, (Date.parse(generatedAt) - Date.parse(record.observedAt)) / 86_400_000);
   const historical = sourceKind === "previous_season_starts" || sourceKind === "historical_minutes";
   const baseWeight = weights[sourceKind];
+  const evidenceWeight = (record.sourceReliability ?? 1) *
+    (record.credibility?.score ?? 1) *
+    (record.relevance?.score ?? 1);
 
   return {
     ...record,
@@ -79,7 +82,7 @@ function normalizeRecord(
     provider,
     sourceKind,
     baseWeight,
-    effectiveWeight: Number((baseWeight * reliability * decay(ageDays, historical ? 60 : 14)).toFixed(4)),
+    effectiveWeight: Number((baseWeight * reliability * evidenceWeight * decay(ageDays, historical ? 60 : 14)).toFixed(4)),
     ageDays: Number(ageDays.toFixed(2))
   };
 }
@@ -109,7 +112,7 @@ function historicalRecords(player: RolePlayer, generatedAt: string) {
     }, "previous-season-starts", "Fantasy Premier League history", "previous_season_starts", 1, generatedAt));
   }
 
-  if (typeof player.minutes === "number") {
+  if (typeof player.minutes === "number" && player.minutes > 0) {
     records.push(normalizeRecord({
       playerId: player.id,
       dimension: "historical_starts",
@@ -186,7 +189,7 @@ export function buildCurrentRoleReport(input: BuildCurrentRoleReportInput): Curr
       provider: config.provider,
       status,
       recordCount: records?.length ?? 0,
-      message: !config.enabled ? "Adapter is disabled." : error ?? (records ? `Loaded ${records.length} records.` : "Adapter has no reviewed input.")
+      message: !config.enabled ? "Adapter is disabled." : error ?? (records ? `Loaded ${records.length} records.` : "Adapter has no coding-agent-reviewed input.")
     } as const;
   });
   const adapterRecords = input.adapters.flatMap(({ config, records }) =>
@@ -244,7 +247,7 @@ export function buildCurrentRoleReport(input: BuildCurrentRoleReportInput): Curr
     },
     items: selectedItems.length > 0 ? selectedItems : items,
     warnings: [
-      ...missing.map((adapter) => `${adapter.provider} ${adapter.kind} adapter is missing reviewed input.`),
+      ...missing.map((adapter) => `${adapter.provider} ${adapter.kind} adapter is missing coding-agent-reviewed input.`),
       ...failed.map((adapter) => `${adapter.provider} ${adapter.kind} adapter failed: ${adapter.message}`),
       ...selectedItems.filter((item) => item.status === "INSUFFICIENT").map((item) => `${item.name} has INSUFFICIENT current-role evidence.`)
     ]

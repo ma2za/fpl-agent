@@ -113,7 +113,7 @@ Current limitations:
 Implemented:
 
 - `current-role-report.json` and `current-role-report.md`.
-- Configurable adapters for official availability, explicit manager confirmation, official club evidence, preseason lineups, predicted lineups, and reviewed manual evidence.
+- Configurable adapters for official availability, coding-agent-reviewed manager confirmation, official club evidence, preseason lineups, predicted lineups, and agent evidence assessments.
 - Independent dimensions for historical availability, historical starts, current manager preference, preseason start rate, predicted-lineup consensus, injury status, squad competition, substitution patterns, and set-piece roles.
 - Reliability hierarchy with 14-day current and 60-day historical half-life decay.
 - Reviewed manual overrides, visible source disagreement, and visible missing or failed adapters.
@@ -122,7 +122,7 @@ Implemented:
 
 Current limitations:
 
-- Non-FPL adapters require reviewed normalized records; public page text is not silently mapped to player roles.
+- Non-FPL adapters require coding-agent-authored normalized records with root source IDs, credibility, and relevance assessments; public page text is not silently mapped to player roles.
 - Current-role status is evidence for the coding agent and does not select a player or starting XI.
 
 ## Public Evidence Capture
@@ -196,6 +196,8 @@ Current limitations:
 ```bash
 pnpm refresh -- --gw <n|auto> [--offline]
 pnpm fetch:data
+pnpm fetch:players -- --player <id|name> [--player <id|name> ...]
+pnpm fetch:players -- --gw <n>
 pnpm fetch:pl-fixtures -- --gw <n> --horizon <n>
 pnpm evidence -- --gw <n>
 pnpm odds -- --gw <n>
@@ -203,7 +205,7 @@ pnpm set-pieces -- --gw <n>
 pnpm team-news -- --gw <n>
 pnpm fixtures -- --gw <n> --horizon <n>
 pnpm minutes -- --gw <n>
-pnpm roles -- --gw <n> [--input <reviewed-evidence.json>]
+pnpm roles -- --gw <n> [--input <agent-role-evidence.json>]
 pnpm public-evidence -- --gw <n>
 pnpm fixtures -- --gw <n> --horizon <n>
 pnpm recommend -- --gw <n|auto>

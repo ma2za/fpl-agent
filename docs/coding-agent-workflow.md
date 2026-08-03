@@ -10,7 +10,8 @@ For a fresh chat or handover, read the local `docs/agent-handoff.md` first when 
 - `config/risk-profile.ts`
 - `docs/methodology.md`
 - cached public FPL API data
-- manually collected FPL news notes
+- detailed official player histories from `pnpm fetch:players`
+- coding-agent-reviewed FPL news evidence with root-source attribution
 - manual context notes in `packages/content/context`
 - previous recommendations and postmortems in `packages/content`
 - generated evidence files from `pnpm recommend -- --gw {n}`
@@ -67,6 +68,10 @@ All context, strategy, recommendation, evidence, and postmortem files are local 
 
 `pnpm public-evidence -- --gw {n}` writes `public-evidence-report.json` and `public-evidence-report.md` from read-only public pages, including official Premier League Scout evidence where configured. It uses Playwright when available and falls back to public HTTP. It must not log in, persist cookies, visit authenticated FPL management pages, click team controls, or choose players.
 
+`pnpm fetch:players -- --gw {n}` retrieves official profile fields, fixtures, current-season history, and previous-season summaries for every player in the authored squad. Use repeated `--player <id|name>` arguments before a squad exists. See `docs/player-data-setup.md` for setup and source configuration.
+
+After public evidence capture, the coding agent must inspect relevant source text, judge publisher credibility and claim relevance, and write `packages/content/context/agent-role-evidence.json`. It must not ask the user to classify news. Every non-FPL role record requires root source IDs plus credibility and relevance rationales. Run `pnpm roles -- --gw {n}` after authoring that file.
+
 `pnpm fixtures -- --gw {n} --horizon 6` writes fixture ticker evidence for the same gameweek folder.
 
 `pnpm fetch:pl-fixtures -- --gw {n} --horizon 6` writes current-season fixture evidence from the official Premier League fixture release when the Fantasy Premier League API has not yet exposed current event data.
@@ -83,11 +88,12 @@ The decision loop is:
 
 1. Run `pnpm recommend -- --gw {n}` to refresh evidence.
 2. Run source-specific evidence commands such as `pnpm team-news`, `pnpm set-pieces`, `pnpm odds`, `pnpm minutes`, and `pnpm public-evidence`.
-3. Author `recommendation.json`, including `decisionAnalysis` with structure comparisons, player comparisons, captaincy comparisons, key omissions, and evidence references.
-4. Run `pnpm verify -- --gw {n}`.
-5. Read `risk-report.md`, `agent-brief.md`, and `manual-checklist.md`; update the recommendation or author a variant if needed.
-6. List, verify, and compare authored variants with `pnpm variant:list -- --gw {n}`, `pnpm variant:verify -- --gw {n} --variant <slug>`, and `pnpm variant:compare -- --gw {n} --a <slug> --b <slug>`.
-7. Keep the final recommendation human-readable and manually executable.
+3. Review player news and lineup evidence, judge credibility and relevance, author `agent-role-evidence.json`, and run `pnpm roles -- --gw {n}`.
+4. Author `recommendation.json`, including `decisionAnalysis` with structure comparisons, player comparisons, captaincy comparisons, key omissions, and evidence references.
+5. Run `pnpm verify -- --gw {n}`.
+6. Read `risk-report.md`, `agent-brief.md`, and `manual-checklist.md`; update the recommendation or author a variant if needed.
+7. List, verify, and compare authored variants with `pnpm variant:list -- --gw {n}`, `pnpm variant:verify -- --gw {n} --variant <slug>`, and `pnpm variant:compare -- --gw {n} --a <slug> --b <slug>`.
+8. Keep the final recommendation human-readable and manually executable.
 
 Variant slugs use lowercase letters, digits, and single hyphens. Each variant keeps only its authored recommendation and derived verification files in its own directory; fixture, availability, odds, role, strategy, and freshness evidence remains shared at gameweek level. Comparison output is written under `variants/comparisons/{a}-vs-{b}/` unless `--out` is supplied. It presents differences and evidence gaps without ranking variants or choosing the final action.
 

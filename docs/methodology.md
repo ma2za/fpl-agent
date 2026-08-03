@@ -8,7 +8,7 @@ The current recommendation model is simple, transparent, and replaceable.
 - Manual squad config
 - Optional public manager data in a later milestone
 - FPL rules
-- Human-reviewed FPL news notes
+- Coding-agent-reviewed FPL news evidence with explicit credibility and relevance assessments
 
 ## Decision Principles
 

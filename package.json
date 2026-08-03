@@ -16,6 +16,7 @@
     "benchmark:fixtures": "tsx scripts/benchmark-fixtures.ts",
     "refresh": "tsx scripts/refresh.ts",
     "fetch:data": "tsx scripts/fetch-fpl-data.ts",
+    "fetch:players": "tsx scripts/fetch-player-data.ts",
     "fetch:pl-fixtures": "tsx scripts/fetch-premier-league-fixtures.ts",
     "evidence": "tsx scripts/generate-evidence.ts",
     "odds": "tsx scripts/generate-odds.ts",

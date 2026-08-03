@@ -865,7 +865,7 @@ export type MinutesRiskItem = {
   starting: boolean;
   benchPosition: number | null;
   historicalConfidence: EvidenceConfidence;
-  predictedLineupConfidence: "unavailable";
+  predictedLineupConfidence: EvidenceConfidence | "unavailable";
   riskLevel: MinutesRiskLevel;
   reasons: string[];
   summary: string;
@@ -924,8 +924,43 @@ export type RoleEvidenceRecord = {
   signal: "supports_start" | "opposes_start" | "neutral";
   value: string | number | boolean | null;
   observedAt: string;
+  sourceIds?: string[];
+  sourceReliability?: number;
+  credibility?: {
+    score: number;
+    label: "low" | "medium" | "high";
+    rationale: string;
+  };
+  relevance?: {
+    score: number;
+    rationale: string;
+  };
   override?: boolean;
   note: string;
+};
+
+export type AgentRoleEvidenceInput = {
+  schemaVersion: 1;
+  authorship: {
+    kind: "coding_agent";
+    agent: string;
+    authoredAt: string;
+  };
+  sources: Array<{
+    id: string;
+    publisher: string;
+    sourceType: "official" | "club" | "media" | "market";
+    url: string;
+    publishedAt: string | null;
+    retrievedAt: string;
+    reliability: number;
+    credibilityRationale: string;
+  }>;
+  adapters: Array<{
+    id: string;
+    records?: RoleEvidenceRecord[];
+    error?: string;
+  }>;
 };
 
 export type RoleEvidenceAdapterInput = {

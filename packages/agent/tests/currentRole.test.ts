@@ -56,6 +56,23 @@ describe("current-role evidence", () => {
     expect(CurrentRoleReportSchema.parse(report).summary.insufficient).toBe(1);
   });
 
+  it("treats zero Premier League history as missing rather than evidence against a start", () => {
+    const report = buildCurrentRoleReport({
+      generatedAt,
+      gameweek: 1,
+      players: [{ ...player, minutes: 0, starts: 0, appearances: 0 }],
+      adapters: [],
+      selectedPlayerIds: [1]
+    });
+
+    expect(report.items[0].dimensions.historical_starts).toEqual([]);
+    expect(report.items[0]).toMatchObject({
+      status: "INSUFFICIENT",
+      supportScore: 0.5,
+      currentEvidencePresent: false
+    });
+  });
+
   it("applies source precedence and recency decay", () => {
     const report = buildCurrentRoleReport({
       generatedAt,

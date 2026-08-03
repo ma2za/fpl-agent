@@ -834,7 +834,7 @@ export const MinutesRiskReportSchema = looseObject({
     starting: z.boolean(),
     benchPosition: z.number().nullable(),
     historicalConfidence: confidence,
-    predictedLineupConfidence: z.literal("unavailable"),
+    predictedLineupConfidence: z.union([confidence, z.literal("unavailable")]),
     riskLevel: z.enum(["secure", "watch", "risky", "unknown"]),
     reasons: stringArray,
     summary: z.string()

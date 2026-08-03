@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+  AgentRoleEvidenceInputSchema,
   EvidenceReportSchema,
   CurrentRoleReportSchema,
   FixtureHorizonReportSchema,
@@ -33,6 +34,7 @@ import {
   renderTeamNewsReportMarkdown,
   runRefresh,
   type EvidenceSource,
+  type AgentRoleEvidenceInput,
   type RefreshInput,
   type RefreshStage
 } from "../packages/agent/src";
@@ -77,6 +79,15 @@ function argValue(name: string) {
 
 function sha256(value: string | Buffer) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+async function readAgentRoleEvidence(filePath: string) {
+  try {
+    return AgentRoleEvidenceInputSchema.parse(JSON.parse(await readFile(filePath, "utf8")));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
 }
 
 async function writeJson(filePath: string, value: unknown) {
@@ -319,8 +330,16 @@ function buildStages(input: {
   deadline: { status: "open" | "passed" | "unknown"; time: string | null };
   targetDir: string;
   data: AcquiredRefreshData;
+  agentRoleEvidence: AgentRoleEvidenceInput | null;
 }): RefreshStage[] {
   const bootstrapInput = input.data.inputs.find((item) => item.id === "bootstrap")!;
+  const roleAdapters = currentRoleAdapterInputs(
+    CURRENT_ROLE_ADAPTERS,
+    input.data.bootstrap.elements,
+    input.generatedAt,
+    input.agentRoleEvidence
+  );
+  const predictedLineups = roleAdapters.find((adapter) => adapter.config.kind === "predicted_lineup")?.records;
   const recommendationArtifacts = [
     artifact("data-status.json"),
     artifact("projections.json", PlayerProjectionArraySchema),
@@ -484,7 +503,8 @@ function buildStages(input: {
           elementTypes: input.data.bootstrap.element_types,
           selectedPlayerIds: selected.selectedPlayerIds,
           startingPlayerIds: selected.startingPlayerIds,
-          benchOrder: selected.benchOrder
+          benchOrder: selected.benchOrder,
+          predictedLineups
         });
         await writeReport(outputDir, "minutes-risk-report.json", "minutes-risk-report.md", report, renderMinutesRiskReportMarkdown(report));
       }
@@ -500,11 +520,7 @@ function buildStages(input: {
           generatedAt: input.generatedAt,
           gameweek: input.gameweek,
           players: input.data.bootstrap.elements,
-          adapters: currentRoleAdapterInputs(
-            CURRENT_ROLE_ADAPTERS,
-            input.data.bootstrap.elements,
-            input.generatedAt
-          ),
+          adapters: roleAdapters,
           selectedPlayerIds: selected.selectedPlayerIds
         });
         await writeReport(outputDir, "current-role-report.json", "current-role-report.md", report, renderCurrentRoleReportMarkdown(report));
@@ -591,6 +607,7 @@ export async function refresh(input: {
   recommendationsDir?: string;
   temporaryRoot?: string;
   fetchImpl?: typeof fetch;
+  agentRoleEvidencePath?: string;
 }) {
   const now = input.now ?? new Date();
   const runId = input.runId ?? `${now.toISOString().replace(/[:.]/g, "-")}-${randomUUID()}`;
@@ -609,6 +626,9 @@ export async function refresh(input: {
     input.recommendationsDir ?? path.join("packages", "content", "recommendations"),
     `gw-${gameweek}`
   );
+  const agentRoleEvidence = await readAgentRoleEvidence(
+    input.agentRoleEvidencePath ?? path.join("packages", "content", "context", "agent-role-evidence.json")
+  );
   const result = await runRefresh({
     gameweek,
     mode: input.offline ? "offline" : "live",
@@ -622,7 +642,8 @@ export async function refresh(input: {
       fetchImpl: input.fetchImpl,
       deadline,
       targetDir,
-      data
+      data,
+      agentRoleEvidence
     }),
     inputs: data.inputs,
     deadline,

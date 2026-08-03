@@ -1,6 +1,7 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
+  AgentRoleEvidenceInputSchema,
   buildMinutesRiskReport,
   isWeeklyRecommendationArtifact,
   readArtifactFileIfExists,
@@ -8,6 +9,8 @@ import {
   renderMinutesRiskReportMarkdown,
   type EvidenceSource
 } from "../packages/agent/src";
+import { CURRENT_ROLE_ADAPTERS } from "../config/current-role";
+import { currentRoleAdapterInputs } from "./current-role-evidence";
 
 type BootstrapStatic = {
   elements: Parameters<typeof buildMinutesRiskReport>[0]["players"];
@@ -27,6 +30,15 @@ function argValue(name: string) {
 
 async function readJson<T>(filePath: string) {
   return JSON.parse(await readFile(filePath, "utf8")) as T;
+}
+
+async function readJsonIfExists<T>(filePath: string) {
+  try {
+    return await readJson<T>(filePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
 }
 
 async function fileTimestamp(filePath: string) {
@@ -55,6 +67,18 @@ async function main() {
     : null;
   const bootstrap = await readJson<BootstrapStatic>(bootstrapPath);
   const generatedAt = new Date().toISOString();
+  const agentEvidenceInput = await readJsonIfExists<unknown>(
+    path.join("packages", "content", "context", "agent-role-evidence.json")
+  );
+  const agentEvidence = agentEvidenceInput === null
+    ? null
+    : AgentRoleEvidenceInputSchema.parse(agentEvidenceInput);
+  const predictedLineups = currentRoleAdapterInputs(
+    CURRENT_ROLE_ADAPTERS,
+    bootstrap.elements,
+    generatedAt,
+    agentEvidence
+  ).find((adapter) => adapter.config.kind === "predicted_lineup")?.records;
   const source: EvidenceSource = {
     id: "minutes",
     label: "FPL historical minutes",
@@ -82,7 +106,8 @@ async function main() {
     elementTypes: bootstrap.element_types,
     selectedPlayerIds: recommendation?.squadBefore.players.map((player) => player.id) ?? [],
     startingPlayerIds: recommendation?.pickTeam?.startingXI ?? [],
-    benchOrder: recommendation?.pickTeam?.benchOrder ?? []
+    benchOrder: recommendation?.pickTeam?.benchOrder ?? [],
+    predictedLineups
   });
 
   await mkdir(outputDir, { recursive: true });

@@ -1,4 +1,5 @@
 import type {
+  AgentRoleEvidenceInput,
   RoleEvidenceAdapterConfig,
   RoleEvidenceAdapterInput,
   RoleEvidenceRecord
@@ -12,21 +13,16 @@ type AvailabilityPlayer = {
   news_added?: string | null;
 };
 
-export type ReviewedRoleEvidenceInput = {
-  adapters: Array<{
-    id: string;
-    records?: RoleEvidenceRecord[];
-    error?: string;
-  }>;
-};
+export type CodingAgentRoleEvidenceInput = AgentRoleEvidenceInput;
 
 export function currentRoleAdapterInputs(
   configs: RoleEvidenceAdapterConfig[],
   players: AvailabilityPlayer[],
   generatedAt: string,
-  reviewed?: ReviewedRoleEvidenceInput | null
+  agentEvidence?: CodingAgentRoleEvidenceInput | null
 ): RoleEvidenceAdapterInput[] {
-  const reviewedById = new Map((reviewed?.adapters ?? []).map((adapter) => [adapter.id, adapter]));
+  const evidenceById = new Map((agentEvidence?.adapters ?? []).map((adapter) => [adapter.id, adapter]));
+  const sourceById = new Map((agentEvidence?.sources ?? []).map((source) => [source.id, source]));
 
   return configs.map((config) => {
     if (config.kind === "official_availability") {
@@ -43,7 +39,19 @@ export function currentRoleAdapterInputs(
       };
     }
 
-    const input = reviewedById.get(config.id);
-    return { config, records: input?.records, error: input?.error };
+    const input = evidenceById.get(config.id);
+    const records = input?.records?.map((record) => {
+      const sourceReliability = record.sourceIds
+        ?.map((sourceId) => sourceById.get(sourceId)?.reliability)
+        .filter((value): value is number => typeof value === "number");
+
+      return {
+        ...record,
+        sourceReliability: sourceReliability && sourceReliability.length > 0
+          ? Math.min(...sourceReliability)
+          : 1
+      };
+    });
+    return { config, records, error: input?.error };
   });
 }

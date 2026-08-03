@@ -104,4 +104,29 @@ describe("buildMinutesRiskReport", () => {
     expect(report.items[0]?.riskLevel).toBe("risky");
     expect(report.items[0]?.historicalConfidence).toBe("low");
   });
+
+  it("uses coding-agent-reviewed predicted lineups for zero-history and omitted players", () => {
+    const report = buildMinutesRiskReport({
+      generatedAt: "2026-08-03T12:00:00.000Z",
+      gameweek: 1,
+      source,
+      selectedPlayerIds: [1, 2],
+      startingPlayerIds: [1],
+      teams: [{ id: 1, name: "Ipswich Town" }],
+      elementTypes: [{ id: 2, singular_name_short: "DEF" }],
+      players: [
+        { id: 1, first_name: "Predicted", second_name: "Starter", web_name: "Starter", element_type: 2, team: 1, status: "a", minutes: 0 },
+        { id: 2, first_name: "Predicted", second_name: "Backup", web_name: "Backup", element_type: 2, team: 1, status: "a", minutes: 3000 }
+      ],
+      predictedLineups: [
+        { playerId: 1, dimension: "predicted_lineup_consensus", signal: "supports_start", value: true, observedAt: "2026-08-03T11:00:00.000Z", sourceReliability: 0.75, credibility: { score: 0.75, label: "medium", rationale: "Specialist forecast." }, note: "Predicted to start." },
+        { playerId: 2, dimension: "predicted_lineup_consensus", signal: "opposes_start", value: false, observedAt: "2026-08-03T11:00:00.000Z", sourceReliability: 0.75, credibility: { score: 0.75, label: "medium", rationale: "Specialist forecast." }, note: "Omitted from the predicted XI." }
+      ]
+    });
+
+    expect(report.items.find((item) => item.playerId === 1)?.riskLevel).toBe("watch");
+    expect(report.items.find((item) => item.playerId === 2)?.riskLevel).toBe("risky");
+    expect(report.items[0]?.predictedLineupConfidence).toBe("medium");
+    expect(report.warnings).not.toContain("Predicted-lineup evidence is unavailable; minutes risk uses historical FPL minutes and availability only.");
+  });
 });
