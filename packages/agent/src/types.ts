@@ -98,6 +98,8 @@ export type WeeklyRecommendation = {
     authoredAt: string;
   };
   decisionContext?: CompetitionState;
+  claimLedger?: ClaimLedger;
+  decisionIds?: string[];
   gameweek: number;
   createdAt: string;
   deadline: string;
@@ -203,6 +205,79 @@ export type CandidateArtifact = {
   generatedAt: string;
   scenarioId: string;
   payload: unknown;
+};
+
+export type ClaimSourceType = "official" | "club" | "media" | "market" | "manual";
+
+export type ClaimLedgerSource = {
+  id: string;
+  publisher: string;
+  sourceType: ClaimSourceType;
+  uri: string | null;
+};
+
+export type ClaimObservation = {
+  id: string;
+  sourceId: string;
+  claim: string;
+  observedAt: string;
+  retrievedAt: string;
+  reliability: number;
+  freshness: "fresh" | "stale" | "unknown";
+  value: unknown;
+};
+
+export type ClaimFact = {
+  id: string;
+  claim: string;
+  observationIds: string[];
+  transformationId?: string;
+};
+
+export type ClaimAssumption = {
+  id: string;
+  claim: string;
+  factIds: string[];
+  model: string;
+  modelVersion: string;
+};
+
+export type ClaimTransformation = {
+  id: string;
+  tool: string;
+  toolVersion: string;
+  reportPath: string;
+  inputIds: string[];
+  outputFactIds: string[];
+};
+
+export type ClaimDecision = {
+  id: string;
+  area: RecommendationEvidenceArea;
+  factIds: string[];
+  assumptionIds: string[];
+};
+
+export type ClaimLedger = {
+  schemaVersion: 1;
+  sources: ClaimLedgerSource[];
+  observations: ClaimObservation[];
+  facts: ClaimFact[];
+  assumptions: ClaimAssumption[];
+  transformations: ClaimTransformation[];
+  decisions: ClaimDecision[];
+};
+
+export type ClaimIndependence = {
+  claim: string;
+  publishers: string[];
+  independentSourceCount: number;
+};
+
+export type ClaimLedgerValidation = {
+  isValid: boolean;
+  errors: string[];
+  independence: ClaimIndependence[];
 };
 
 export type EvidenceConfidence = "low" | "medium" | "high";

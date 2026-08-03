@@ -10,6 +10,7 @@ export * from "./minutesRisk";
 export * from "./odds";
 export * from "./premierLeagueFixtures";
 export * from "./publicEvidence";
+export * from "./provenance";
 export * from "./quality";
 export * from "./recommendationWriter";
 export * from "./refresh";

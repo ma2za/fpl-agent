@@ -156,6 +156,11 @@ Implemented:
 - Schema-v2 tool evidence and candidate contracts that cannot parse as final decisions.
 - Schema-v2 coding-agent decision contracts with required authorship and competition context.
 - Legacy v1 artifact read compatibility without final-verification eligibility.
+- Stable claim-ledger IDs for sources, observations, facts, assumptions, transformations, and decisions.
+- Publisher, source type, observation and retrieval time, reliability, freshness, model version, and upstream lineage.
+- Orphan and cycle rejection at schema and final-verification boundaries.
+- Publisher-and-claim source-independence counts that do not treat derived reports as corroboration.
+- Legacy recommendation provenance adaptation without invented lineage.
 - Agent-authored weekly recommendations and weekly strategy.
 - Evidence references by decision area.
 - Player-by-player pick and alternative analysis.

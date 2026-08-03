@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { verifyRecommendation, type WeeklyRecommendation } from "../src";
+import { testClaimLedger } from "./fixtures/variantRecommendation";
 
 const recommendation: WeeklyRecommendation = {
   schemaVersion: 2,
@@ -15,6 +16,8 @@ const recommendation: WeeklyRecommendation = {
     activeGameweek: 1,
     nextDeadline: "2026-08-15T10:00:00Z"
   },
+  claimLedger: testClaimLedger(),
+  decisionIds: testClaimLedger().decisions.map((decision) => decision.id),
   gameweek: 1,
   createdAt: "2026-07-04T00:00:00.000Z",
   deadline: "2026-08-15T10:00:00Z",
@@ -221,6 +224,20 @@ describe("verifyRecommendation", () => {
     expect(result.errors).toContain(
       "Final recommendation must be a schema v2 coding-agent-authored decision artifact."
     );
+  });
+
+  it("rejects missing and orphaned decision provenance", () => {
+    const missing = verifyRecommendation({
+      ...recommendation,
+      claimLedger: undefined,
+      decisionIds: undefined
+    });
+    expect(missing.errors).toContain("Final recommendation must include a claim ledger and decision dependencies.");
+
+    const ledger = testClaimLedger();
+    ledger.decisions[0].factIds = ["fact:missing"];
+    const orphaned = verifyRecommendation({ ...recommendation, claimLedger: ledger });
+    expect(orphaned.errors).toContain("Decision dec:squad references missing fact fact:missing.");
   });
 
   it("rejects roll during preseason", () => {

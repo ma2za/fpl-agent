@@ -35,6 +35,10 @@ const players: PlayerForEngine[] = positions.map((position, index) => ({
   totalPoints: 30 + index * 5
 }));
 
+const decisionAreas = [
+  "squad", "starting-xi", "shortlist", "captaincy", "bench", "chip", "risks", "change-conditions"
+] as const;
+
 const recommendation: WeeklyRecommendation = {
   schemaVersion: 2,
   artifactKind: "agent_decision",
@@ -49,6 +53,22 @@ const recommendation: WeeklyRecommendation = {
     activeGameweek: 1,
     nextDeadline: "2020-01-02T00:00:00.000Z"
   },
+  claimLedger: {
+    schemaVersion: 1,
+    sources: [{ id: "src:benchmark", publisher: "Benchmark", sourceType: "manual", uri: null }],
+    observations: [{
+      id: "obs:benchmark", sourceId: "src:benchmark", claim: "Benchmark input is fixed.",
+      observedAt: "2020-01-01T00:00:00.000Z", retrievedAt: "2020-01-01T00:00:00.000Z",
+      reliability: 1, freshness: "fresh", value: true
+    }],
+    facts: [{ id: "fact:benchmark", claim: "Benchmark input is fixed.", observationIds: ["obs:benchmark"] }],
+    assumptions: [],
+    transformations: [],
+    decisions: decisionAreas.map((area) => ({
+      id: `dec:${area}`, area, factIds: ["fact:benchmark"], assumptionIds: []
+    }))
+  },
+  decisionIds: decisionAreas.map((area) => `dec:${area}`),
   gameweek: 1,
   createdAt: "2020-01-01T00:00:00.000Z",
   deadline: "2020-01-02T00:00:00.000Z",
@@ -93,16 +113,7 @@ const recommendation: WeeklyRecommendation = {
     label: "medium",
     explanation: "Fixed benchmark confidence."
   },
-  evidenceReferences: [
-    "squad",
-    "starting-xi",
-    "shortlist",
-    "captaincy",
-    "bench",
-    "chip",
-    "risks",
-    "change-conditions"
-  ].map((area) => ({
+  evidenceReferences: decisionAreas.map((area) => ({
     area: area as WeeklyRecommendation["evidenceReferences"][number]["area"],
     source: "benchmark",
     reportPath: "benchmark.json",

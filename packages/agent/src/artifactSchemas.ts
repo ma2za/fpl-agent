@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { validateClaimLedger } from "./provenance";
 
 const looseObject = <T extends z.ZodRawShape>(shape: T) => z.object(shape).passthrough();
 const schemaVersion = z.literal(1).optional();
@@ -31,6 +32,70 @@ const competitionAction = z.enum([
   "wait_for_finalization",
   "review_season"
 ]);
+
+const stableId = (prefix: string) => z.string().regex(new RegExp(`^${prefix}:[a-z0-9][a-z0-9._-]*$`));
+const sourceId = stableId("src");
+const observationId = stableId("obs");
+const factId = stableId("fact");
+const assumptionId = stableId("asm");
+const transformationId = stableId("tx");
+const decisionId = stableId("dec");
+
+const claimLedgerShape = z.object({
+  schemaVersion: z.literal(1),
+  sources: z.array(z.object({
+    id: sourceId,
+    publisher: z.string().min(1),
+    sourceType: z.enum(["official", "club", "media", "market", "manual"]),
+    uri: z.string().nullable()
+  }).strict()),
+  observations: z.array(z.object({
+    id: observationId,
+    sourceId,
+    claim: z.string().min(1),
+    observedAt: z.string().min(1),
+    retrievedAt: z.string().min(1),
+    reliability: z.number().min(0).max(1),
+    freshness: z.enum(["fresh", "stale", "unknown"]),
+    value: z.unknown()
+  }).strict()),
+  facts: z.array(z.object({
+    id: factId,
+    claim: z.string().min(1),
+    observationIds: z.array(observationId).min(1),
+    transformationId: transformationId.optional()
+  }).strict()),
+  assumptions: z.array(z.object({
+    id: assumptionId,
+    claim: z.string().min(1),
+    factIds: z.array(factId).min(1),
+    model: z.string().min(1),
+    modelVersion: z.string().min(1)
+  }).strict()),
+  transformations: z.array(z.object({
+    id: transformationId,
+    tool: z.string().min(1),
+    toolVersion: z.string().min(1),
+    reportPath: z.string().min(1),
+    inputIds: z.array(z.string()).min(1),
+    outputFactIds: z.array(factId).min(1)
+  }).strict()),
+  decisions: z.array(z.object({
+    id: decisionId,
+    area: z.enum([
+      "squad", "starting-xi", "shortlist", "transfers", "captaincy",
+      "bench", "chip", "risks", "change-conditions"
+    ]),
+    factIds: z.array(factId),
+    assumptionIds: z.array(assumptionId)
+  }).strict())
+}).strict();
+
+export const ClaimLedgerSchema = claimLedgerShape.superRefine((ledger, context) => {
+  for (const error of validateClaimLedger(ledger).errors) {
+    context.addIssue({ code: "custom", message: error });
+  }
+});
 
 const validationResult = looseObject({
   isValid: z.boolean(),
@@ -234,7 +299,9 @@ export const AgentDecisionArtifactSchema = looseObject({
     deadlineProximity,
     activeGameweek: z.number().nullable(),
     nextDeadline: z.string().nullable()
-  })
+  }),
+  claimLedger: ClaimLedgerSchema,
+  decisionIds: z.array(decisionId).min(1)
 });
 
 export const WeeklyRecommendationSchema = z.union([
@@ -858,6 +925,7 @@ export const VariantComparisonReportSchema = looseObject({
 export const ArtifactSchemas = {
   agentDecision: AgentDecisionArtifactSchema,
   candidate: CandidateArtifactSchema,
+  claimLedger: ClaimLedgerSchema,
   evidenceReport: EvidenceReportSchema,
   fixtureHorizonReport: FixtureHorizonReportSchema,
   fixtureTicker: FixtureTickerSchema,

@@ -1,4 +1,29 @@
-import type { WeeklyRecommendation, WeeklyStrategy } from "../../src";
+import type { ClaimLedger, WeeklyRecommendation, WeeklyStrategy } from "../../src";
+
+const decisionAreas = [
+  "squad", "starting-xi", "shortlist", "captaincy", "bench", "chip", "risks", "change-conditions"
+] as const;
+
+export function testClaimLedger(): ClaimLedger {
+  return {
+    schemaVersion: 1,
+    sources: [{ id: "src:test", publisher: "Test Publisher", sourceType: "manual", uri: null }],
+    observations: [{
+      id: "obs:test", sourceId: "src:test", claim: "Test evidence is available.",
+      observedAt: "2026-08-01T00:00:00.000Z", retrievedAt: "2026-08-01T00:00:00.000Z",
+      reliability: 1, freshness: "fresh", value: true
+    }],
+    facts: [{ id: "fact:test", claim: "Test evidence is available.", observationIds: ["obs:test"] }],
+    assumptions: [{
+      id: "asm:test", claim: "The fixture evidence is representative.", factIds: ["fact:test"],
+      model: "fixture-test", modelVersion: "1"
+    }],
+    transformations: [],
+    decisions: decisionAreas.map((area) => ({
+      id: `dec:${area}`, area, factIds: ["fact:test"], assumptionIds: ["asm:test"]
+    }))
+  };
+}
 
 const positions = [
   "GKP", "GKP",
@@ -38,6 +63,8 @@ export function variantRecommendation(gameweek = 1, replacedPlayerId?: number): 
       activeGameweek: gameweek,
       nextDeadline: "2026-08-15T10:00:00.000Z"
     },
+    claimLedger: testClaimLedger(),
+    decisionIds: decisionAreas.map((area) => `dec:${area}`),
     gameweek,
     createdAt: "2026-08-01T00:00:00.000Z",
     deadline: "2026-08-15T10:00:00.000Z",

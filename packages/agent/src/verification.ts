@@ -10,6 +10,7 @@ import {
   type ValidationResult
 } from "../../rules/src";
 import { evaluateRecommendationQuality } from "./quality";
+import { validateClaimLedger } from "./provenance";
 import type { RecommendationQualityReport, StrategyQualityReport, WeeklyRecommendation } from "./types";
 
 export type VerifyRecommendationOptions = {
@@ -56,6 +57,27 @@ function actionErrors(recommendation: WeeklyRecommendation) {
       recommendation.recommendedAction.transferCost !== 0
     ) {
       errors.push("Preseason draft actions cannot have a transfer cost.");
+    }
+  }
+
+  if (!recommendation.claimLedger || !recommendation.decisionIds?.length) {
+    errors.push("Final recommendation must include a claim ledger and decision dependencies.");
+  } else {
+    errors.push(...validateClaimLedger(recommendation.claimLedger).errors);
+    const ledgerDecisionIds = new Set(recommendation.claimLedger.decisions.map((decision) => decision.id));
+    for (const decisionId of recommendation.decisionIds) {
+      if (!ledgerDecisionIds.has(decisionId)) {
+        errors.push(`Recommendation references missing provenance decision ${decisionId}.`);
+      }
+    }
+    for (const decisionId of ledgerDecisionIds) {
+      if (!recommendation.decisionIds.includes(decisionId)) {
+        errors.push(`Claim ledger decision ${decisionId} is not referenced by the recommendation.`);
+      }
+    }
+    const decisionAreas = new Set(recommendation.claimLedger.decisions.map((decision) => decision.area));
+    for (const area of new Set(recommendation.evidenceReferences.map((reference) => reference.area))) {
+      if (!decisionAreas.has(area)) errors.push(`Claim ledger is missing dependencies for ${area}.`);
     }
   }
 

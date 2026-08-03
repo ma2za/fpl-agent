@@ -8,7 +8,7 @@
 - `packages/fpl-api` fetches, validates, caches, and normalizes public FPL API data.
 - `packages/rules` derives competition state and validates phase actions, squad, transfer, formation, captaincy, bench, chip, deadline, and provisional-data rules.
 - `packages/engine` generates deterministic projections and evidence helpers.
-- `packages/agent` builds evidence packs, renders decision prompts, evaluates recommendation quality, and verifies agent-authored files before manual use.
+- `packages/agent` builds evidence packs, validates claim provenance, renders decision prompts, evaluates recommendation quality, and verifies agent-authored files before manual use.
 - `packages/content` is an ignored local workspace for season context, strategy, recommendations, evidence, and postmortems.
 
 ## Safety Boundary
@@ -26,7 +26,7 @@ normalized data
 rules validation
 deterministic evidence generation
 manual context notes
-schema-v2 coding-agent-authored decision and manual checklist
+schema-v2 coding-agent-authored decision with claim lineage and manual checklist
 legality and quality verification
 human manually applies accepted changes
 postmortem records outcome

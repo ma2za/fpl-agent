@@ -131,6 +131,24 @@ export function buildEvidencePack(input: BuildEvidencePackInput): EvidencePack {
         agent: "<agent name>",
         authoredAt: "<ISO timestamp>"
       },
+      requiredProvenance: {
+        claimLedger: {
+          schemaVersion: 1,
+          sources: [],
+          observations: [],
+          facts: [],
+          assumptions: [],
+          transformations: [],
+          decisions: []
+        },
+        decisionIds: [],
+        rules: [
+          "Use stable src:, obs:, fact:, asm:, tx:, and dec: IDs.",
+          "Represent generated reports as transformations, not independent sources.",
+          "Link every fact to observations and every assumption to facts plus a model version.",
+          "Link every authored decision to its fact and assumption dependencies."
+        ]
+      },
       squadBefore: {
         players: [],
         bank: null,

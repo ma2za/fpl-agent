@@ -108,6 +108,7 @@ describe("artifact schemas", () => {
     expect(Object.keys(ArtifactSchemas).sort()).toEqual([
       "agentDecision",
       "candidate",
+      "claimLedger",
       "evidenceReport",
       "fixtureHorizonReport",
       "fixtureTicker",
