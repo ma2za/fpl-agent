@@ -178,6 +178,11 @@ Implemented:
 - Orphan and cycle rejection at schema and final-verification boundaries.
 - Publisher-and-claim source-independence counts that do not treat derived reports as corroboration.
 - Legacy recommendation provenance adaptation without invented lineage.
+- Claim-ledger v3 with explicit observation, derived-fact, assumption, forecast, and decision kinds.
+- Forecast lineage covering model identity, version, facts, assumptions, output, uncertainty, and horizon.
+- Structured language findings for evaluative facts, unsupported causality, ownership-as-safety, and historical-minutes guarantees.
+- Phase-aware suppression of preseason price-movement and transfer-hit warnings.
+- Read compatibility for claim-ledger v1 and v2 without inferred epistemic kinds.
 - Agent-authored weekly recommendations and weekly strategy.
 - Evidence references by decision area.
 - Player-by-player pick and alternative analysis.

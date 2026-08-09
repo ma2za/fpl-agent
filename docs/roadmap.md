@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present through `0.0.9` and the dependency-ordered plan from `0.0.10` through `0.0.18`.
+This document records the capabilities present through `0.0.10` and the dependency-ordered plan from `0.0.11` through `0.0.18`.
 
 ## Permanent Decision Boundary
 
@@ -12,7 +12,7 @@ This document records the capabilities present through `0.0.9` and the dependenc
 - Tool-produced evidence and candidate artifacts must remain structurally separate from agent-authored decision artifacts.
 - Verification may reject illegal or unsupported decisions, but it must never replace them or choose an alternative.
 
-## Current State: 0.0.9
+## Current State: 0.0.10
 
 ### Workspace
 
@@ -92,7 +92,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Operational State
 
-- The locked local test suite passes 33 test files and 261 tests at the `0.0.9` status update.
+- The locked local test suite passes 36 test files and 275 tests at the `0.0.10` status update.
 - Evidence commands write local files for review.
 - Final squad, transfer, captaincy, bench, and chip decisions remain coding-agent-authored.
 - The human manager performs every change in the official FPL interface.
@@ -131,6 +131,15 @@ Current limitation:
 - Generated current-role reports expose that gap, but recommendation projections do not yet propagate it numerically.
 - Root provenance for club statements, press conferences, preseason lineups, predicted lineups, injuries, transfers, and odds is not yet complete enough to support strong role-security claims.
 - Historical minutes remain a fallback input and must not be described as current-role confirmation.
+
+### Epistemic Integrity and Phase-Aware Language
+
+- Claim-ledger v3 distinguishes observations, deterministic derived facts, assumptions, forecasts, and decisions.
+- Forecasts name their model, version, fact and assumption inputs, output, uncertainty, and horizon.
+- Decisions can depend directly on forecasts while preserving full provenance validation.
+- Structured language findings reject evaluative facts, unsupported causality, ownership-as-safety, and historical-minutes guarantees.
+- Phase-aware statement policy excludes price-movement and transfer-hit warnings from preseason draft decisions.
+- Claim-ledger v1 and v2 remain readable without fabricated epistemic classifications.
 
 ## Delivered Releases
 
@@ -188,8 +197,6 @@ Release gate:
 
 Status: delivered.
 
-## Planned Releases
-
 ### 0.0.10: Epistemic Integrity and Phase-Aware Language
 
 Prevent interpretations, forecasts, and generic prose from being presented as facts.
@@ -223,6 +230,10 @@ Release gate:
 - Reject “historical minutes guarantee starts” and flag “ownership makes this pick safe.”
 - Suppress preseason price-change warnings while retaining post-deadline price-movement risks.
 - Preserve read compatibility for v1 and v2 claim ledgers without inventing missing epistemic types.
+
+Status: delivered.
+
+## Planned Releases
 
 ### 0.0.11: Source-Grounded Current-Role Evidence
 

@@ -10,8 +10,14 @@ import {
   type ValidationResult
 } from "../../rules/src";
 import { evaluateRecommendationQuality } from "./quality";
+import { recommendationRationale, validateEpistemicLanguage } from "./epistemic";
 import { validateClaimLedger } from "./provenance";
-import type { RecommendationQualityReport, StrategyQualityReport, WeeklyRecommendation } from "./types";
+import type {
+  LanguageValidationReport,
+  RecommendationQualityReport,
+  StrategyQualityReport,
+  WeeklyRecommendation
+} from "./types";
 
 export type VerifyRecommendationOptions = {
   forceDeadline?: boolean;
@@ -20,6 +26,7 @@ export type VerifyRecommendationOptions = {
 export type VerifyRecommendationResult = ValidationResult & {
   quality: RecommendationQualityReport;
   strategyQuality?: StrategyQualityReport;
+  languageValidation?: LanguageValidationReport;
 };
 
 function mergeResults(...results: ValidationResult[]): ValidationResult {
@@ -64,6 +71,9 @@ function actionErrors(recommendation: WeeklyRecommendation) {
     errors.push("Final recommendation must include a claim ledger and decision dependencies.");
   } else {
     errors.push(...validateClaimLedger(recommendation.claimLedger).errors);
+    if (recommendation.claimLedger.schemaVersion !== 3) {
+      errors.push("Final recommendation must use a claim ledger v3 with explicit epistemic claim kinds.");
+    }
     const ledgerDecisionIds = new Set(recommendation.claimLedger.decisions.map((decision) => decision.id));
     for (const decisionId of recommendation.decisionIds) {
       if (!ledgerDecisionIds.has(decisionId)) {
@@ -173,11 +183,26 @@ export function verifyRecommendation(
     })
   );
   const quality = evaluateRecommendationQuality(recommendation);
+  const languageValidation = recommendation.claimLedger?.schemaVersion === 3 && recommendation.decisionContext
+    ? validateEpistemicLanguage(
+        recommendation.claimLedger,
+        recommendation.decisionContext.phase,
+        recommendationRationale(recommendation)
+      )
+    : undefined;
 
   return {
-    isValid: result.isValid && customErrors.length === 0 && quality.isValid,
-    errors: [...result.errors, ...customErrors, ...quality.errors],
+    isValid: result.isValid && customErrors.length === 0 && quality.isValid && (languageValidation?.isValid ?? true),
+    errors: [
+      ...result.errors,
+      ...customErrors,
+      ...quality.errors,
+      ...(languageValidation?.findings
+        .filter((finding) => finding.severity === "error")
+        .map((finding) => `${finding.claimId}: ${finding.rule} (${finding.phrase}).`) ?? [])
+    ],
     warnings: [...result.warnings, ...warnings, ...quality.warnings],
-    quality
+    quality,
+    languageValidation
   };
 }

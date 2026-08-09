@@ -17,6 +17,9 @@ The current recommendation model is simple, transparent, and replaceable.
 - Use transparent point projections as evidence, not as automatic player selection.
 - Keep chip recommendations conservative.
 - Include risks and conditions that would change the decision.
+- Separate source observations, deterministic derived facts, assumptions, forecasts, and decisions.
+- Keep evaluative language out of observations and derived facts unless it is an attributed source quote.
+- Use phase-aware warnings, including budget-path language instead of price-rise or transfer-hit warnings during preseason drafting.
 
 ## Projection Model
 

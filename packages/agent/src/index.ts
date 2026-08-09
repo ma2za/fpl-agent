@@ -5,6 +5,7 @@ export * from "./canonicalize";
 export * from "./currentRole";
 export * from "./evidence";
 export * from "./evidenceReport";
+export * from "./epistemic";
 export * from "./fixtureTicker";
 export * from "./fixtureHorizon";
 export * from "./markdown";

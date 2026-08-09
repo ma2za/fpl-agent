@@ -6,21 +6,33 @@ const decisionAreas = [
 
 export function testClaimLedger(): ClaimLedger {
   return {
-    schemaVersion: 1,
+    schemaVersion: 3,
     sources: [{ id: "src:test", publisher: "Test Publisher", sourceType: "manual", uri: null }],
     observations: [{
-      id: "obs:test", sourceId: "src:test", claim: "Test evidence is available.",
+      id: "obs:test", kind: "OBSERVATION", sourceId: "src:test", claim: "Test evidence is available.",
       observedAt: "2026-08-01T00:00:00.000Z", retrievedAt: "2026-08-01T00:00:00.000Z",
       reliability: 1, freshness: "fresh", value: true
     }],
-    facts: [{ id: "fact:test", claim: "Test evidence is available.", observationIds: ["obs:test"] }],
+    facts: [{
+      id: "fact:test", kind: "DERIVED_FACT", claim: "Test evidence is available.", observationIds: ["obs:test"],
+      transformationId: "tx:test"
+    }],
     assumptions: [{
-      id: "asm:test", claim: "The fixture evidence is representative.", factIds: ["fact:test"],
+      id: "asm:test", kind: "ASSUMPTION", claim: "The fixture evidence is representative.", factIds: ["fact:test"],
       model: "fixture-test", modelVersion: "1"
     }],
-    transformations: [],
+    forecasts: [{
+      id: "fcst:test", kind: "FORECAST", claim: "The test player will return 5 points.",
+      model: "fixture-test", modelVersion: "1", inputFactIds: ["fact:test"],
+      inputAssumptionIds: ["asm:test"], outputValue: 5, uncertainty: "plus or minus 2 points", horizon: "GW1"
+    }],
+    transformations: [{
+      id: "tx:test", tool: "test-transform", toolVersion: "1", reportPath: "test.json",
+      inputIds: ["obs:test"], outputFactIds: ["fact:test"]
+    }],
     decisions: decisionAreas.map((area) => ({
-      id: `dec:${area}`, area, factIds: ["fact:test"], assumptionIds: ["asm:test"]
+      id: `dec:${area}`, kind: "DECISION", claim: `Use the test evidence for ${area}.`, area,
+      factIds: ["fact:test"], assumptionIds: ["asm:test"], forecastIds: ["fcst:test"]
     }))
   };
 }

@@ -206,7 +206,9 @@ The coding agent must read the evidence files, reason from current public inform
 - Select a legal 15-player squad within £${DEFAULT_STARTING_BUDGET.toFixed(1)}m.
 - Cite evidence for every squad, shortlist, starting XI, captaincy, bench, chip, risk, and change-condition decision.
 - Fill evidenceReferences with source, reportPath, note, and relevant player IDs where applicable.
-- Fill claimLedger with stable source, observation, fact, assumption, transformation, and decision IDs; list every authored decision in decisionIds.
+- Fill claimLedger v3 with explicit OBSERVATION, DERIVED_FACT, ASSUMPTION, FORECAST, and DECISION kinds; list every authored decision in decisionIds.
+- Give every forecast its model, model version, input facts, input assumptions, output value, uncertainty, and horizon.
+- Keep evaluative or causal interpretation out of observations and derived facts, and use only phase-relevant warnings.
 - Treat generated reports as transformations of their originating observations, not as independent corroborating sources.
 - Fill decisionAnalysis with why every selected player was picked, why named alternatives were rejected, captaincy comparisons, key omissions, and evidence paths.
 - Keep exactly ${REQUIRED_SQUAD_COUNTS.GKP} GKP, ${REQUIRED_SQUAD_COUNTS.DEF} DEF, ${REQUIRED_SQUAD_COUNTS.MID} MID, and ${REQUIRED_SQUAD_COUNTS.FWD} FWD.

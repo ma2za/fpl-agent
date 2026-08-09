@@ -8,6 +8,7 @@ import type {
 } from "../../engine/src";
 import type {
   CompetitionAction,
+  CompetitionPhase,
   CompetitionState,
   DeadlineStatus
 } from "../../rules/src";
@@ -225,6 +226,8 @@ export type ClaimObservation = {
   reliability: number;
   freshness: "fresh" | "stale" | "unknown";
   value: unknown;
+  kind?: "OBSERVATION";
+  isSourceQuote?: boolean;
 };
 
 export type ClaimFact = {
@@ -232,6 +235,7 @@ export type ClaimFact = {
   claim: string;
   observationIds: string[];
   transformationId?: string;
+  kind?: "DERIVED_FACT";
 };
 
 export type ClaimAssumption = {
@@ -240,6 +244,20 @@ export type ClaimAssumption = {
   factIds: string[];
   model: string;
   modelVersion: string;
+  kind?: "ASSUMPTION";
+};
+
+export type ForecastClaim = {
+  id: string;
+  kind: "FORECAST";
+  claim: string;
+  model: string;
+  modelVersion: string;
+  inputFactIds: string[];
+  inputAssumptionIds: string[];
+  outputValue: unknown;
+  uncertainty: string;
+  horizon: string;
 };
 
 export type ClaimTransformation = {
@@ -256,16 +274,64 @@ export type ClaimDecision = {
   area: RecommendationEvidenceArea;
   factIds: string[];
   assumptionIds: string[];
+  kind?: "DECISION";
+  claim?: string;
+  forecastIds?: string[];
 };
 
-export type ClaimLedger = {
-  schemaVersion: 1;
+export type LegacyClaimLedger = {
+  schemaVersion: 1 | 2;
   sources: ClaimLedgerSource[];
   observations: ClaimObservation[];
   facts: ClaimFact[];
   assumptions: ClaimAssumption[];
   transformations: ClaimTransformation[];
   decisions: ClaimDecision[];
+};
+
+export type ClaimLedgerV3 = {
+  schemaVersion: 3;
+  sources: ClaimLedgerSource[];
+  observations: Array<ClaimObservation & { kind: "OBSERVATION" }>;
+  facts: Array<ClaimFact & { kind: "DERIVED_FACT"; transformationId: string }>;
+  assumptions: Array<ClaimAssumption & { kind: "ASSUMPTION" }>;
+  forecasts: ForecastClaim[];
+  transformations: ClaimTransformation[];
+  decisions: Array<ClaimDecision & {
+    kind: "DECISION";
+    claim: string;
+    forecastIds: string[];
+  }>;
+};
+
+export type ClaimLedger = LegacyClaimLedger | ClaimLedgerV3;
+
+export type EpistemicClaim =
+  | ClaimLedgerV3["observations"][number]
+  | ClaimLedgerV3["facts"][number]
+  | ClaimLedgerV3["assumptions"][number]
+  | ForecastClaim
+  | ClaimLedgerV3["decisions"][number];
+
+export type LanguageValidationFinding = {
+  claimId: string;
+  phrase: string;
+  rule: string;
+  severity: "error" | "warning";
+  suggestedClaimKind: EpistemicClaim["kind"];
+};
+
+export type LanguageValidationReport = {
+  schemaVersion: 1;
+  phase: CompetitionPhase;
+  isValid: boolean;
+  findings: LanguageValidationFinding[];
+};
+
+export type PhaseStatementPolicy = {
+  phase: CompetitionPhase;
+  prohibitedWarningPatterns: RegExp[];
+  validFlexibilityStatements: string[];
 };
 
 export type ClaimIndependence = {

@@ -26,7 +26,7 @@ normalized data
 rules validation
 deterministic evidence generation with separate historical and current-role signals
 manual context notes
-schema-v2 coding-agent-authored decision with claim lineage and manual checklist
+schema-v2 coding-agent-authored decision with claim-ledger v3 epistemic lineage and manual checklist
 legality and quality verification
 human manually applies accepted changes
 postmortem records outcome
@@ -36,4 +36,4 @@ Fixture evidence keeps the validated FPL schedule primary. The legacy ticker rem
 
 Milestone 5 implements deterministic evidence output and recommendation templates.
 
-Milestone 6 implements a read-only verification gate for agent-authored recommendations.
+Milestone 6 implements a read-only verification gate for agent-authored recommendations, including structured epistemic-language findings and phase-aware statement checks.

@@ -113,6 +113,7 @@ describe("artifact schemas", () => {
       "evidenceReport",
       "fixtureHorizonReport",
       "fixtureTicker",
+      "languageValidationReport",
       "legalityReport",
       "minutesRiskReport",
       "oddsReport",

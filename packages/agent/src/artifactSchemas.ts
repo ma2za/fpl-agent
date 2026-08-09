@@ -38,64 +38,132 @@ const sourceId = stableId("src");
 const observationId = stableId("obs");
 const factId = stableId("fact");
 const assumptionId = stableId("asm");
+const forecastId = stableId("fcst");
 const transformationId = stableId("tx");
 const decisionId = stableId("dec");
 
-const claimLedgerShape = z.object({
+const sourceClaim = z.object({
+  id: sourceId,
+  publisher: z.string().min(1),
+  sourceType: z.enum(["official", "club", "media", "market", "manual"]),
+  uri: z.string().nullable()
+}).strict();
+const observationClaim = z.object({
+  id: observationId,
+  sourceId,
+  claim: z.string().min(1),
+  observedAt: z.string().min(1),
+  retrievedAt: z.string().min(1),
+  reliability: z.number().min(0).max(1),
+  freshness: z.enum(["fresh", "stale", "unknown"]),
+  value: z.unknown()
+}).strict();
+const factClaim = z.object({
+  id: factId,
+  claim: z.string().min(1),
+  observationIds: z.array(observationId).min(1),
+  transformationId: transformationId.optional()
+}).strict();
+const assumptionClaim = z.object({
+  id: assumptionId,
+  claim: z.string().min(1),
+  factIds: z.array(factId).min(1),
+  model: z.string().min(1),
+  modelVersion: z.string().min(1)
+}).strict();
+const transformationClaim = z.object({
+  id: transformationId,
+  tool: z.string().min(1),
+  toolVersion: z.string().min(1),
+  reportPath: z.string().min(1),
+  inputIds: z.array(z.string()).min(1),
+  outputFactIds: z.array(factId).min(1)
+}).strict();
+const decisionClaim = z.object({
+  id: decisionId,
+  area: z.enum([
+    "squad", "starting-xi", "shortlist", "transfers", "captaincy",
+    "bench", "chip", "risks", "change-conditions"
+  ]),
+  factIds: z.array(factId),
+  assumptionIds: z.array(assumptionId)
+}).strict();
+
+const legacyClaimLedgerFields = {
+  sources: z.array(sourceClaim),
+  observations: z.array(observationClaim),
+  facts: z.array(factClaim),
+  assumptions: z.array(assumptionClaim),
+  transformations: z.array(transformationClaim),
+  decisions: z.array(decisionClaim)
+};
+
+export const ClaimLedgerV1Schema = z.object({
   schemaVersion: z.literal(1),
-  sources: z.array(z.object({
-    id: sourceId,
-    publisher: z.string().min(1),
-    sourceType: z.enum(["official", "club", "media", "market", "manual"]),
-    uri: z.string().nullable()
+  ...legacyClaimLedgerFields
+}).strict();
+
+export const ClaimLedgerV2Schema = z.object({
+  schemaVersion: z.literal(2),
+  ...legacyClaimLedgerFields
+}).strict();
+
+export const ClaimLedgerV3Schema = z.object({
+  schemaVersion: z.literal(3),
+  sources: z.array(sourceClaim),
+  observations: z.array(observationClaim.extend({
+    kind: z.literal("OBSERVATION"),
+    isSourceQuote: z.boolean().optional()
   }).strict()),
-  observations: z.array(z.object({
-    id: observationId,
-    sourceId,
-    claim: z.string().min(1),
-    observedAt: z.string().min(1),
-    retrievedAt: z.string().min(1),
-    reliability: z.number().min(0).max(1),
-    freshness: z.enum(["fresh", "stale", "unknown"]),
-    value: z.unknown()
+  facts: z.array(factClaim.extend({
+    kind: z.literal("DERIVED_FACT"),
+    transformationId
   }).strict()),
-  facts: z.array(z.object({
-    id: factId,
+  assumptions: z.array(assumptionClaim.extend({ kind: z.literal("ASSUMPTION") }).strict()),
+  forecasts: z.array(z.object({
+    id: forecastId,
+    kind: z.literal("FORECAST"),
     claim: z.string().min(1),
-    observationIds: z.array(observationId).min(1),
-    transformationId: transformationId.optional()
-  }).strict()),
-  assumptions: z.array(z.object({
-    id: assumptionId,
-    claim: z.string().min(1),
-    factIds: z.array(factId).min(1),
     model: z.string().min(1),
-    modelVersion: z.string().min(1)
-  }).strict()),
-  transformations: z.array(z.object({
-    id: transformationId,
-    tool: z.string().min(1),
-    toolVersion: z.string().min(1),
-    reportPath: z.string().min(1),
-    inputIds: z.array(z.string()).min(1),
-    outputFactIds: z.array(factId).min(1)
-  }).strict()),
-  decisions: z.array(z.object({
-    id: decisionId,
-    area: z.enum([
-      "squad", "starting-xi", "shortlist", "transfers", "captaincy",
-      "bench", "chip", "risks", "change-conditions"
+    modelVersion: z.string().min(1),
+    inputFactIds: z.array(factId),
+    inputAssumptionIds: z.array(assumptionId),
+    outputValue: z.union([
+      z.string(), z.number(), z.boolean(), z.null(), z.array(z.unknown()), z.record(z.string(), z.unknown())
     ]),
-    factIds: z.array(factId),
-    assumptionIds: z.array(assumptionId)
+    uncertainty: z.string().min(1),
+    horizon: z.string().min(1)
+  }).strict()),
+  transformations: z.array(transformationClaim),
+  decisions: z.array(decisionClaim.extend({
+    kind: z.literal("DECISION"),
+    claim: z.string().min(1),
+    forecastIds: z.array(forecastId)
   }).strict())
 }).strict();
 
-export const ClaimLedgerSchema = claimLedgerShape.superRefine((ledger, context) => {
+export const ClaimLedgerSchema = z.union([
+  ClaimLedgerV1Schema,
+  ClaimLedgerV2Schema,
+  ClaimLedgerV3Schema
+]).superRefine((ledger, context) => {
   for (const error of validateClaimLedger(ledger).errors) {
     context.addIssue({ code: "custom", message: error });
   }
 });
+
+export const LanguageValidationReportSchema = z.object({
+  schemaVersion: z.literal(1),
+  phase: competitionPhase,
+  isValid: z.boolean(),
+  findings: z.array(z.object({
+    claimId: z.string().min(1),
+    phrase: z.string().min(1),
+    rule: z.string().min(1),
+    severity: z.enum(["error", "warning"]),
+    suggestedClaimKind: z.enum(["OBSERVATION", "DERIVED_FACT", "ASSUMPTION", "FORECAST", "DECISION"])
+  }).strict())
+}).strict();
 
 const validationResult = looseObject({
   isValid: z.boolean(),
@@ -993,6 +1061,7 @@ export const ArtifactSchemas = {
   agentDecision: AgentDecisionArtifactSchema,
   candidate: CandidateArtifactSchema,
   claimLedger: ClaimLedgerSchema,
+  languageValidationReport: LanguageValidationReportSchema,
   currentRoleReport: CurrentRoleReportSchema,
   evidenceReport: EvidenceReportSchema,
   fixtureHorizonReport: FixtureHorizonReportSchema,
