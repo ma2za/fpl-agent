@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present through `0.0.11` and the dependency-ordered plan from `0.0.12` through `0.0.18`.
+This document records the capabilities present through `0.0.12` and the dependency-ordered plan from `0.0.13` through `0.0.18`.
 
 ## Permanent Decision Boundary
 
@@ -12,7 +12,7 @@ This document records the capabilities present through `0.0.11` and the dependen
 - Tool-produced evidence and candidate artifacts must remain structurally separate from agent-authored decision artifacts.
 - Verification may reject illegal or unsupported decisions, but it must never replace them or choose an alternative.
 
-## Current State: 0.0.11
+## Current State: 0.0.12
 
 ### Workspace
 
@@ -92,7 +92,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Operational State
 
-- The locked local test suite passes 37 test files and 279 tests at the `0.0.11` status update.
+- The locked local test suite passes 38 test files and 289 tests at the `0.0.12` status update.
 - Evidence commands write local files for review.
 - Final squad, transfer, captaincy, bench, and chip decisions remain coding-agent-authored.
 - The human manager performs every change in the official FPL interface.
@@ -131,9 +131,24 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 Current limitation:
 
 - Most players still lack independent current-role evidence beyond official availability and historical FPL data.
-- Generated current-role reports expose that gap, but recommendation projections do not yet propagate it numerically.
 - Root provenance for club statements, press conferences, preseason lineups, predicted lineups, injuries, transfers, and odds is not yet complete enough to support strong role-security claims.
 - Historical minutes remain a fallback input and must not be described as current-role confirmation.
+
+### Start Probability and Role-Adjusted Projections
+
+- Mutually exclusive start, substitute-appearance, and no-appearance probabilities that sum to one.
+- Separate appearance probability, historical-role confidence, current-role evidence confidence, availability confidence, overall evidence confidence, and evidence uncertainty.
+- Conditional-start points, conditional-substitute points, role-adjusted expectation, expected minutes, median, p10, p90, standard deviation, and football-outcome variance.
+- Empirical conditional distributions when cached current-season history contains at least six starts and four substitute appearances.
+- Explicit position, price, fixture, historical-role, and current-role cohort fallbacks when empirical coverage is insufficient.
+- Deterministic per-player seeds, fixed sample counts, and persisted model inputs.
+- Role-adjusted projections used by player pools, captain evidence, starting-XI evidence, transfer candidates, and chip thresholds while legacy raw projections remain visible for comparison.
+- Full-pool probability benchmark covering 573 players and 1,000 deterministic samples per player.
+
+Current limitation:
+
+- Appearance states are independent between players until correlated scenarios are delivered in `0.0.15`.
+- Preseason current-season histories are usually empty, so cohort fallbacks are common and remain explicitly labeled.
 
 ### Epistemic Integrity and Phase-Aware Language
 
@@ -271,8 +286,6 @@ Release gate:
 
 Status: delivered.
 
-## Planned Releases
-
 ### 0.0.12: Start Probability and Role-Adjusted Projections
 
 Make uncertain role evidence change the numbers used downstream.
@@ -303,6 +316,10 @@ Release gate:
 - Verify that reducing start probability lowers role-adjusted expected points without changing conditional-start points.
 - Verify that a lower raw-projection secure player can outrank an uncertain player under a role-adjusted objective.
 - Snapshot examples for an established starter, a transfer-threatened starter, a preseason challenger, and a new promoted player.
+
+Status: delivered.
+
+## Planned Releases
 
 ### 0.0.13: Role-Adjusted Squad Utility and Robustness
 

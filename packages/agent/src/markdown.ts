@@ -209,6 +209,8 @@ Manual execution required: ${recommendation.manualExecutionRequired}
 - recommendation.json
 - legality-report.json
 - projections.json
+- probabilistic-projections.json
+- projection-uncertainty-report.md
 - projection-summary.md
 - fixture-ticker.md
 - minutes-risk-report.md

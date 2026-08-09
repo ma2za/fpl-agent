@@ -39,12 +39,19 @@ function teamName(player: EvidencePlayer) {
 }
 
 function withProjections(players: PlayerForEngine[], projections: PlayerProjection[]) {
-  const projectionById = new Map(projections.map((projection) => [projection.playerId, projection.projectedPoints]));
+  const projectionById = new Map(projections.map((projection) => [projection.playerId, projection]));
 
-  return players.map((player) => ({
-    ...player,
-    projectedPoints: projectionById.get(player.id) ?? 0
-  }));
+  return players.map((player) => {
+    const projection = projectionById.get(player.id);
+    return {
+      ...player,
+      projectedPoints: projection?.projectedPoints ?? 0,
+      rawProjectedPoints: projection?.rawProjectedPoints,
+      roleAdjustedProjection: projection?.roleAdjustedProjection,
+      startProbability: projection?.startProbability,
+      appearanceProbability: projection?.appearanceProbability
+    };
+  });
 }
 
 function topByPosition(players: EvidencePlayer[], position: string) {
@@ -235,7 +242,7 @@ export function renderProjectionSummary(evidencePack: EvidencePack) {
       "",
       ...players.map(
         (player) =>
-          `- ${player.name} (${teamName(player)}, £${player.price.toFixed(1)}): ${player.projectedPoints.toFixed(1)} projected, ${player.totalPoints ?? 0} total points`
+          `- ${player.name} (${teamName(player)}, £${player.price.toFixed(1)}): ${player.projectedPoints.toFixed(1)} role-adjusted, ${(player.rawProjectedPoints ?? player.projectedPoints).toFixed(1)} legacy raw, P(start) ${(player.startProbability ?? 0).toFixed(3)}`
       ),
       ""
     ];

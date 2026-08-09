@@ -365,7 +365,7 @@ export function buildCurrentRoleReport(input: BuildCurrentRoleReportInput): Curr
     transformations: [{
       id: `tx:current-role-gw-${input.gameweek}`,
       tool: "current-role-report",
-      toolVersion: "0.0.11",
+      toolVersion: "0.0.12",
       inputObservationIds: observations.map((observation) => observation.id),
       outputPlayerIds: items.map((item) => item.playerId)
     }],
@@ -382,7 +382,7 @@ export function buildCurrentRoleReport(input: BuildCurrentRoleReportInput): Curr
       missingAdapters: missing.length,
       failedAdapters: failed.length
     },
-    items: selectedItems.length > 0 ? selectedItems : items,
+    items,
     warnings: [
       ...missing.map((adapter) => `${adapter.provider} ${adapter.kind} adapter is missing or unsupported.`),
       ...failed.map((adapter) => `${adapter.provider} ${adapter.kind} adapter failed: ${adapter.message}`),

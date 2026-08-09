@@ -90,6 +90,7 @@ describe("compatibility inventory", () => {
         "captaincy",
         "chips",
         "projections",
+        "probabilisticProjections",
         "transferCandidates",
         "types",
       ],

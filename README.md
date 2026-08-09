@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.11`
+Version: `0.0.12`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -224,9 +224,9 @@ pnpm dev
 
 ## Known Limitations
 
-- The repo prepares deterministic evidence files from cached FPL data.
+- The repo prepares deterministic evidence files and seeded appearance-state distributions from cached FPL data.
 - The repo validates squads, formations, captaincy, bench order, chips, deadlines, and transfer costs.
-- The repo can generate deterministic projections and player-pool evidence.
+- The repo generates role-adjusted projections while retaining legacy conditional projections for comparison.
 - The repo can hold a season strategy and verify weekly strategy rationale.
 - Public odds coverage depends on Football-Data fixture rows being available for the target gameweek.
 - Player selection is intentionally agent-authored, not script-authored.

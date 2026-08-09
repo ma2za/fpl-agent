@@ -166,6 +166,10 @@ export type DecisionContext = {
 
 export type EvidencePlayer = PlayerForEngine & {
   projectedPoints: number;
+  rawProjectedPoints?: number;
+  roleAdjustedProjection?: number;
+  startProbability?: number;
+  appearanceProbability?: number;
 };
 
 export type BudgetTier = {

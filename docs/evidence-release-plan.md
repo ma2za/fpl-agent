@@ -119,7 +119,7 @@ Implemented:
 - Reliability hierarchy with 14-day current and 60-day historical half-life decay.
 - Reviewed manual overrides, dimension-local source disagreement, publisher-and-claim deduplication, and visible missing or failed adapters.
 - A historical-only confidence cap of `0.45`; historical evidence alone cannot produce `READY`.
-- Separate evidence confidence and start probability fields; start probability remains unset until the probabilistic projection release.
+- Per-dimension evidence confidence remains separate from player-level start probability; player-level appearance states are published in the probabilistic projection artifacts.
 - Adapter health metrics for configured, fetched, parsed, matched, stale, failed, and unsupported inputs.
 - Transactional refresh, recommendation prompts, aggregate evidence, and squad-risk integration.
 
@@ -156,7 +156,13 @@ Implemented:
 - Attack- and defence-specific 1GW, 3GW, and 6GW fixture horizons with source confidence and explicit fallbacks.
 - Blank, double, unresolved-schedule, short-rest, fixture-swing, configured-squad, and authored-variant exposure summaries.
 - Official Premier League fixture-release parsing.
-- Player projections, position pools, budget tiers, and club exposure.
+- Legacy conditional and role-adjusted player projections, position pools, budget tiers, and club exposure.
+- `probabilistic-projections.json`, `projection-uncertainty-report.json`, and `projection-uncertainty-report.md`.
+- Mutually exclusive start, substitute, and no-appearance probabilities with normalized invariants.
+- Conditional-start and substitute point values, expected minutes distributions, median, p10, p90, standard deviation, and role-adjusted expectation.
+- Separate historical-role, current-role, availability, overall evidence confidence, evidence uncertainty, and football-outcome variance.
+- Deterministic seeds and persisted model inputs.
+- Empirical conditional histories when sufficient, with labeled position, price, fixture, and role cohorts otherwise.
 - Squad comparison for two authored recommendation files.
 - Authored variant listing, independent verification, and neutral comparison against shared gameweek evidence.
 - Full-squad structure comparison requirements in recommendation quality gates.
@@ -164,6 +170,8 @@ Implemented:
 
 Current limitations:
 
+- Appearance states are player-independent; correlated club and scenario states are deferred to `0.0.15`.
+- Preseason current-season match histories are usually empty, so cohort fallbacks are common and explicitly labeled.
 - FPL attack and defence strength fields may be unavailable; venue-specific overall strength and raw FDR remain visibly labelled low-confidence fallbacks.
 - Official Premier League fixture-release evidence remains separate and is never silently merged with the FPL schedule.
 - Price-risk comparison remains unavailable until normalized price evidence exists; reports expose that gap explicitly.

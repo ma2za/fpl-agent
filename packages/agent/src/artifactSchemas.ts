@@ -204,7 +204,11 @@ const playerProjection = looseObject({
   expectedMinutesFactor: z.number(),
   fixtureDifficultyFactor: z.number(),
   availabilityFactor: z.number(),
-  formFactor: z.number()
+  formFactor: z.number(),
+  rawProjectedPoints: z.number().optional(),
+  roleAdjustedProjection: z.number().optional(),
+  startProbability: z.number().min(0).max(1).optional(),
+  appearanceProbability: z.number().min(0).max(1).optional()
 });
 
 const captainCandidate = looseObject({
@@ -1063,6 +1067,89 @@ export const CurrentRoleReportSchema = looseObject({
 export const RoleEvidenceReportSchema = CurrentRoleReportSchema;
 
 export const PlayerProjectionArraySchema = z.array(playerProjection);
+
+const appearanceStateForecast = z.object({
+  playerId: z.number(),
+  startProbability: z.number().min(0).max(1),
+  subAppearanceProbability: z.number().min(0).max(1),
+  noAppearanceProbability: z.number().min(0).max(1),
+  appearanceProbability: z.number().min(0).max(1),
+  historicalRoleConfidence: z.number().min(0).max(1),
+  currentRoleEvidenceConfidence: z.number().min(0).max(1),
+  availabilityConfidence: z.number().min(0).max(1),
+  overallEvidenceConfidence: z.number().min(0).max(1),
+  evidenceUncertainty: z.number().min(0).max(1),
+  source: z.enum(["current_role", "historical_role", "cohort_fallback"]),
+  reasonCodes: stringArray
+}).strict().superRefine((forecast, context) => {
+  const total = forecast.startProbability + forecast.subAppearanceProbability + forecast.noAppearanceProbability;
+  if (Math.abs(total - 1) > 0.002) {
+    context.addIssue({ code: "custom", message: `Appearance probabilities for player ${forecast.playerId} must sum to one.` });
+  }
+  if (Math.abs(forecast.appearanceProbability - forecast.startProbability - forecast.subAppearanceProbability) > 0.002) {
+    context.addIssue({ code: "custom", message: `Appearance probability for player ${forecast.playerId} must equal start plus substitute probability.` });
+  }
+});
+
+const minutesDistribution = z.object({
+  expectedMinutes: z.number(),
+  median: z.number(),
+  p10: z.number(),
+  p90: z.number(),
+  standardDeviation: z.number().nonnegative(),
+  startMinutesMean: z.number(),
+  substituteMinutesMean: z.number(),
+  sampleSource: z.enum(["empirical", "cohort"]),
+  cohort: z.string()
+}).strict();
+
+const probabilisticProjection = z.object({
+  playerId: z.number(),
+  appearance: appearanceStateForecast,
+  minutes: minutesDistribution,
+  rawProjectionIfStarting: z.number(),
+  conditionalSubstitutePoints: z.number(),
+  roleAdjustedProjection: z.number(),
+  median: z.number(),
+  p10: z.number(),
+  p90: z.number(),
+  projectionStandardDeviation: z.number().nonnegative(),
+  footballOutcomeVariance: z.number().nonnegative(),
+  evidenceUncertainty: z.number().min(0).max(1),
+  model: z.literal("appearance-state-mixture"),
+  modelVersion: z.literal("0.0.12"),
+  inputs: z.object({
+    seed: z.number().int().nonnegative(),
+    sampleCount: z.number().int().positive(),
+    availabilityFactor: z.number().min(0).max(1),
+    historicalExpectedMinutes: z.number(),
+    historicalMinutes: z.number().nullable(),
+    position: z.enum(["GKP", "DEF", "MID", "FWD"]),
+    price: z.number(),
+    teamStrength: z.number().nullable(),
+    fixtureDifficultyFactor: z.number(),
+    roleSupportScore: z.number().nullable(),
+    roleEvidenceConfidence: z.number().min(0).max(1),
+    roleCurrentEvidencePresent: z.boolean(),
+    roleDisagreement: z.boolean(),
+    conditionalSampleCount: z.number().int().nonnegative(),
+    cohort: z.string()
+  }).strict()
+}).strict();
+
+export const ProbabilisticProjectionArraySchema = z.array(probabilisticProjection);
+
+export const ProjectionUncertaintyReportSchema = z.object({
+  schemaVersion: z.literal(1),
+  generatedAt: z.string(),
+  gameweek: z.number().int().positive(),
+  model: z.literal("appearance-state-mixture"),
+  modelVersion: z.literal("0.0.12"),
+  seed: z.number().int().nonnegative(),
+  sampleCount: z.number().int().positive(),
+  items: ProbabilisticProjectionArraySchema,
+  warnings: stringArray
+}).strict();
 
 const variantEvidenceSummary = looseObject({
   fixtureDifficulty: nullableNumber,

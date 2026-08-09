@@ -8,6 +8,7 @@ import {
   CandidateArtifactSchema,
   EvidenceReportSchema,
   FixtureHorizonReportSchema,
+  ProjectionUncertaintyReportSchema,
   RecommendationArtifactSchema,
   ToolEvidenceArtifactSchema,
   WeeklyStrategySchema,
@@ -155,6 +156,81 @@ describe("artifact IO", () => {
     expect(() => parseArtifactJson("null", EvidenceReportSchema)).toThrow(
       ArtifactValidationError
     );
+  });
+
+  it("validates normalized probabilistic projection artifacts", () => {
+    const report = {
+      schemaVersion: 1,
+      generatedAt: "2026-08-09T00:00:00.000Z",
+      gameweek: 1,
+      model: "appearance-state-mixture",
+      modelVersion: "0.0.12",
+      seed: 12,
+      sampleCount: 1000,
+      items: [{
+        playerId: 1,
+        appearance: {
+          playerId: 1,
+          startProbability: 0.8,
+          subAppearanceProbability: 0.1,
+          noAppearanceProbability: 0.1,
+          appearanceProbability: 0.9,
+          historicalRoleConfidence: 0.8,
+          currentRoleEvidenceConfidence: 0.7,
+          availabilityConfidence: 1,
+          overallEvidenceConfidence: 0.8,
+          evidenceUncertainty: 0.2,
+          source: "current_role",
+          reasonCodes: ["current_role"]
+        },
+        minutes: {
+          expectedMinutes: 70,
+          median: 80,
+          p10: 0,
+          p90: 90,
+          standardDeviation: 30,
+          startMinutesMean: 84,
+          substituteMinutesMean: 16,
+          sampleSource: "cohort",
+          cohort: "mid-established-starter"
+        },
+        rawProjectionIfStarting: 7,
+        conditionalSubstitutePoints: 1,
+        roleAdjustedProjection: 5.7,
+        median: 5,
+        p10: 0,
+        p90: 12,
+        projectionStandardDeviation: 4,
+        footballOutcomeVariance: 16,
+        evidenceUncertainty: 0.2,
+        model: "appearance-state-mixture",
+        modelVersion: "0.0.12",
+        inputs: {
+          seed: 1,
+          sampleCount: 1000,
+          availabilityFactor: 1,
+          historicalExpectedMinutes: 85,
+          historicalMinutes: 2800,
+          position: "MID",
+          price: 7,
+          teamStrength: 4,
+          fixtureDifficultyFactor: 1,
+          roleSupportScore: 0.8,
+          roleEvidenceConfidence: 0.7,
+          roleCurrentEvidencePresent: true,
+          roleDisagreement: false,
+          conditionalSampleCount: 0,
+          cohort: "mid-established-starter"
+        }
+      }],
+      warnings: []
+    };
+
+    expect(ProjectionUncertaintyReportSchema.parse(report)).toEqual(report);
+    expect(() => ProjectionUncertaintyReportSchema.parse({
+      ...report,
+      items: [{ ...report.items[0], appearance: { ...report.items[0].appearance, noAppearanceProbability: 0.2 } }]
+    })).toThrow();
   });
 });
 

@@ -148,7 +148,7 @@ function officialAvailability(
       observedAt,
       capturedExcerpt,
       structuredValue,
-      adapterVersion: "0.0.11",
+      adapterVersion: "0.0.12",
       contentHash: contentHash({ playerId: player.id, structuredValue, capturedExcerpt, observedAt }),
       credibility: { score: 1, label: "high", rationale: "Official FPL availability field." },
       relevance: { score: 1, rationale: "Current availability evidence." },

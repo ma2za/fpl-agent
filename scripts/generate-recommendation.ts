@@ -1,10 +1,18 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { projectPlayers, type PlayerForEngine } from "../packages/engine/src";
+import {
+  buildProjectionUncertaintyReport,
+  projectPlayers,
+  renderProjectionUncertaintyMarkdown,
+  roleAdjustedPlayerProjections,
+  type ConditionalAppearanceSample,
+  type PlayerForEngine
+} from "../packages/engine/src";
 import {
   buildEvidencePack,
   buildStrategyEvidence,
+  CurrentRoleReportSchema,
   FixtureHorizonReportSchema,
   readArtifactFileIfExists,
   RecommendationArtifactSchema,
@@ -14,6 +22,7 @@ import {
   renderWeeklyStrategyTemplate,
   WeeklyStrategySchema,
   weeklyStrategyJsonTemplate,
+  type CurrentRoleReport,
   type DecisionContext,
   type FixtureHorizonReport
 } from "../packages/agent/src";
@@ -37,6 +46,11 @@ type BootstrapEvent = {
 
 type BootstrapStatic = {
   events: BootstrapEvent[];
+  teams?: Array<{
+    id: number;
+    strength_overall_home?: number | null;
+    strength_overall_away?: number | null;
+  }>;
 };
 
 function argValue(name: string) {
@@ -51,6 +65,41 @@ function argValue(name: string) {
 
 async function readJson<T>(filePath: string) {
   return JSON.parse(await readFile(filePath, "utf8")) as T;
+}
+
+async function readJsonIfExists<T>(filePath: string) {
+  try {
+    return await readJson<T>(filePath);
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+async function loadConditionalHistory() {
+  const index = await readJsonIfExists<{
+    players: Array<{ id: number; path: string }>;
+  }>(path.join("data", "processed", "player-data", "index.json"));
+  const history = new Map<number, ConditionalAppearanceSample[]>();
+
+  await Promise.all((index?.players ?? []).map(async (entry) => {
+    const data = await readJsonIfExists<{
+      currentSeasonHistory?: Array<Record<string, unknown>>;
+    }>(entry.path);
+    const samples = (data?.currentSeasonHistory ?? []).flatMap((item) => {
+      const minutes = typeof item.minutes === "number" ? item.minutes : null;
+      const points = typeof item.total_points === "number" ? item.total_points : null;
+      if (minutes === null || points === null || minutes <= 0) return [];
+      return [{
+        started: item.starts === 1 || (item.starts === undefined && minutes > 45),
+        minutes,
+        points
+      }];
+    });
+    if (samples.length > 0) history.set(entry.id, samples);
+  }));
+
+  return history;
 }
 
 async function writeJson(filePath: string, data: unknown) {
@@ -190,6 +239,9 @@ The coding agent must read the evidence files, reason from current public inform
 - adapter-coverage-report.json
 - player-pool.json
 - projections.json
+- probabilistic-projections.json
+- projection-uncertainty-report.json
+- projection-uncertainty-report.md
 - projection-summary.md
 - budget-tiers.json
 - club-exposure.json
@@ -282,8 +334,33 @@ export async function generateRecommendationEvidence(input: {
     })),
     now
   });
-  const projections = projectPlayers(players);
   const outputDir = input.outputDir ?? path.join("packages", "content", "recommendations", `gw-${gameweek}`);
+  const teamStrengthById = new Map((bootstrap.teams ?? []).map((team) => {
+    const strengths = [team.strength_overall_home, team.strength_overall_away]
+      .filter((strength): strength is number => typeof strength === "number");
+    return [team.id, strengths.length > 0
+      ? strengths.reduce((sum, strength) => sum + strength, 0) / strengths.length
+      : null] as const;
+  }));
+  const projectionPlayers = players.map((player) => ({
+    ...player,
+    teamStrength: teamStrengthById.get(player.teamId) ?? null
+  }));
+  const rawProjections = projectPlayers(projectionPlayers);
+  const currentRoleReport: CurrentRoleReport | null = await readArtifactFileIfExists(
+    path.join(outputDir, "current-role-report.json"),
+    CurrentRoleReportSchema
+  );
+  const historyByPlayerId = await loadConditionalHistory();
+  const projectionUncertainty = buildProjectionUncertaintyReport({
+    generatedAt,
+    gameweek,
+    players: projectionPlayers,
+    rawProjections,
+    roleEvidence: currentRoleReport?.items,
+    historyByPlayerId
+  });
+  const projections = roleAdjustedPlayerProjections(rawProjections, projectionUncertainty);
   const fixtureHorizonReport = input.fixtureHorizonReport ?? await readArtifactFileIfExists(
     path.join(outputDir, "fixture-horizon-report.json"),
     FixtureHorizonReportSchema
@@ -357,6 +434,13 @@ export async function generateRecommendationEvidence(input: {
     dataModeInferredFromLiveFplData: !officialModeRequested && !provisionalModeRequested && dataMode === "official"
   });
   await writeJson(path.join(outputDir, "projections.json"), evidencePack.projections);
+  await writeJson(path.join(outputDir, "probabilistic-projections.json"), projectionUncertainty.items);
+  await writeJson(path.join(outputDir, "projection-uncertainty-report.json"), projectionUncertainty);
+  await writeFile(
+    path.join(outputDir, "projection-uncertainty-report.md"),
+    renderProjectionUncertaintyMarkdown(projectionUncertainty),
+    "utf8"
+  );
   await writeJson(path.join(outputDir, "player-pool.json"), evidencePack.playerPool);
   await writeJson(path.join(outputDir, "budget-tiers.json"), evidencePack.budgetTiers);
   await writeJson(path.join(outputDir, "club-exposure.json"), evidencePack.clubExposure);

@@ -24,7 +24,7 @@ The current recommendation model is simple, transparent, and replaceable.
 
 ## Projection Model
 
-The current deterministic projection uses public FPL-derived fields:
+The legacy conditional projection remains visible for comparison:
 
 ```txt
 projected_points =
@@ -35,7 +35,19 @@ projected_points =
   x form_factor
 ```
 
-This model is intentionally simple and inspectable.
+Release `0.0.12` adds a deterministic appearance-state mixture:
+
+```txt
+P(start) + P(substitute appearance) + P(no appearance) = 1
+
+role_adjusted_points =
+  P(start) x E[points | start]
+  + P(substitute appearance) x E[points | substitute appearance]
+```
+
+Start, substitute, and no-appearance states use current-role evidence when present. Cached match history supplies empirical conditional minutes and points only when it contains at least six starts and four substitute appearances. Otherwise, the report names the position, price, historical-role, and fixture-adjusted cohort used as a fallback.
+
+Every probabilistic projection persists its seed, sample count, input confidence, role support, availability factor, historical minutes, conditional sample count, and cohort. The report keeps evidence uncertainty separate from football-outcome variance and exposes raw-if-starting, role-adjusted, median, p10, p90, and standard-deviation values.
 
 ## Agent Selection
 

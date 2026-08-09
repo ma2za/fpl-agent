@@ -9,6 +9,7 @@ export type PlayerForEngine = PlayerForRules & {
   form?: number | null;
   minutes?: number | null;
   selectedByPercent?: number | null;
+  teamStrength?: number | null;
   totalPoints?: number | null;
 };
 
@@ -25,6 +26,100 @@ export type PlayerProjection = {
   fixtureDifficultyFactor: number;
   availabilityFactor: number;
   formFactor: number;
+  rawProjectedPoints?: number;
+  roleAdjustedProjection?: number;
+  startProbability?: number;
+  appearanceProbability?: number;
+};
+
+export type AppearanceStateForecast = {
+  playerId: number;
+  startProbability: number;
+  subAppearanceProbability: number;
+  noAppearanceProbability: number;
+  appearanceProbability: number;
+  historicalRoleConfidence: number;
+  currentRoleEvidenceConfidence: number;
+  availabilityConfidence: number;
+  overallEvidenceConfidence: number;
+  evidenceUncertainty: number;
+  source: "current_role" | "historical_role" | "cohort_fallback";
+  reasonCodes: string[];
+};
+
+export type MinutesDistribution = {
+  expectedMinutes: number;
+  median: number;
+  p10: number;
+  p90: number;
+  standardDeviation: number;
+  startMinutesMean: number;
+  substituteMinutesMean: number;
+  sampleSource: "empirical" | "cohort";
+  cohort: string;
+};
+
+export type ConditionalAppearanceSample = {
+  started: boolean;
+  minutes: number;
+  points: number;
+};
+
+export type RoleEvidenceForProjection = {
+  playerId: number;
+  supportScore: number;
+  confidence: number;
+  currentEvidencePresent: boolean;
+  manualOverride: "supports_start" | "opposes_start" | null;
+  disagreement: boolean;
+};
+
+export type ProjectionModelInputs = {
+  seed: number;
+  sampleCount: number;
+  availabilityFactor: number;
+  historicalExpectedMinutes: number;
+  historicalMinutes: number | null;
+  position: PlayerForEngine["position"];
+  price: number;
+  teamStrength: number | null;
+  fixtureDifficultyFactor: number;
+  roleSupportScore: number | null;
+  roleEvidenceConfidence: number;
+  roleCurrentEvidencePresent: boolean;
+  roleDisagreement: boolean;
+  conditionalSampleCount: number;
+  cohort: string;
+};
+
+export type ProbabilisticProjection = {
+  playerId: number;
+  appearance: AppearanceStateForecast;
+  minutes: MinutesDistribution;
+  rawProjectionIfStarting: number;
+  conditionalSubstitutePoints: number;
+  roleAdjustedProjection: number;
+  median: number;
+  p10: number;
+  p90: number;
+  projectionStandardDeviation: number;
+  footballOutcomeVariance: number;
+  evidenceUncertainty: number;
+  model: "appearance-state-mixture";
+  modelVersion: "0.0.12";
+  inputs: ProjectionModelInputs;
+};
+
+export type ProjectionUncertaintyReport = {
+  schemaVersion: 1;
+  generatedAt: string;
+  gameweek: number;
+  model: "appearance-state-mixture";
+  modelVersion: "0.0.12";
+  seed: number;
+  sampleCount: number;
+  items: ProbabilisticProjection[];
+  warnings: string[];
 };
 
 export type CaptainCandidate = {

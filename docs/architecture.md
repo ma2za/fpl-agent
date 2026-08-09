@@ -7,7 +7,7 @@
 - `apps/web` displays generated files and methodology.
 - `packages/fpl-api` fetches, validates, caches, and normalizes public FPL API data.
 - `packages/rules` derives competition state and validates phase actions, squad, transfer, formation, captaincy, bench, chip, deadline, and provisional-data rules.
-- `packages/engine` generates deterministic projections and evidence helpers.
+- `packages/engine` generates legacy conditional projections, deterministic appearance-state distributions, role-adjusted projections, and evidence helpers.
 - `packages/agent` builds evidence packs, validates claim provenance, renders decision prompts, evaluates recommendation quality, and verifies agent-authored files before manual use.
 - `packages/content` is an ignored local workspace for season context, strategy, recommendations, evidence, and postmortems.
 
@@ -24,7 +24,9 @@ public FPL API and local config
 cached raw data
 normalized data
 rules validation
-deterministic evidence generation with separate historical signals and source-grounded current-role observations
+source-grounded current-role observations
+deterministic start, substitute, and no-appearance distributions
+role-adjusted projections with separate evidence uncertainty and football variance
 manual context notes
 schema-v2 coding-agent-authored decision with claim-ledger v3 epistemic lineage and manual checklist
 legality and quality verification

@@ -11,6 +11,8 @@ import {
   MinutesRiskReportSchema,
   OddsReportSchema,
   PlayerProjectionArraySchema,
+  ProbabilisticProjectionArraySchema,
+  ProjectionUncertaintyReportSchema,
   PublicEvidenceReportSchema,
   RecommendationArtifactSchema,
   SetPieceReportSchema,
@@ -343,6 +345,9 @@ function buildStages(input: {
   const recommendationArtifacts = [
     artifact("data-status.json"),
     artifact("projections.json", PlayerProjectionArraySchema),
+    artifact("probabilistic-projections.json", ProbabilisticProjectionArraySchema),
+    artifact("projection-uncertainty-report.json", ProjectionUncertaintyReportSchema),
+    artifact("projection-uncertainty-report.md"),
     artifact("player-pool.json"),
     artifact("budget-tiers.json"),
     artifact("club-exposure.json"),
@@ -394,7 +399,7 @@ function buildStages(input: {
     {
       id: "decision-evidence",
       required: true,
-      phase: 1,
+      phase: 2,
       artifacts: recommendationArtifacts,
       run: async ({ outputDir }) => {
         const fixtureHorizonReport = await readArtifactFile(
@@ -512,7 +517,7 @@ function buildStages(input: {
     {
       id: "current-role",
       required: true,
-      phase: 2,
+      phase: 1,
       artifacts: [
         artifact("current-role-report.json", CurrentRoleReportSchema),
         artifact("current-role-report.md"),

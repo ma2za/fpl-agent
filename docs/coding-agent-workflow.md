@@ -89,11 +89,13 @@ The decision loop is:
 1. Run `pnpm recommend -- --gw {n}` to refresh evidence.
 2. Run source-specific evidence commands such as `pnpm team-news`, `pnpm set-pieces`, `pnpm odds`, `pnpm minutes`, and `pnpm public-evidence`.
 3. Review player news and lineup evidence, judge credibility and relevance, author `agent-role-evidence.json`, and run `pnpm roles -- --gw {n}`.
-4. Author `recommendation.json`, including `decisionAnalysis` with structure comparisons, player comparisons, captaincy comparisons, key omissions, and evidence references.
-5. Run `pnpm verify -- --gw {n}`.
-6. Read `risk-report.md`, `agent-brief.md`, and `manual-checklist.md`; update the recommendation or author a variant if needed.
-7. List, verify, and compare authored variants with `pnpm variant:list -- --gw {n}`, `pnpm variant:verify -- --gw {n} --variant <slug>`, and `pnpm variant:compare -- --gw {n} --a <slug> --b <slug>`.
-8. Keep the final recommendation human-readable and manually executable.
+4. Run `pnpm recommend -- --gw {n}` again so current-role evidence propagates into `probabilistic-projections.json` and `projection-uncertainty-report.json`.
+5. Compare raw-if-starting output with role-adjusted expectation, appearance probabilities, p10, median, p90, and evidence uncertainty before authoring `recommendation.json`.
+6. Author `recommendation.json`, including `decisionAnalysis` with structure comparisons, player comparisons, captaincy comparisons, key omissions, and evidence references.
+7. Run `pnpm verify -- --gw {n}`.
+8. Read `risk-report.md`, `agent-brief.md`, and `manual-checklist.md`; update the recommendation or author a variant if needed.
+9. List, verify, and compare authored variants with `pnpm variant:list -- --gw {n}`, `pnpm variant:verify -- --gw {n} --variant <slug>`, and `pnpm variant:compare -- --gw {n} --a <slug> --b <slug>`.
+10. Keep the final recommendation human-readable and manually executable.
 
 Variant slugs use lowercase letters, digits, and single hyphens. Each variant keeps only its authored recommendation and derived verification files in its own directory; fixture, availability, odds, role, strategy, and freshness evidence remains shared at gameweek level. Comparison output is written under `variants/comparisons/{a}-vs-{b}/` unless `--out` is supplied. It presents differences and evidence gaps without ranking variants or choosing the final action.
 
