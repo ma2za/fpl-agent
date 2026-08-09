@@ -84,13 +84,15 @@ The user is not responsible for reviewing or classifying news. The coding agent 
 
 1. Capture current public sources.
 2. Read the underlying page text and any relevant official reports.
-3. Identify the publisher and original URL.
+3. Identify the original publisher and canonical URL.
 4. Judge source credibility separately from claim relevance.
-5. Record supporting, opposing, or neutral role evidence with a concise rationale.
-6. Preserve disagreement and missing coverage.
-7. Run the role report with the agent-authored evidence file.
+5. Record publication and retrieval times, a captured excerpt or structured value, adapter version, content hash, and underlying claim ID.
+6. Record supporting, opposing, or neutral role evidence with a concise rationale.
+7. Preserve disagreement and missing coverage by evidence dimension.
+8. Record adapter health counts for configured, fetched, parsed, matched, stale, failed, and unsupported inputs.
+9. Run the role report with the agent-authored evidence file.
 
-The input schema requires coding-agent authorship, root source records, source IDs on every role claim, a credibility score and rationale, and a relevance score and rationale. Use `docs/examples/current-role-evidence.json` as the shape:
+The schema-v2 input requires coding-agent authorship, root source records, source IDs on every observation, capture metadata, a credibility score and rationale, and a relevance score and rationale. Legacy schema-v1 inputs remain readable and are normalized with explicit `legacy-v1` adapter provenance. Use `docs/examples/current-role-evidence.json` as the current shape:
 
 ```bash
 pnpm roles -- --gw 1 --input path/to/agent-role-evidence.json

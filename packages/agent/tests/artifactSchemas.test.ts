@@ -106,6 +106,7 @@ describe("artifact schemas", () => {
 
   it("exports every persisted artifact schema", () => {
     expect(Object.keys(ArtifactSchemas).sort()).toEqual([
+      "adapterCoverageReport",
       "agentDecision",
       "candidate",
       "claimLedger",

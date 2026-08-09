@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RoleObservationSchema, RootEvidenceSourceSchema } from "./agentRoleEvidence";
 import { validateClaimLedger } from "./provenance";
 
 const looseObject = <T extends z.ZodRawShape>(shape: T) => z.object(shape).passthrough();
@@ -910,13 +911,27 @@ export const MinutesRiskReportSchema = looseObject({
 });
 
 const roleAdapterKind = z.enum([
-  "official_availability", "manager_confirmation", "official_club", "preseason_lineup", "predicted_lineup", "reviewed_manual"
+  "official_availability", "manager_confirmation", "official_club", "preseason_lineup", "predicted_lineup",
+  "substitution_events", "transfer_reporting", "bookmaker_market", "reviewed_manual"
 ]);
 const roleDimension = z.enum([
   "historical_availability", "historical_starts", "current_manager_preference", "preseason_start_rate",
-  "predicted_lineup_consensus", "injury_status", "squad_competition", "substitution_patterns", "set_piece_roles"
+  "predicted_lineup_consensus", "injury_status", "squad_competition", "transfer_risk", "substitution_patterns", "set_piece_roles"
+]);
+const roleAssessmentDimension = z.enum([
+  "historicalRole", "currentManagerPreference", "preseasonUsage", "predictedLineupConsensus",
+  "availability", "squadCompetition", "transferRisk", "setPieceRole"
 ]);
 const roleSignal = z.enum(["supports_start", "opposes_start", "neutral"]);
+const adapterHealthMetrics = z.object({
+  configured: z.number().int().nonnegative(),
+  fetched: z.number().int().nonnegative(),
+  parsed: z.number().int().nonnegative(),
+  matched: z.number().int().nonnegative(),
+  stale: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+  unsupported: z.number().int().nonnegative()
+}).strict();
 const normalizedRoleEvidence = looseObject({
   playerId: z.number(),
   dimension: roleDimension,
@@ -928,15 +943,57 @@ const normalizedRoleEvidence = looseObject({
   sourceId: z.string(),
   provider: z.string(),
   sourceKind: z.union([roleAdapterKind, z.enum(["previous_season_starts", "historical_minutes"])]),
+  rootSourceIds: z.array(z.string()),
+  observationIds: z.array(z.string()),
+  independentSourceCount: z.number().int().nonnegative(),
   baseWeight: z.number(),
   effectiveWeight: z.number(),
   ageDays: z.number()
 });
 
-export const CurrentRoleReportSchema = looseObject({
+const adapterCoverageItem = z.object({
+  id: z.string(),
+  kind: roleAdapterKind,
+  provider: z.string(),
+  status: z.enum(["loaded", "missing", "failed", "disabled", "unsupported"]),
+  metrics: adapterHealthMetrics,
+  message: z.string()
+}).strict();
+
+export const AdapterCoverageReportSchema = z.object({
   schemaVersion: z.literal(1),
   generatedAt: z.string(),
+  adapters: z.array(adapterCoverageItem),
+  totals: adapterHealthMetrics
+}).strict();
+
+export const RoleDimensionAssessmentSchema = z.object({
+  dimension: roleAssessmentDimension,
+  coverage: z.enum(["current", "historical_only", "conflicting", "missing"]),
+  evidenceConfidence: z.number().min(0).max(1),
+  estimatedStartProbability: z.null(),
+  observationIds: z.array(z.string()),
+  publishers: z.array(z.string()),
+  independentSourceCount: z.number().int().nonnegative(),
+  supportsStart: z.boolean(),
+  opposesStart: z.boolean(),
+  reasonCodes: z.array(z.enum(["current_sources", "historical_only", "conflicting_sources", "no_coverage"]))
+}).strict();
+
+export const CurrentRoleReportSchema = looseObject({
+  schemaVersion: z.literal(2),
+  generatedAt: z.string(),
   gameweek: z.number(),
+  sources: z.array(RootEvidenceSourceSchema),
+  observations: z.array(RoleObservationSchema),
+  transformations: z.array(z.object({
+    id: z.string(),
+    tool: z.literal("current-role-report"),
+    toolVersion: z.string(),
+    inputObservationIds: z.array(z.string()),
+    outputPlayerIds: z.array(z.number())
+  }).strict()),
+  adapterCoverage: AdapterCoverageReportSchema,
   policy: looseObject({
     currentHalfLifeDays: z.literal(14),
     historicalHalfLifeDays: z.literal(60),
@@ -946,8 +1003,9 @@ export const CurrentRoleReportSchema = looseObject({
     id: z.string(),
     kind: roleAdapterKind,
     provider: z.string(),
-    status: z.enum(["loaded", "missing", "failed", "disabled"]),
+    status: z.enum(["loaded", "missing", "failed", "disabled", "unsupported"]),
     recordCount: z.number(),
+    metrics: adapterHealthMetrics,
     message: z.string()
   })),
   summary: looseObject({
@@ -971,10 +1029,38 @@ export const CurrentRoleReportSchema = looseObject({
     manualOverride: roleSignal.exclude(["neutral"]).nullable(),
     disagreement: z.boolean(),
     dimensions: z.record(roleDimension, z.array(normalizedRoleEvidence)),
+    assessments: z.record(roleAssessmentDimension, RoleDimensionAssessmentSchema),
     warnings: stringArray
   })),
   warnings: stringArray
+}).superRefine((report, context) => {
+  const sourceIds = new Set(report.sources.map((source) => source.id));
+  const observationIds = new Set(report.observations.map((observation) => observation.id));
+
+  for (const observation of report.observations) {
+    for (const sourceId of observation.sourceIds) {
+      if (!sourceIds.has(sourceId)) {
+        context.addIssue({ code: "custom", message: `Role observation ${observation.id} references missing root source ${sourceId}.` });
+      }
+    }
+  }
+  for (const item of report.items) {
+    for (const records of Object.values(item.dimensions)) {
+      for (const record of records) {
+        if (!["previous_season_starts", "historical_minutes"].includes(record.sourceKind) && record.observationIds.length === 0) {
+          context.addIssue({ code: "custom", message: `Non-historical role record for player ${item.playerId} has no root observation.` });
+        }
+        for (const observationId of record.observationIds) {
+          if (!observationIds.has(observationId)) {
+            context.addIssue({ code: "custom", message: `Role record for player ${item.playerId} references missing observation ${observationId}.` });
+          }
+        }
+      }
+    }
+  }
 });
+
+export const RoleEvidenceReportSchema = CurrentRoleReportSchema;
 
 export const PlayerProjectionArraySchema = z.array(playerProjection);
 
@@ -1058,6 +1144,7 @@ export const VariantComparisonReportSchema = looseObject({
 });
 
 export const ArtifactSchemas = {
+  adapterCoverageReport: AdapterCoverageReportSchema,
   agentDecision: AgentDecisionArtifactSchema,
   candidate: CandidateArtifactSchema,
   claimLedger: ClaimLedgerSchema,

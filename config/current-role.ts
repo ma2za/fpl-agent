@@ -42,6 +42,30 @@ export const CURRENT_ROLE_ADAPTERS: RoleEvidenceAdapterConfig[] = [
     reliability: 1
   },
   {
+    id: "substitution-events",
+    kind: "substitution_events",
+    provider: "Coding-agent-reviewed substitution events",
+    url: null,
+    enabled: true,
+    reliability: 1
+  },
+  {
+    id: "transfer-reporting",
+    kind: "transfer_reporting",
+    provider: "Coding-agent-reviewed transfer reporting",
+    url: null,
+    enabled: true,
+    reliability: 1
+  },
+  {
+    id: "bookmaker-markets",
+    kind: "bookmaker_market",
+    provider: "Coding-agent-reviewed bookmaker markets",
+    url: null,
+    enabled: true,
+    reliability: 1
+  },
+  {
     id: "manual-review",
     kind: "reviewed_manual",
     provider: "Coding-agent evidence assessment",

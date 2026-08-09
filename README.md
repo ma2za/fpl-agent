@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.10`
+Version: `0.0.11`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 

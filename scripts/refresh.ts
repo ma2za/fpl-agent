@@ -3,8 +3,8 @@ import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
-  AgentRoleEvidenceInputSchema,
   EvidenceReportSchema,
+  AdapterCoverageReportSchema,
   CurrentRoleReportSchema,
   FixtureHorizonReportSchema,
   FixtureTickerSchema,
@@ -53,7 +53,7 @@ import {
 import { CURRENT_SQUAD } from "../config/squad";
 import { CURRENT_ROLE_ADAPTERS } from "../config/current-role";
 import { buildLocalEvidenceReport } from "./evidence-sources";
-import { currentRoleAdapterInputs } from "./current-role-evidence";
+import { currentRoleAdapterInputs, parseCodingAgentRoleEvidence } from "./current-role-evidence";
 import { loadFixtureExposures } from "./fixture-horizon-evidence";
 import { generateOddsEvidence } from "./generate-odds";
 import {
@@ -83,7 +83,7 @@ function sha256(value: string | Buffer) {
 
 async function readAgentRoleEvidence(filePath: string) {
   try {
-    return AgentRoleEvidenceInputSchema.parse(JSON.parse(await readFile(filePath, "utf8")));
+    return parseCodingAgentRoleEvidence(JSON.parse(await readFile(filePath, "utf8")));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
@@ -513,7 +513,11 @@ function buildStages(input: {
       id: "current-role",
       required: true,
       phase: 2,
-      artifacts: [artifact("current-role-report.json", CurrentRoleReportSchema), artifact("current-role-report.md")],
+      artifacts: [
+        artifact("current-role-report.json", CurrentRoleReportSchema),
+        artifact("current-role-report.md"),
+        artifact("adapter-coverage-report.json", AdapterCoverageReportSchema)
+      ],
       run: async ({ outputDir }) => {
         const selected = await selectedPlayerState(outputDir);
         const report = buildCurrentRoleReport({
@@ -524,6 +528,7 @@ function buildStages(input: {
           selectedPlayerIds: selected.selectedPlayerIds
         });
         await writeReport(outputDir, "current-role-report.json", "current-role-report.md", report, renderCurrentRoleReportMarkdown(report));
+        await writeJson(path.join(outputDir, "adapter-coverage-report.json"), report.adapterCoverage);
       }
     },
     {

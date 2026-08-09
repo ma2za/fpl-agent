@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "authorship": {
     "kind": "coding_agent",
     "agent": "Codex",
@@ -10,9 +10,8 @@
       "id": "src:club-manager-update",
       "publisher": "Player club",
       "sourceType": "club",
-      "url": "https://example.com/official-manager-update",
-      "publishedAt": "2026-08-20T12:00:00.000Z",
-      "retrievedAt": "2026-08-20T13:00:00.000Z",
+      "sourceKind": "manager_comment",
+      "canonicalUrl": "https://example.com/official-manager-update",
       "reliability": 0.95,
       "credibilityRationale": "Direct statement published by the player's club."
     },
@@ -20,59 +19,74 @@
       "id": "src:predicted-lineup",
       "publisher": "Lineup publisher",
       "sourceType": "media",
-      "url": "https://example.com/predicted-lineup",
-      "publishedAt": "2026-08-20T11:00:00.000Z",
-      "retrievedAt": "2026-08-20T13:00:00.000Z",
+      "sourceKind": "predicted_lineup",
+      "canonicalUrl": "https://example.com/predicted-lineup",
       "reliability": 0.75,
       "credibilityRationale": "Established lineup source, but the prediction is not official confirmation."
+    }
+  ],
+  "observations": [
+    {
+      "id": "role-obs:club-manager-update-411",
+      "adapterId": "manager-confirmation",
+      "playerId": 411,
+      "dimension": "current_manager_preference",
+      "signal": "supports_start",
+      "sourceIds": ["src:club-manager-update"],
+      "underlyingClaimId": "manager-update:411:2026-08-20",
+      "publishedAt": "2026-08-20T12:00:00.000Z",
+      "retrievedAt": "2026-08-20T13:00:00.000Z",
+      "observedAt": "2026-08-20T12:00:00.000Z",
+      "capturedExcerpt": "The manager described the player as available to start.",
+      "structuredValue": true,
+      "adapterVersion": "1.0.0",
+      "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "credibility": {
+        "score": 0.95,
+        "label": "high",
+        "rationale": "The manager is the primary source for the player's intended role."
+      },
+      "relevance": {
+        "score": 0.95,
+        "rationale": "The statement directly concerns availability for the upcoming match."
+      },
+      "note": "The coding agent records the specific manager statement without asking the user to classify it."
+    },
+    {
+      "id": "role-obs:predicted-lineup-411",
+      "adapterId": "predicted-lineups",
+      "playerId": 411,
+      "dimension": "predicted_lineup_consensus",
+      "signal": "supports_start",
+      "sourceIds": ["src:predicted-lineup"],
+      "underlyingClaimId": "predicted-lineup:411:gw1",
+      "publishedAt": "2026-08-20T11:00:00.000Z",
+      "retrievedAt": "2026-08-20T13:00:00.000Z",
+      "observedAt": "2026-08-20T11:00:00.000Z",
+      "capturedExcerpt": "Player appears in the predicted starting lineup.",
+      "structuredValue": 1,
+      "adapterVersion": "1.0.0",
+      "contentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "credibility": {
+        "score": 0.75,
+        "label": "medium",
+        "rationale": "Useful specialist prediction, but not an official lineup."
+      },
+      "relevance": {
+        "score": 0.9,
+        "rationale": "The prediction is current and specific to the next fixture."
+      },
+      "note": "Player appears in the source's predicted starting lineup."
     }
   ],
   "adapters": [
     {
       "id": "manager-confirmation",
-      "records": [
-        {
-          "playerId": 411,
-          "dimension": "current_manager_preference",
-          "signal": "supports_start",
-          "value": true,
-          "observedAt": "2026-08-20T12:00:00.000Z",
-          "sourceIds": ["src:club-manager-update"],
-          "credibility": {
-            "score": 0.95,
-            "label": "high",
-            "rationale": "The manager is the primary source for the player's intended role."
-          },
-          "relevance": {
-            "score": 0.95,
-            "rationale": "The statement directly concerns availability for the upcoming match."
-          },
-          "note": "The coding agent records the specific manager statement without asking the user to classify it."
-        }
-      ]
+      "observationIds": ["role-obs:club-manager-update-411"]
     },
     {
       "id": "predicted-lineups",
-      "records": [
-        {
-          "playerId": 411,
-          "dimension": "predicted_lineup_consensus",
-          "signal": "supports_start",
-          "value": 1,
-          "observedAt": "2026-08-20T11:00:00.000Z",
-          "sourceIds": ["src:predicted-lineup"],
-          "credibility": {
-            "score": 0.75,
-            "label": "medium",
-            "rationale": "Useful specialist prediction, but not an official lineup."
-          },
-          "relevance": {
-            "score": 0.9,
-            "rationale": "The prediction is current and specific to the next fixture."
-          },
-          "note": "Player appears in the source's predicted starting lineup."
-        }
-      ]
+      "observationIds": ["role-obs:predicted-lineup-411"]
     }
   ]
 }

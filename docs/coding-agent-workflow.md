@@ -70,7 +70,7 @@ All context, strategy, recommendation, evidence, and postmortem files are local 
 
 `pnpm fetch:players -- --gw {n}` retrieves official profile fields, fixtures, current-season history, and previous-season summaries for every player in the authored squad. Use repeated `--player <id|name>` arguments before a squad exists. See `docs/player-data-setup.md` for setup and source configuration.
 
-After public evidence capture, the coding agent must inspect relevant source text, judge publisher credibility and claim relevance, and write `packages/content/context/agent-role-evidence.json`. It must not ask the user to classify news. Every non-FPL role record requires root source IDs plus credibility and relevance rationales. Run `pnpm roles -- --gw {n}` after authoring that file.
+After public evidence capture, the coding agent must inspect relevant source text, judge publisher credibility and claim relevance, and write `packages/content/context/agent-role-evidence.json`. It must not ask the user to classify news. Every non-historical role observation requires root source IDs, canonical URL, capture timestamps, excerpt or structured value, adapter version, content hash, underlying claim ID, and credibility and relevance rationales. Run `pnpm roles -- --gw {n}` after authoring that file.
 
 `pnpm fixtures -- --gw {n} --horizon 6` writes fixture ticker evidence for the same gameweek folder.
 

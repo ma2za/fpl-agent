@@ -1,7 +1,6 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
-  AgentRoleEvidenceInputSchema,
   buildMinutesRiskReport,
   isWeeklyRecommendationArtifact,
   readArtifactFileIfExists,
@@ -10,7 +9,7 @@ import {
   type EvidenceSource
 } from "../packages/agent/src";
 import { CURRENT_ROLE_ADAPTERS } from "../config/current-role";
-import { currentRoleAdapterInputs } from "./current-role-evidence";
+import { currentRoleAdapterInputs, parseCodingAgentRoleEvidence } from "./current-role-evidence";
 
 type BootstrapStatic = {
   elements: Parameters<typeof buildMinutesRiskReport>[0]["players"];
@@ -72,7 +71,7 @@ async function main() {
   );
   const agentEvidence = agentEvidenceInput === null
     ? null
-    : AgentRoleEvidenceInputSchema.parse(agentEvidenceInput);
+    : parseCodingAgentRoleEvidence(agentEvidenceInput);
   const predictedLineups = currentRoleAdapterInputs(
     CURRENT_ROLE_ADAPTERS,
     bootstrap.elements,

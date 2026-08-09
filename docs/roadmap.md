@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present through `0.0.10` and the dependency-ordered plan from `0.0.11` through `0.0.18`.
+This document records the capabilities present through `0.0.11` and the dependency-ordered plan from `0.0.12` through `0.0.18`.
 
 ## Permanent Decision Boundary
 
@@ -12,7 +12,7 @@ This document records the capabilities present through `0.0.10` and the dependen
 - Tool-produced evidence and candidate artifacts must remain structurally separate from agent-authored decision artifacts.
 - Verification may reject illegal or unsupported decisions, but it must never replace them or choose an alternative.
 
-## Current State: 0.0.10
+## Current State: 0.0.11
 
 ### Workspace
 
@@ -92,7 +92,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Operational State
 
-- The locked local test suite passes 36 test files and 275 tests at the `0.0.10` status update.
+- The locked local test suite passes 37 test files and 279 tests at the `0.0.11` status update.
 - Evidence commands write local files for review.
 - Final squad, transfer, captaincy, bench, and chip decisions remain coding-agent-authored.
 - The human manager performs every change in the official FPL interface.
@@ -118,11 +118,14 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Current-Role Evidence
 
-- Configurable official availability, manager confirmation, club, preseason, predicted-lineup, and coding-agent-reviewed evidence adapters.
-- Independent normalization of nine historical and current-role evidence dimensions.
+- Root sources and observations for official availability, manager and club evidence, preseason and predicted lineups, substitution events, transfer reporting, and bookmaker markets.
+- Canonical URLs, publication and retrieval times, captured values, adapter versions, content hashes, and underlying claim IDs.
+- Independent normalization and confidence for historical role, manager preference, preseason usage, predicted lineups, availability, squad competition, transfer risk, and set-piece roles.
 - Explicit reliability hierarchy and recency decay for current and historical evidence.
-- Coding-agent evidence override precedence and visible source disagreement.
-- Missing and failed adapter coverage retained as first-class output.
+- Coding-agent evidence override precedence and dimension-local source disagreement.
+- Publisher-and-claim deduplication for syndicated or repeatedly transformed evidence.
+- Configured, fetched, parsed, matched, stale, failed, and unsupported adapter metrics.
+- Current, historical-only, conflicting, and missing coverage retained for every selected-player dimension.
 - Historical-only confidence capped at `0.45` and prohibited from producing `READY`.
 
 Current limitation:
@@ -233,8 +236,6 @@ Release gate:
 
 Status: delivered.
 
-## Planned Releases
-
 ### 0.0.11: Source-Grounded Current-Role Evidence
 
 Make every current-role conclusion traceable to independent root evidence rather than to authoritative-sounding local reports.
@@ -267,6 +268,10 @@ Release gate:
 - Cap historical-only current-role confidence at `0.45`.
 - Preserve conflicting manager, lineup, and transfer evidence without silently averaging it away.
 - Mark missing predicted-lineup or odds coverage as missing rather than replacing it with historical confidence.
+
+Status: delivered.
+
+## Planned Releases
 
 ### 0.0.12: Start Probability and Role-Adjusted Projections
 

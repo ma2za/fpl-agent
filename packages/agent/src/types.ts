@@ -962,6 +962,9 @@ export type RoleEvidenceAdapterKind =
   | "official_club"
   | "preseason_lineup"
   | "predicted_lineup"
+  | "substitution_events"
+  | "transfer_reporting"
+  | "bookmaker_market"
   | "reviewed_manual";
 
 export type RoleEvidenceDimension =
@@ -972,8 +975,68 @@ export type RoleEvidenceDimension =
   | "predicted_lineup_consensus"
   | "injury_status"
   | "squad_competition"
+  | "transfer_risk"
   | "substitution_patterns"
   | "set_piece_roles";
+
+export type RoleAssessmentDimension =
+  | "historicalRole"
+  | "currentManagerPreference"
+  | "preseasonUsage"
+  | "predictedLineupConsensus"
+  | "availability"
+  | "squadCompetition"
+  | "transferRisk"
+  | "setPieceRole";
+
+export type RootEvidenceSourceKind =
+  | "club_press_conference"
+  | "official_injury_update"
+  | "manager_comment"
+  | "preseason_lineup"
+  | "substitution_event"
+  | "predicted_lineup"
+  | "transfer_report"
+  | "bookmaker_market"
+  | "official_fpl";
+
+export type RootEvidenceSource = {
+  id: string;
+  publisher: string;
+  sourceType: "official" | "club" | "media" | "market";
+  sourceKind: RootEvidenceSourceKind;
+  canonicalUrl: string;
+  reliability: number;
+  credibilityRationale: string;
+};
+
+export type RoleObservation = {
+  id: string;
+  adapterId: string;
+  playerId: number;
+  dimension: RoleEvidenceDimension;
+  signal: "supports_start" | "opposes_start" | "neutral";
+  sourceIds: string[];
+  underlyingClaimId: string;
+  publishedAt: string | null;
+  retrievedAt: string;
+  observedAt: string;
+  capturedExcerpt: string | null;
+  structuredValue: string | number | boolean | null;
+  adapterVersion: string;
+  contentHash: string;
+  credibility: {
+    score: number;
+    label: "low" | "medium" | "high";
+    rationale: string;
+  };
+  relevance: {
+    score: number;
+    rationale: string;
+  };
+  override?: boolean;
+  note: string;
+};
 
 export type RoleEvidenceAdapterConfig = {
   id: string;
@@ -991,6 +1054,7 @@ export type RoleEvidenceRecord = {
   value: string | number | boolean | null;
   observedAt: string;
   sourceIds?: string[];
+  observationIds?: string[];
   sourceReliability?: number;
   credibility?: {
     score: number;
@@ -1006,45 +1070,67 @@ export type RoleEvidenceRecord = {
 };
 
 export type AgentRoleEvidenceInput = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   authorship: {
     kind: "coding_agent";
     agent: string;
     authoredAt: string;
   };
-  sources: Array<{
-    id: string;
-    publisher: string;
-    sourceType: "official" | "club" | "media" | "market";
-    url: string;
-    publishedAt: string | null;
-    retrievedAt: string;
-    reliability: number;
-    credibilityRationale: string;
-  }>;
+  sources: RootEvidenceSource[];
+  observations: RoleObservation[];
   adapters: Array<{
     id: string;
-    records?: RoleEvidenceRecord[];
+    observationIds?: string[];
     error?: string;
+    coverage?: Partial<AdapterHealthMetrics>;
   }>;
+};
+
+export type AdapterHealthMetrics = {
+  configured: number;
+  fetched: number;
+  parsed: number;
+  matched: number;
+  stale: number;
+  failed: number;
+  unsupported: number;
 };
 
 export type RoleEvidenceAdapterInput = {
   config: RoleEvidenceAdapterConfig;
+  sources?: RootEvidenceSource[];
+  observations?: RoleObservation[];
   records?: RoleEvidenceRecord[];
   error?: string;
+  coverage?: Partial<AdapterHealthMetrics>;
 };
 
 export type NormalizedRoleEvidence = RoleEvidenceRecord & {
   sourceId: string;
   provider: string;
   sourceKind: RoleEvidenceAdapterKind | "previous_season_starts" | "historical_minutes";
+  rootSourceIds: string[];
+  observationIds: string[];
+  independentSourceCount: number;
   baseWeight: number;
   effectiveWeight: number;
   ageDays: number;
 };
 
 export type CurrentRoleStatus = "READY" | "CAUTION" | "INSUFFICIENT";
+
+export type RoleDimensionAssessment = {
+  dimension: RoleAssessmentDimension;
+  coverage: "current" | "historical_only" | "conflicting" | "missing";
+  evidenceConfidence: number;
+  estimatedStartProbability: null;
+  observationIds: string[];
+  publishers: string[];
+  independentSourceCount: number;
+  supportsStart: boolean;
+  opposesStart: boolean;
+  reasonCodes: Array<"current_sources" | "historical_only" | "conflicting_sources" | "no_coverage">;
+};
 
 export type CurrentRoleItem = {
   playerId: number;
@@ -1057,13 +1143,38 @@ export type CurrentRoleItem = {
   manualOverride: "supports_start" | "opposes_start" | null;
   disagreement: boolean;
   dimensions: Record<RoleEvidenceDimension, NormalizedRoleEvidence[]>;
+  assessments: Record<RoleAssessmentDimension, RoleDimensionAssessment>;
   warnings: string[];
 };
 
-export type CurrentRoleReport = {
+export type AdapterCoverageReport = {
   schemaVersion: 1;
   generatedAt: string;
+  adapters: Array<{
+    id: string;
+    kind: RoleEvidenceAdapterKind;
+    provider: string;
+    status: "loaded" | "missing" | "failed" | "disabled" | "unsupported";
+    metrics: AdapterHealthMetrics;
+    message: string;
+  }>;
+  totals: AdapterHealthMetrics;
+};
+
+export type CurrentRoleReport = {
+  schemaVersion: 2;
+  generatedAt: string;
   gameweek: number;
+  sources: RootEvidenceSource[];
+  observations: RoleObservation[];
+  transformations: Array<{
+    id: string;
+    tool: "current-role-report";
+    toolVersion: string;
+    inputObservationIds: string[];
+    outputPlayerIds: number[];
+  }>;
+  adapterCoverage: AdapterCoverageReport;
   policy: {
     currentHalfLifeDays: 14;
     historicalHalfLifeDays: 60;
@@ -1073,8 +1184,9 @@ export type CurrentRoleReport = {
     id: string;
     kind: RoleEvidenceAdapterKind;
     provider: string;
-    status: "loaded" | "missing" | "failed" | "disabled";
+    status: "loaded" | "missing" | "failed" | "disabled" | "unsupported";
     recordCount: number;
+    metrics: AdapterHealthMetrics;
     message: string;
   }>;
   summary: {
@@ -1090,3 +1202,5 @@ export type CurrentRoleReport = {
   items: CurrentRoleItem[];
   warnings: string[];
 };
+
+export type RoleEvidenceReport = CurrentRoleReport;

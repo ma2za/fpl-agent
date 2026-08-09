@@ -112,17 +112,20 @@ Current limitations:
 
 Implemented:
 
-- `current-role-report.json` and `current-role-report.md`.
-- Configurable adapters for official availability, coding-agent-reviewed manager confirmation, official club evidence, preseason lineups, predicted lineups, and agent evidence assessments.
-- Independent dimensions for historical availability, historical starts, current manager preference, preseason start rate, predicted-lineup consensus, injury status, squad competition, substitution patterns, and set-piece roles.
+- `current-role-report.json`, `current-role-report.md`, and `adapter-coverage-report.json`.
+- Root source records and observations for official availability, manager and club evidence, preseason and predicted lineups, substitution events, transfer reporting, bookmaker markets, and agent evidence assessments.
+- Original publisher, canonical URL, publication and retrieval time, excerpt or structured value, adapter version, content hash, and underlying claim ID on every current observation.
+- Per-dimension coverage and confidence for historical role, current manager preference, preseason usage, predicted-lineup consensus, availability, squad competition, transfer risk, and set-piece role.
 - Reliability hierarchy with 14-day current and 60-day historical half-life decay.
-- Reviewed manual overrides, visible source disagreement, and visible missing or failed adapters.
+- Reviewed manual overrides, dimension-local source disagreement, publisher-and-claim deduplication, and visible missing or failed adapters.
 - A historical-only confidence cap of `0.45`; historical evidence alone cannot produce `READY`.
+- Separate evidence confidence and start probability fields; start probability remains unset until the probabilistic projection release.
+- Adapter health metrics for configured, fetched, parsed, matched, stale, failed, and unsupported inputs.
 - Transactional refresh, recommendation prompts, aggregate evidence, and squad-risk integration.
 
 Current limitations:
 
-- Non-FPL adapters require coding-agent-authored normalized records with root source IDs, credibility, and relevance assessments; public page text is not silently mapped to player roles.
+- Non-FPL adapters require coding-agent-authored root observations; public page text is not silently mapped to player roles.
 - Current-role status is evidence for the coding agent and does not select a player or starting XI.
 
 ## Public Evidence Capture

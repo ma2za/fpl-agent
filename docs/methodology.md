@@ -20,6 +20,7 @@ The current recommendation model is simple, transparent, and replaceable.
 - Separate source observations, deterministic derived facts, assumptions, forecasts, and decisions.
 - Keep evaluative language out of observations and derived facts unless it is an attributed source quote.
 - Use phase-aware warnings, including budget-path language instead of price-rise or transfer-hit warnings during preseason drafting.
+- Trace every current-role claim to a root publisher and observation while retaining per-dimension disagreement and missing coverage.
 
 ## Projection Model
 

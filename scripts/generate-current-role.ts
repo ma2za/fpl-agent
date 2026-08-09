@@ -1,7 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
-  AgentRoleEvidenceInputSchema,
   RecommendationArtifactSchema,
   buildCurrentRoleReport,
   isWeeklyRecommendationArtifact,
@@ -9,7 +8,7 @@ import {
   renderCurrentRoleReportMarkdown
 } from "../packages/agent/src";
 import { CURRENT_ROLE_ADAPTERS } from "../config/current-role";
-import { currentRoleAdapterInputs } from "./current-role-evidence";
+import { currentRoleAdapterInputs, parseCodingAgentRoleEvidence } from "./current-role-evidence";
 
 function argValue(name: string) {
   const index = process.argv.indexOf(name);
@@ -51,7 +50,7 @@ async function main() {
     : null;
   const generatedAt = new Date().toISOString();
   const input = await readJsonIfExists<unknown>(inputPath);
-  const agentEvidence = input === null ? null : AgentRoleEvidenceInputSchema.parse(input);
+  const agentEvidence = input === null ? null : parseCodingAgentRoleEvidence(input);
   const report = buildCurrentRoleReport({
     generatedAt,
     gameweek,
@@ -63,6 +62,11 @@ async function main() {
   await mkdir(outputDir, { recursive: true });
   await writeFile(path.join(outputDir, "current-role-report.json"), `${JSON.stringify(report, null, 2)}\n`, "utf8");
   await writeFile(path.join(outputDir, "current-role-report.md"), renderCurrentRoleReportMarkdown(report), "utf8");
+  await writeFile(
+    path.join(outputDir, "adapter-coverage-report.json"),
+    `${JSON.stringify(report.adapterCoverage, null, 2)}\n`,
+    "utf8"
+  );
   console.log(`Wrote current-role report to ${outputDir}: ${report.summary.insufficient} selected INSUFFICIENT.`);
 }
 

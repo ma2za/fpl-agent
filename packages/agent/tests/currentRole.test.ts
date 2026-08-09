@@ -22,6 +22,15 @@ function adapter(
   observedAt = generatedAt,
   override = false
 ): RoleEvidenceAdapterInput {
+  const sourceId = `src:${kind}-source`;
+  const observationId = `role-obs:${kind}-source`;
+  const sourceKind = kind === "predicted_lineup"
+    ? "predicted_lineup"
+    : kind === "preseason_lineup"
+      ? "preseason_lineup"
+      : kind === "manager_confirmation"
+        ? "manager_comment"
+        : "official_injury_update";
   return {
     config: {
       id: `${kind}-source`,
@@ -31,12 +40,43 @@ function adapter(
       enabled: true,
       reliability: 1
     },
+    sources: [{
+      id: sourceId,
+      publisher: `${kind} publisher`,
+      sourceType: kind === "official_club" ? "club" : "media",
+      sourceKind,
+      canonicalUrl: "https://example.test",
+      reliability: 1,
+      credibilityRationale: "Test root source."
+    }],
+    observations: [{
+      id: observationId,
+      adapterId: `${kind}-source`,
+      playerId: 1,
+      dimension: kind === "predicted_lineup" ? "predicted_lineup_consensus" : "current_manager_preference",
+      signal,
+      sourceIds: [sourceId],
+      underlyingClaimId: `${kind}:player-1`,
+      publishedAt: observedAt,
+      retrievedAt: generatedAt,
+      observedAt,
+      capturedExcerpt: `${kind} test evidence.`,
+      structuredValue: signal === "supports_start",
+      adapterVersion: "1",
+      contentHash: "0".repeat(64),
+      credibility: { score: 1, label: "high", rationale: "Test evidence." },
+      relevance: { score: 1, rationale: "Test evidence." },
+      override,
+      note: `${kind} test evidence.`
+    }],
     records: [{
       playerId: 1,
       dimension: kind === "predicted_lineup" ? "predicted_lineup_consensus" : "current_manager_preference",
       signal,
       value: signal === "supports_start",
       observedAt,
+      sourceIds: [sourceId],
+      observationIds: [observationId],
       override,
       note: `${kind} test evidence.`
     }]
@@ -132,7 +172,7 @@ describe("current-role evidence", () => {
       players: [player],
       adapters: [
         adapter("official_club", "supports_start"),
-        adapter("predicted_lineup", "opposes_start"),
+        adapter("manager_confirmation", "opposes_start"),
         {
           config: {
             id: "preseason", kind: "preseason_lineup", provider: "Preseason provider",
