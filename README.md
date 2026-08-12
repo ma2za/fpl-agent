@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.12`
+Version: `0.0.13`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -77,6 +77,7 @@ pnpm roles -- --gw 1
 pnpm public-evidence -- --gw 1
 pnpm fixtures -- --gw 1 --horizon 6
 pnpm recommend -- --gw auto
+pnpm squad:utility -- --gw 1 --thresholds 40,50,60
 pnpm compare:squads -- --a path/to/a.json --b path/to/b.json
 pnpm variant:list -- --gw 1
 pnpm variant:verify -- --gw 1 --variant balanced
@@ -112,6 +113,8 @@ For rendered-page capture, install the browser once with `corepack pnpm exec pla
 `pnpm fixtures -- --gw {n} --horizon {n}` writes the existing fixture ticker plus attack/defence horizon evidence for 1GW, 3GW, and 6GW. The horizon report exposes raw FDR, source-backed strength inputs, fallbacks, blanks, doubles, unresolved schedules, congestion, fixture swings, and squad or variant exposure without altering recommendations.
 
 `pnpm recommend -- --gw {n}` prepares evidence for the coding agent. It does not select players or write a final recommendation.
+
+`pnpm squad:utility -- --gw {n}` writes role-adjusted squad utility, downside, bench-cost, formation-coverage, and exact expected automatic-substitution metrics for an authored recommendation. Use `--previous path/to/recommendation.json` to write the immediately preceding draft delta.
 
 `pnpm compare:squads` compares two agent-authored recommendation files and prints or writes a decision report.
 

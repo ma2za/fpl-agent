@@ -122,6 +122,72 @@ export type ProjectionUncertaintyReport = {
   warnings: string[];
 };
 
+export type SquadUtilityVector = {
+  rawStartingXIProjection: number;
+  roleAdjustedStartingXIProjection: number;
+  roleAdjustedWithAutosubs: number;
+  expectedStarters: number;
+  expectedAppearances: number;
+  unresolvedRoleCount: number;
+  p10: number;
+  median: number;
+  p90: number;
+  standardDeviation: number;
+  probabilityBelowThresholds: Array<{ threshold: number; probability: number }>;
+};
+
+export type SubstitutionUtilityReport = {
+  benchCost: number;
+  expectedAutosubValue: number;
+  goalkeeper: {
+    playerId: number;
+    cost: number;
+    appearanceProbability: number;
+    activationProbability: number;
+    marginalValue: number;
+  };
+  benchSlots: Array<{
+    slot: 1 | 2 | 3;
+    playerId: number;
+    position: PlayerForEngine["position"];
+    cost: number;
+    appearanceProbability: number;
+    activationProbability: number;
+    marginalValue: number;
+    canReplacePositions: PlayerForEngine["position"][];
+  }>;
+};
+
+export type RobustnessReport = {
+  schemaVersion: 1;
+  generatedAt: string;
+  gameweek: number;
+  model: "independent-appearance-squad-utility";
+  modelVersion: "0.0.13";
+  seed: number;
+  sampleCount: number;
+  thresholds: number[];
+  utility: SquadUtilityVector;
+  substitutions: SubstitutionUtilityReport;
+  assumptions: string[];
+};
+
+export type DraftDeltaReport = {
+  schemaVersion: 1;
+  generatedAt: string;
+  previousLabel: string;
+  currentLabel: string;
+  deltas: {
+    rawProjection: number;
+    roleAdjustedProjection: number;
+    expectedStarters: number;
+    autosubValue: number;
+    downsideP10: number;
+    benchCost: number;
+  };
+  supportedRobustnessMetrics: string[];
+};
+
 export type CaptainCandidate = {
   playerId: number;
   projectedPoints: number;

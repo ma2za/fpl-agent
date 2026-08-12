@@ -163,6 +163,11 @@ Implemented:
 - Separate historical-role, current-role, availability, overall evidence confidence, evidence uncertainty, and football-outcome variance.
 - Deterministic seeds and persisted model inputs.
 - Empirical conditional histories when sufficient, with labeled position, price, fixture, and role cohorts otherwise.
+- `robustness-report.json`, `robustness-report.md`, `draft-delta-report.json`, and `draft-delta-report.md`.
+- Raw and role-adjusted starting-XI totals, exact expected automatic-substitution value, expected starters and appearances, and unresolved-role counts.
+- Deterministic squad p10, median, p90, standard deviation, and configurable downside-threshold probabilities.
+- Separate goalkeeper and first-, second-, and third-substitute marginal values, bench cost, and formation coverage.
+- Previous-draft deltas for raw projection, role-adjusted utility, expected starters, automatic substitutions, downside p10, and bench cost.
 - Squad comparison for two authored recommendation files.
 - Authored variant listing, independent verification, and neutral comparison against shared gameweek evidence.
 - Full-squad structure comparison requirements in recommendation quality gates.
@@ -225,6 +230,7 @@ pnpm roles -- --gw <n> [--input <agent-role-evidence.json>]
 pnpm public-evidence -- --gw <n>
 pnpm fixtures -- --gw <n> --horizon <n>
 pnpm recommend -- --gw <n|auto>
+pnpm squad:utility -- --gw <n> [--thresholds 40,50,60] [--previous <recommendation.json>]
 pnpm compare:squads -- --a <file> --b <file>
 pnpm variant:list -- --gw <gameweek>
 pnpm variant:verify -- --gw <gameweek> --variant <slug>

@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present through `0.0.12` and the dependency-ordered plan from `0.0.13` through `0.0.18`.
+This document records the capabilities present through `0.0.13` and the dependency-ordered plan from `0.0.14` through `0.0.18`.
 
 ## Permanent Decision Boundary
 
@@ -12,7 +12,7 @@ This document records the capabilities present through `0.0.12` and the dependen
 - Tool-produced evidence and candidate artifacts must remain structurally separate from agent-authored decision artifacts.
 - Verification may reject illegal or unsupported decisions, but it must never replace them or choose an alternative.
 
-## Current State: 0.0.12
+## Current State: 0.0.13
 
 ### Workspace
 
@@ -60,6 +60,9 @@ The exact covered and uncovered rule behavior is listed in `docs/rules-coverage.
 - Recommendation templates that require coding-agent authorship.
 - Transactional evidence refresh with validated staging, bounded concurrency, offline mode, and atomic promotion.
 - Local refresh manifests with source freshness, stage duration, artifact hashes, and visible failures.
+- Role-adjusted squad utility vectors, deterministic downside distributions, and configurable point thresholds.
+- Exact independent-appearance automatic-substitution value with separate goalkeeper and first-, second-, and third-substitute contributions.
+- Bench cost, formation coverage, unresolved-role counts, and explicit previous-draft metric deltas.
 
 ### Evidence Sources
 
@@ -92,7 +95,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Operational State
 
-- The locked local test suite passes 38 test files and 289 tests at the `0.0.12` status update.
+- The locked local test suite passes 39 test files and 294 tests at the `0.0.13` status update.
 - Evidence commands write local files for review.
 - Final squad, transfer, captaincy, bench, and chip decisions remain coding-agent-authored.
 - The human manager performs every change in the official FPL interface.
@@ -319,8 +322,6 @@ Release gate:
 
 Status: delivered.
 
-## Planned Releases
-
 ### 0.0.13: Role-Adjusted Squad Utility and Robustness
 
 Quantify what raw expected points are exchanged for when the agent chooses a more reliable structure.
@@ -350,6 +351,10 @@ Release gate:
 - Verify that deeper bench slots receive value only through valid conditional substitution paths.
 - Reproduce an explicit old-versus-new comparison showing whether a raw projection sacrifice buys role-adjusted value or downside protection.
 - Reject prose claims such as “more robust” when no cited robustness metric supports them.
+
+Status: delivered.
+
+## Planned Releases
 
 ### 0.0.14: Complete Counterfactual Optimization
 

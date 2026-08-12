@@ -8,8 +8,10 @@ import {
   CandidateArtifactSchema,
   EvidenceReportSchema,
   FixtureHorizonReportSchema,
+  DraftDeltaReportSchema,
   ProjectionUncertaintyReportSchema,
   RecommendationArtifactSchema,
+  RobustnessReportSchema,
   ToolEvidenceArtifactSchema,
   WeeklyStrategySchema,
   canonicalArtifactJson,
@@ -112,6 +114,7 @@ describe("artifact schemas", () => {
       "candidate",
       "claimLedger",
       "currentRoleReport",
+      "draftDeltaReport",
       "evidenceReport",
       "fixtureHorizonReport",
       "fixtureTicker",
@@ -122,6 +125,7 @@ describe("artifact schemas", () => {
       "publicEvidenceReport",
       "recommendation",
       "riskReport",
+      "robustnessReport",
       "setPieceReport",
       "strategyEvidence",
       "teamNewsReport",
@@ -231,6 +235,72 @@ describe("artifact IO", () => {
       ...report,
       items: [{ ...report.items[0], appearance: { ...report.items[0].appearance, noAppearanceProbability: 0.2 } }]
     })).toThrow();
+  });
+
+  it("validates squad robustness and draft delta artifacts", () => {
+    const report = {
+      schemaVersion: 1,
+      generatedAt: "2026-08-12T00:00:00.000Z",
+      gameweek: 1,
+      model: "independent-appearance-squad-utility",
+      modelVersion: "0.0.13",
+      seed: 13,
+      sampleCount: 1000,
+      thresholds: [40],
+      utility: {
+        rawStartingXIProjection: 60,
+        roleAdjustedStartingXIProjection: 55,
+        roleAdjustedWithAutosubs: 56,
+        expectedStarters: 13,
+        expectedAppearances: 14,
+        unresolvedRoleCount: 2,
+        p10: 42,
+        median: 56,
+        p90: 70,
+        standardDeviation: 10,
+        probabilityBelowThresholds: [{ threshold: 40, probability: 0.08 }]
+      },
+      substitutions: {
+        benchCost: 18,
+        expectedAutosubValue: 1,
+        goalkeeper: {
+          playerId: 2,
+          cost: 4,
+          appearanceProbability: 1,
+          activationProbability: 0.05,
+          marginalValue: 0.1
+        },
+        benchSlots: [1, 2, 3].map((slot) => ({
+          slot,
+          playerId: slot + 5,
+          position: "DEF",
+          cost: 4.5,
+          appearanceProbability: 0.9,
+          activationProbability: 0.2 / slot,
+          marginalValue: 0.5 / slot,
+          canReplacePositions: ["DEF"]
+        }))
+      },
+      assumptions: ["Independent appearances."]
+    };
+    const delta = {
+      schemaVersion: 1,
+      generatedAt: report.generatedAt,
+      previousLabel: "draft-1",
+      currentLabel: "draft-2",
+      deltas: {
+        rawProjection: -1,
+        roleAdjustedProjection: 1,
+        expectedStarters: 0.2,
+        autosubValue: 0.5,
+        downsideP10: 2,
+        benchCost: 0.5
+      },
+      supportedRobustnessMetrics: ["autosubValue", "downsideP10"]
+    };
+
+    expect(RobustnessReportSchema.parse(report)).toEqual(report);
+    expect(DraftDeltaReportSchema.parse(delta)).toEqual(delta);
   });
 });
 

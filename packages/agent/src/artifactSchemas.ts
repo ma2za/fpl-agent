@@ -1151,6 +1151,75 @@ export const ProjectionUncertaintyReportSchema = z.object({
   warnings: stringArray
 }).strict();
 
+const squadUtilityVector = z.object({
+  rawStartingXIProjection: z.number(),
+  roleAdjustedStartingXIProjection: z.number(),
+  roleAdjustedWithAutosubs: z.number(),
+  expectedStarters: z.number().min(0).max(15),
+  expectedAppearances: z.number().min(0).max(15),
+  unresolvedRoleCount: z.number().int().min(0).max(15),
+  p10: z.number(),
+  median: z.number(),
+  p90: z.number(),
+  standardDeviation: z.number().nonnegative(),
+  probabilityBelowThresholds: z.array(z.object({
+    threshold: z.number(),
+    probability: z.number().min(0).max(1)
+  }).strict())
+}).strict();
+
+const substitutionBenchSlot = z.object({
+  slot: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  playerId: z.number(),
+  position: z.enum(["DEF", "MID", "FWD"]),
+  cost: z.number().nonnegative(),
+  appearanceProbability: z.number().min(0).max(1),
+  activationProbability: z.number().min(0).max(1),
+  marginalValue: z.number().nonnegative(),
+  canReplacePositions: z.array(z.enum(["DEF", "MID", "FWD"]))
+}).strict();
+
+export const RobustnessReportSchema = z.object({
+  schemaVersion: z.literal(1),
+  generatedAt: z.string(),
+  gameweek: z.number().int().positive(),
+  model: z.literal("independent-appearance-squad-utility"),
+  modelVersion: z.literal("0.0.13"),
+  seed: z.number().int().nonnegative(),
+  sampleCount: z.number().int().positive(),
+  thresholds: z.array(z.number()),
+  utility: squadUtilityVector,
+  substitutions: z.object({
+    benchCost: z.number().nonnegative(),
+    expectedAutosubValue: z.number().nonnegative(),
+    goalkeeper: z.object({
+      playerId: z.number(),
+      cost: z.number().nonnegative(),
+      appearanceProbability: z.number().min(0).max(1),
+      activationProbability: z.number().min(0).max(1),
+      marginalValue: z.number().nonnegative()
+    }).strict(),
+    benchSlots: z.array(substitutionBenchSlot).length(3)
+  }).strict(),
+  assumptions: stringArray
+}).strict();
+
+export const DraftDeltaReportSchema = z.object({
+  schemaVersion: z.literal(1),
+  generatedAt: z.string(),
+  previousLabel: z.string(),
+  currentLabel: z.string(),
+  deltas: z.object({
+    rawProjection: z.number(),
+    roleAdjustedProjection: z.number(),
+    expectedStarters: z.number(),
+    autosubValue: z.number(),
+    downsideP10: z.number(),
+    benchCost: z.number()
+  }).strict(),
+  supportedRobustnessMetrics: stringArray
+}).strict();
+
 const variantEvidenceSummary = looseObject({
   fixtureDifficulty: nullableNumber,
   fixtureCount: nullableNumber,
@@ -1245,6 +1314,8 @@ export const ArtifactSchemas = {
   oddsReport: OddsReportSchema,
   publicEvidenceReport: PublicEvidenceReportSchema,
   recommendation: RecommendationArtifactSchema,
+  robustnessReport: RobustnessReportSchema,
+  draftDeltaReport: DraftDeltaReportSchema,
   riskReport: SquadRiskReportSchema,
   setPieceReport: SetPieceReportSchema,
   strategyEvidence: StrategyEvidenceSchema,
