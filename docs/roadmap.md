@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present through `0.0.13` and the dependency-ordered plan from `0.0.14` through `0.0.18`.
+This document records the capabilities present through `0.0.14` and the dependency-ordered plan from `0.0.15` through `0.0.18`.
 
 ## Permanent Decision Boundary
 
@@ -12,7 +12,7 @@ This document records the capabilities present through `0.0.13` and the dependen
 - Tool-produced evidence and candidate artifacts must remain structurally separate from agent-authored decision artifacts.
 - Verification may reject illegal or unsupported decisions, but it must never replace them or choose an alternative.
 
-## Current State: 0.0.13
+## Current State: 0.0.14
 
 ### Workspace
 
@@ -63,6 +63,9 @@ The exact covered and uncovered rule behavior is listed in `docs/rules-coverage.
 - Role-adjusted squad utility vectors, deterministic downside distributions, and configurable point thresholds.
 - Exact independent-appearance automatic-substitution value with separate goalkeeper and first-, second-, and third-substitute contributions.
 - Bench cost, formation coverage, unresolved-role counts, and explicit previous-draft metric deltas.
+- Exact deterministic branch-and-bound optimization for independently constrained counterfactual squads.
+- GW1, GW1-GW3, and GW1-GW6 objectives with raw, role-adjusted, downside, bench-value, and role-confidence vectors.
+- Neutral counterfactual comparisons, optimization proofs, and material structural-rejection citation gates.
 
 ### Evidence Sources
 
@@ -95,7 +98,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Operational State
 
-- The locked local test suite passes 39 test files and 294 tests at the `0.0.13` status update.
+- The locked local test suite passes 40 test files and 301 tests at the `0.0.14` status update.
 - Evidence commands write local files for review.
 - Final squad, transfer, captaincy, bench, and chip decisions remain coding-agent-authored.
 - The human manager performs every change in the official FPL interface.
@@ -354,8 +357,6 @@ Release gate:
 
 Status: delivered.
 
-## Planned Releases
-
 ### 0.0.14: Complete Counterfactual Optimization
 
 Generate the strongest legal version of every material structure before the agent compares them.
@@ -388,6 +389,10 @@ Release gate:
 - Validate legality, determinism, objective bounds, and bounded full-pool performance.
 - Fail recommendation quality when a major rejected premium or club-exposure structure is represented only by prose or an unoptimized squad.
 - Verify that candidate and comparison artifacts cannot parse as final decisions.
+
+Status: delivered.
+
+## Planned Releases
 
 ### 0.0.15: Concentration and Correlated Scenario Analysis
 

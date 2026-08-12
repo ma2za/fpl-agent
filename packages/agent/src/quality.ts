@@ -142,6 +142,12 @@ function decisionAnalysisErrors(recommendation: WeeklyRecommendation) {
     errors.push("Decision analysis must compare at least two full-squad structures with why-selected, why-rejected, and evidence.");
   }
 
+  for (const comparison of analysis.structureComparisons) {
+    if ((comparison.counterfactualCandidateIds?.length ?? 0) === 0) {
+      errors.push(`Material structural rejection "${comparison.rejectedStructure}" must cite at least one optimized counterfactual candidate ID.`);
+    }
+  }
+
   const selectedIds = new Set(recommendation.squadBefore.players.map((player) => player.id));
   const decisionByPlayer = new Map(analysis.playerDecisions.map((decision) => [decision.playerId, decision]));
 

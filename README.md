@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.13`
+Version: `0.0.14`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -78,6 +78,7 @@ pnpm public-evidence -- --gw 1
 pnpm fixtures -- --gw 1 --horizon 6
 pnpm recommend -- --gw auto
 pnpm squad:utility -- --gw 1 --thresholds 40,50,60
+pnpm counterfactuals -- --request path/to/optimization-request.json
 pnpm compare:squads -- --a path/to/a.json --b path/to/b.json
 pnpm variant:list -- --gw 1
 pnpm variant:verify -- --gw 1 --variant balanced
@@ -115,6 +116,10 @@ For rendered-page capture, install the browser once with `corepack pnpm exec pla
 `pnpm recommend -- --gw {n}` prepares evidence for the coding agent. It does not select players or write a final recommendation.
 
 `pnpm squad:utility -- --gw {n}` writes role-adjusted squad utility, downside, bench-cost, formation-coverage, and exact expected automatic-substitution metrics for an authored recommendation. Use `--previous path/to/recommendation.json` to write the immediately preceding draft delta.
+
+`pnpm counterfactuals -- --request {file}` independently optimizes every requested scenario for its GW1, GW1-GW3, and GW1-GW6 horizons. Requests support player inclusion and exclusion, budget, availability, club exposure, premium, premium-defence, bench-depth, and formation constraints. Outputs are neutral candidate, proof, Pareto, and comparison evidence and never select a final structure.
+
+See `docs/counterfactual-optimization.md` for the request format.
 
 `pnpm compare:squads` compares two agent-authored recommendation files and prints or writes a decision report.
 

@@ -9,9 +9,11 @@ import {
   EvidenceReportSchema,
   FixtureHorizonReportSchema,
   DraftDeltaReportSchema,
+  OptimizationRequestSchema,
   ProjectionUncertaintyReportSchema,
   RecommendationArtifactSchema,
   RobustnessReportSchema,
+  SquadCandidateSchema,
   ToolEvidenceArtifactSchema,
   WeeklyStrategySchema,
   canonicalArtifactJson,
@@ -91,6 +93,47 @@ describe("artifact schemas", () => {
     expect(CandidateArtifactSchema.safeParse(decision).success).toBe(false);
   });
 
+  it("keeps optimization requests and squad candidates separate from final decisions", () => {
+    const request = {
+      schemaVersion: 1,
+      artifactKind: "tool_evidence",
+      generatedAt: "2026-08-12T00:00:00.000Z",
+      requestId: "gw1-structures",
+      gameweek: 1,
+      horizons: [1, 3, 6],
+      scenarios: [{ id: "baseline", label: "Baseline", constraints: { budget: 100 } }],
+      objective: "role-adjusted-squad-utility",
+      modelAssumptions: ["Independent horizon inputs."]
+    };
+    const candidate = {
+      schemaVersion: 1,
+      artifactKind: "candidate",
+      candidateId: "gw1-structures:baseline:gw1:1",
+      requestId: "gw1-structures",
+      scenarioId: "baseline",
+      horizon: 1,
+      playerIds: Array.from({ length: 15 }, (_, index) => index + 1),
+      startingXI: Array.from({ length: 11 }, (_, index) => index + 1),
+      benchOrder: [12, 13, 14, 15],
+      formation: "3-4-3",
+      cost: 100,
+      metrics: {
+        objective: 60,
+        rawProjection: 65,
+        roleAdjustedProjection: 58,
+        downside: 40,
+        benchValue: 2,
+        roleConfidence: 0.8
+      },
+      constraints: { budget: 100 }
+    };
+
+    expect(OptimizationRequestSchema.parse(request).requestId).toBe("gw1-structures");
+    expect(SquadCandidateSchema.parse(candidate).candidateId).toContain("baseline");
+    expect(AgentDecisionArtifactSchema.safeParse(request).success).toBe(false);
+    expect(AgentDecisionArtifactSchema.safeParse(candidate).success).toBe(false);
+  });
+
   it("rejects malformed fixture horizon artifacts at the read boundary", () => {
     expect(() => parseArtifactJson(
       JSON.stringify({
@@ -113,6 +156,8 @@ describe("artifact schemas", () => {
       "agentDecision",
       "candidate",
       "claimLedger",
+      "counterfactualComparison",
+      "counterfactualSet",
       "currentRoleReport",
       "draftDeltaReport",
       "evidenceReport",
@@ -122,11 +167,14 @@ describe("artifact schemas", () => {
       "legalityReport",
       "minutesRiskReport",
       "oddsReport",
+      "optimizationProof",
+      "optimizationRequest",
       "publicEvidenceReport",
       "recommendation",
       "riskReport",
       "robustnessReport",
       "setPieceReport",
+      "squadCandidate",
       "strategyEvidence",
       "teamNewsReport",
       "toolEvidence",

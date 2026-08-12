@@ -72,6 +72,7 @@ const recommendation: WeeklyRecommendation = {
       {
         selectedStructure: "Balanced 3-4-3",
         rejectedStructure: "Premium-heavy 3-4-3",
+        counterfactualCandidateIds: ["test:premium:gw1:1"],
         whySelected: ["Keeps the test squad legal with useful bank."],
         whyRejected: ["Would over-concentrate budget in one area for the fixture test."],
         evidence: ["test.md"]
@@ -79,6 +80,7 @@ const recommendation: WeeklyRecommendation = {
       {
         selectedStructure: "Balanced 3-4-3",
         rejectedStructure: "Bench-heavy 4-4-2",
+        counterfactualCandidateIds: ["test:bench:gw1:1"],
         whySelected: ["Keeps more budget in the starting XI."],
         whyRejected: ["Would spend too much on substitutes for the fixture test."],
         evidence: ["test.md"]
@@ -308,5 +310,38 @@ describe("evaluateRecommendationQuality", () => {
 
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain("Decision analysis must compare at least two full-squad structures with why-selected, why-rejected, and evidence.");
+  });
+
+  it("requires optimized counterfactual IDs for material structural rejections", () => {
+    const result = evaluateRecommendationQuality({
+      ...recommendation,
+      decisionAnalysis: {
+        ...recommendation.decisionAnalysis!,
+        structureComparisons: recommendation.decisionAnalysis!.structureComparisons.map((comparison, index) => ({
+          ...comparison,
+          material: index === 0,
+          counterfactualCandidateIds: index === 0 ? [] : undefined
+        }))
+      }
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain('Material structural rejection "Premium-heavy 3-4-3" must cite at least one optimized counterfactual candidate ID.');
+  });
+
+  it("accepts optimized counterfactual citations for material structural rejections", () => {
+    const result = evaluateRecommendationQuality({
+      ...recommendation,
+      decisionAnalysis: {
+        ...recommendation.decisionAnalysis!,
+        structureComparisons: recommendation.decisionAnalysis!.structureComparisons.map((comparison) => ({
+          ...comparison,
+          material: true,
+          counterfactualCandidateIds: ["gw1-structures:premium:gw3:1"]
+        }))
+      }
+    });
+
+    expect(result.isValid).toBe(true);
   });
 });

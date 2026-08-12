@@ -168,6 +168,11 @@ Implemented:
 - Deterministic squad p10, median, p90, standard deviation, and configurable downside-threshold probabilities.
 - Separate goalkeeper and first-, second-, and third-substitute marginal values, bench cost, and formation coverage.
 - Previous-draft deltas for raw projection, role-adjusted utility, expected starters, automatic substitutions, downside p10, and bench cost.
+- Exact deterministic branch-and-bound generation for explicit inclusion, exclusion, budget, availability, club, premium, defence, bench-depth, and formation scenarios.
+- Independent GW1, GW1-GW3, and GW1-GW6 optimization with raw projection retained beside the role-adjusted objective.
+- Dedicated `OptimizationRequest`, `SquadCandidate`, `CounterfactualSet`, `CounterfactualComparison`, and `OptimizationProof` schemas.
+- Neutral complete-vector and player-delta comparisons with no final-choice fields.
+- Recommendation quality failure when material premium, bench, or club-exposure rejections lack optimized counterfactual candidate IDs.
 - Squad comparison for two authored recommendation files.
 - Authored variant listing, independent verification, and neutral comparison against shared gameweek evidence.
 - Full-squad structure comparison requirements in recommendation quality gates.
@@ -231,6 +236,7 @@ pnpm public-evidence -- --gw <n>
 pnpm fixtures -- --gw <n> --horizon <n>
 pnpm recommend -- --gw <n|auto>
 pnpm squad:utility -- --gw <n> [--thresholds 40,50,60] [--previous <recommendation.json>]
+pnpm counterfactuals -- --request <optimization-request.json> [--out <dir>]
 pnpm compare:squads -- --a <file> --b <file>
 pnpm variant:list -- --gw <gameweek>
 pnpm variant:verify -- --gw <gameweek> --variant <slug>

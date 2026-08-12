@@ -76,6 +76,8 @@ export type OmittedPlayerAnalysis = {
 export type StructureDecisionAnalysis = {
   selectedStructure: string;
   rejectedStructure: string;
+  material?: boolean;
+  counterfactualCandidateIds?: string[];
   whySelected: string[];
   whyRejected: string[];
   evidence: string[];

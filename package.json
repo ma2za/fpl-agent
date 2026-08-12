@@ -1,6 +1,6 @@
 {
   "name": "fpl-agent",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "private": true,
   "license": "Apache-2.0",
   "packageManager": "pnpm@11.9.0",
@@ -17,6 +17,7 @@
     "benchmark:probability": "tsx scripts/benchmark-probability.ts",
     "analyze:squad": "tsx scripts/optimize-squad.ts",
     "squad:utility": "tsx scripts/generate-squad-utility.ts",
+    "counterfactuals": "tsx scripts/generate-counterfactuals.ts",
     "refresh": "tsx scripts/refresh.ts",
     "fetch:data": "tsx scripts/fetch-fpl-data.ts",
     "fetch:players": "tsx scripts/fetch-player-data.ts",

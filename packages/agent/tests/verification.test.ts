@@ -88,6 +88,7 @@ const recommendation: WeeklyRecommendation = {
       {
         selectedStructure: "Balanced 3-4-3",
         rejectedStructure: "Premium-heavy 3-4-3",
+        counterfactualCandidateIds: ["test:premium:gw1:1"],
         whySelected: ["Keeps the test squad legal with useful bank."],
         whyRejected: ["Would over-concentrate budget in one area for the fixture test."],
         evidence: ["test.md"]
@@ -95,6 +96,7 @@ const recommendation: WeeklyRecommendation = {
       {
         selectedStructure: "Balanced 3-4-3",
         rejectedStructure: "Bench-heavy 4-4-2",
+        counterfactualCandidateIds: ["test:bench:gw1:1"],
         whySelected: ["Keeps more budget in the starting XI."],
         whyRejected: ["Would spend too much on substitutes for the fixture test."],
         evidence: ["test.md"]

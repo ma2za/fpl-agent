@@ -269,6 +269,8 @@ const decisionAnalysis = looseObject({
   structureComparisons: z.array(looseObject({
     selectedStructure: z.string(),
     rejectedStructure: z.string(),
+    material: z.boolean().optional(),
+    counterfactualCandidateIds: z.array(z.string().min(1)).optional(),
     whySelected: stringArray,
     whyRejected: stringArray,
     evidence: stringArray
@@ -1220,6 +1222,117 @@ export const DraftDeltaReportSchema = z.object({
   supportedRobustnessMetrics: stringArray
 }).strict();
 
+const optimizationHorizon = z.union([z.literal(1), z.literal(3), z.literal(6)]);
+const optimizationConstraints = z.object({
+  budget: z.number().positive(),
+  minimumAppearanceProbability: z.number().min(0).max(1).optional(),
+  includedPlayerIds: z.array(z.number()).optional(),
+  excludedPlayerIds: z.array(z.number()).optional(),
+  clubLimits: z.record(z.string(), z.object({
+    minimum: z.number().int().min(0).optional(),
+    maximum: z.number().int().min(0).max(3).optional()
+  }).strict()).optional(),
+  premium: z.object({
+    minimumPrice: z.number().nonnegative(),
+    minimum: z.number().int().min(0).optional(),
+    maximum: z.number().int().min(0).optional()
+  }).strict().optional(),
+  premiumDefence: z.object({
+    minimumPrice: z.number().nonnegative(),
+    minimum: z.number().int().min(0).optional(),
+    maximum: z.number().int().min(0).optional()
+  }).strict().optional(),
+  bench: z.object({
+    minimumCost: z.number().nonnegative().optional(),
+    maximumCost: z.number().nonnegative().optional(),
+    minimumRoleConfidence: z.number().min(0).max(1).optional()
+  }).strict().optional(),
+  formations: z.array(z.enum(["3-4-3", "3-5-2", "4-3-3", "4-4-2", "4-5-1", "5-3-2", "5-4-1"])).optional()
+}).strict();
+
+const optimizationScenario = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  constraints: optimizationConstraints
+}).strict();
+
+export const OptimizationRequestSchema = z.object({
+  schemaVersion: z.literal(1),
+  artifactKind: z.literal("tool_evidence"),
+  generatedAt: z.string(),
+  requestId: z.string().min(1),
+  gameweek: z.number().int().positive(),
+  horizons: z.array(optimizationHorizon).min(1),
+  scenarios: z.array(optimizationScenario).min(1),
+  objective: z.literal("role-adjusted-squad-utility"),
+  modelAssumptions: stringArray
+}).strict();
+
+const candidateMetrics = z.object({
+  objective: z.number(),
+  rawProjection: z.number(),
+  roleAdjustedProjection: z.number(),
+  downside: z.number(),
+  benchValue: z.number(),
+  roleConfidence: z.number().min(0).max(1)
+}).strict();
+
+export const SquadCandidateSchema = z.object({
+  schemaVersion: z.literal(1),
+  artifactKind: z.literal("candidate"),
+  candidateId: z.string().min(1),
+  requestId: z.string().min(1),
+  scenarioId: z.string().min(1),
+  horizon: optimizationHorizon,
+  playerIds: z.array(z.number()).length(15),
+  startingXI: z.array(z.number()).length(11),
+  benchOrder: z.array(z.number()).length(4),
+  formation: z.string(),
+  cost: z.number().nonnegative(),
+  metrics: candidateMetrics,
+  constraints: optimizationConstraints
+}).strict();
+
+export const OptimizationProofSchema = z.object({
+  schemaVersion: z.literal(1),
+  artifactKind: z.literal("tool_evidence"),
+  requestId: z.string().min(1),
+  scenarioId: z.string().min(1),
+  horizon: optimizationHorizon,
+  algorithm: z.literal("deterministic-branch-and-bound"),
+  exhaustive: z.literal(true),
+  nodesVisited: z.number().int().positive(),
+  branchesPruned: z.number().int().nonnegative(),
+  feasibleSquads: z.number().int().nonnegative(),
+  initialUpperBound: z.number(),
+  objectiveValue: z.number().nullable()
+}).strict();
+
+export const CounterfactualSetSchema = z.object({
+  schemaVersion: z.literal(1),
+  artifactKind: z.literal("tool_evidence"),
+  generatedAt: z.string(),
+  request: OptimizationRequestSchema,
+  candidates: z.array(SquadCandidateSchema),
+  paretoCandidateIds: z.array(z.string()),
+  proofs: z.array(OptimizationProofSchema)
+}).strict();
+
+export const CounterfactualComparisonSchema = z.object({
+  schemaVersion: z.literal(1),
+  artifactKind: z.literal("tool_evidence"),
+  generatedAt: z.string(),
+  candidateIds: z.array(z.string()),
+  metricVectors: z.array(z.object({ candidateId: z.string(), metrics: candidateMetrics }).strict()),
+  constraintDifferences: z.array(z.object({ candidateId: z.string(), constraints: optimizationConstraints }).strict()),
+  playerDeltas: z.array(z.object({
+    candidateId: z.string(),
+    onlyInCandidate: z.array(z.number()),
+    absentFromCandidate: z.array(z.number())
+  }).strict()),
+  decisionPolicy: z.string()
+}).strict();
+
 const variantEvidenceSummary = looseObject({
   fixtureDifficulty: nullableNumber,
   fixtureCount: nullableNumber,
@@ -1304,6 +1417,8 @@ export const ArtifactSchemas = {
   agentDecision: AgentDecisionArtifactSchema,
   candidate: CandidateArtifactSchema,
   claimLedger: ClaimLedgerSchema,
+  counterfactualComparison: CounterfactualComparisonSchema,
+  counterfactualSet: CounterfactualSetSchema,
   languageValidationReport: LanguageValidationReportSchema,
   currentRoleReport: CurrentRoleReportSchema,
   evidenceReport: EvidenceReportSchema,
@@ -1312,12 +1427,15 @@ export const ArtifactSchemas = {
   legalityReport: LegalityReportSchema,
   minutesRiskReport: MinutesRiskReportSchema,
   oddsReport: OddsReportSchema,
+  optimizationProof: OptimizationProofSchema,
+  optimizationRequest: OptimizationRequestSchema,
   publicEvidenceReport: PublicEvidenceReportSchema,
   recommendation: RecommendationArtifactSchema,
   robustnessReport: RobustnessReportSchema,
   draftDeltaReport: DraftDeltaReportSchema,
   riskReport: SquadRiskReportSchema,
   setPieceReport: SetPieceReportSchema,
+  squadCandidate: SquadCandidateSchema,
   strategyEvidence: StrategyEvidenceSchema,
   teamNewsReport: TeamNewsReportSchema,
   toolEvidence: ToolEvidenceArtifactSchema,

@@ -128,6 +128,7 @@ export function variantRecommendation(gameweek = 1, replacedPlayerId?: number): 
         {
           selectedStructure: "Balanced",
           rejectedStructure: "Premium-heavy",
+          counterfactualCandidateIds: ["test:premium:gw1:1"],
           whySelected: ["Retains coverage across positions."],
           whyRejected: ["Concentrates too much budget."],
           evidence: ["evidence-report.json"]
@@ -135,6 +136,7 @@ export function variantRecommendation(gameweek = 1, replacedPlayerId?: number): 
         {
           selectedStructure: "Balanced",
           rejectedStructure: "Bench-heavy",
+          counterfactualCandidateIds: ["test:bench:gw1:1"],
           whySelected: ["Keeps more budget in the XI."],
           whyRejected: ["Overfunds substitutes."],
           evidence: ["risk-report.json"]

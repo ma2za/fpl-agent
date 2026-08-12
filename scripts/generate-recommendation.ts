@@ -264,6 +264,7 @@ The coding agent must read the evidence files, reason from current public inform
 - Keep evaluative or causal interpretation out of observations and derived facts, and use only phase-relevant warnings.
 - Treat generated reports as transformations of their originating observations, not as independent corroborating sources.
 - Fill decisionAnalysis with why every selected player was picked, why named alternatives were rejected, captaincy comparisons, key omissions, and evidence paths.
+- Cite optimized counterfactual candidate IDs for every material premium, defence, bench-depth, or club-exposure structure rejected in decisionAnalysis.
 - Keep exactly ${REQUIRED_SQUAD_COUNTS.GKP} GKP, ${REQUIRED_SQUAD_COUNTS.DEF} DEF, ${REQUIRED_SQUAD_COUNTS.MID} MID, and ${REQUIRED_SQUAD_COUNTS.FWD} FWD.
 - Keep no more than 3 players from one club.
 - Choose starting XI, captain, vice-captain, bench order, and chip.

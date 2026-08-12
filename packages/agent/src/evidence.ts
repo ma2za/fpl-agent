@@ -169,6 +169,8 @@ export function buildEvidencePack(input: BuildEvidencePackInput): EvidencePack {
         {
           selectedStructure: null,
           rejectedStructure: null,
+          material: null,
+          counterfactualCandidateIds: [],
           whySelected: [],
           whyRejected: [],
           evidence: []
