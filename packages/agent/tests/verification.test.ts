@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { verifyRecommendation, type WeeklyRecommendation } from "../src";
-import { testClaimLedger } from "./fixtures/variantRecommendation";
+import { publicNewsArticlesFor, testClaimLedger, withDecisionConsistency } from "./fixtures/variantRecommendation";
 
 const recommendation: WeeklyRecommendation = {
   schemaVersion: 2,
@@ -149,6 +149,7 @@ const recommendation: WeeklyRecommendation = {
   },
   evidenceReferences: [
     { area: "squad", source: "test", reportPath: "test.md", note: "Squad evidence." },
+    { area: "structure", source: "test", reportPath: "test.md", note: "Structure evidence." },
     { area: "starting-xi", source: "test", reportPath: "test.md", note: "XI evidence." },
     { area: "shortlist", source: "test", reportPath: "test.md", note: "Shortlist evidence." },
     { area: "captaincy", source: "test", reportPath: "test.md", note: "Captaincy evidence." },
@@ -157,6 +158,7 @@ const recommendation: WeeklyRecommendation = {
     { area: "risks", source: "test", reportPath: "test.md", note: "Risk evidence." },
     { area: "change-conditions", source: "test", reportPath: "test.md", note: "Change evidence." }
   ],
+  publicNewsArticles: [],
   risks: [],
   whatWouldChangeMyMind: [],
   legality: {
@@ -167,6 +169,9 @@ const recommendation: WeeklyRecommendation = {
   manualExecutionRequired: true
 };
 
+recommendation.publicNewsArticles = publicNewsArticlesFor(recommendation.squadBefore.players, recommendation.createdAt);
+withDecisionConsistency(recommendation);
+
 describe("verifyRecommendation", () => {
   it("passes a legal recommendation", () => {
     const result = verifyRecommendation(recommendation);
@@ -174,6 +179,60 @@ describe("verifyRecommendation", () => {
     expect(result.isValid).toBe(true);
     expect(result.errors).toEqual([]);
     expect(result.quality.gates.length).toBeGreaterThan(0);
+  });
+
+  it("blocks a selected player without five recent public-news articles", () => {
+    const result = verifyRecommendation({
+      ...recommendation,
+      publicNewsArticles: recommendation.publicNewsArticles?.filter((article) => article.playerId !== 1)
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain(
+      "Goalkeeper 1 requires 5 distinct public-news articles published within 14 days of selection; found 0."
+    );
+  });
+
+  it("blocks a captain selected below the declared raw-EV maximum", () => {
+    const captaincy = recommendation.decisionEvaluations?.find((item) => item.decisionType === "captaincy");
+    const result = verifyRecommendation({
+      ...recommendation,
+      decisionEvaluations: recommendation.decisionEvaluations?.map((item) => item !== captaincy ? item : {
+        ...item,
+        candidateScores: item.candidateScores.map((candidate) => ({
+          ...candidate,
+          rawExpectedPoints: candidate.candidateId === "player:8" ? 5.5 : 5.8,
+          objectiveScore: candidate.candidateId === "player:8" ? 5.5 : 5.8
+        }))
+      })
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain(
+      "Decision dec:captaincy selected player:8 with score 5.5, below the declared-objective maximum 5.8."
+    );
+  });
+
+  it("blocks a false structured club-count explanation", () => {
+    const statement = "This route produces triple club representation.";
+    const result = verifyRecommendation({
+      ...recommendation,
+      recommendedAction: { ...recommendation.recommendedAction, explanation: statement },
+      factualClaims: [{
+        id: "claim:club-count",
+        decisionId: "dec:squad",
+        snapshotId: recommendation.evidenceSnapshot!.snapshotId,
+        kind: "club_count",
+        statement,
+        candidateId: null,
+        subjectId: "1",
+        value: 3,
+        dependencyIds: ["squad:selected"]
+      }]
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain("Factual claim claim:club-count states club count 3; canonical count is 2.");
   });
 
   it("fails invalid captaincy", () => {
@@ -255,8 +314,9 @@ describe("verifyRecommendation", () => {
   });
 
   it("accepts a preseason retain action without transfer charging", () => {
-    const result = verifyRecommendation({
+    const preseason = withDecisionConsistency({
       ...recommendation,
+      claimLedger: testClaimLedger(),
       decisionContext: {
         ...recommendation.decisionContext!,
         phase: "PRESEASON_DRAFT"
@@ -266,6 +326,7 @@ describe("verifyRecommendation", () => {
         type: "retain_draft"
       }
     });
+    const result = verifyRecommendation(preseason);
 
     expect(result.isValid).toBe(true);
   });

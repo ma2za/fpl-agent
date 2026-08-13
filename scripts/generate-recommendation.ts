@@ -232,6 +232,7 @@ The coding agent must read the evidence files, reason from current public inform
 - data-status.json
 - evidence-report.json
 - evidence-report.md
+- evidence-snapshot.json
 - team-news-report.json
 - team-news-report.md
 - current-role-report.json
@@ -248,6 +249,8 @@ The coding agent must read the evidence files, reason from current public inform
 - decision-prompts.md
 - strategy-evidence.json
 - recommendation-template.json
+- public-evidence-report.json
+- public-evidence-report.md
 - packages/content/strategy/season-plan.md
 - packages/content/strategy/weekly/gw-${input.gameweek}.md
 - packages/content/strategy/weekly/gw-${input.gameweek}.json
@@ -256,10 +259,22 @@ The coding agent must read the evidence files, reason from current public inform
 
 - Confirm whether official 2026/27 FPL data is live.
 - Confirm player prices, positions, clubs, availability, and GW1 fixtures from current sources.
+- Use at least four distinct public publishers, including at least two official primary sources, before treating the recommendation as final.
+- Open the current public pages and use specific claims from them; configured or captured pages that do not inform a decision do not count.
+- Tie direct public URLs and retrieval times to squad structure, availability or expected minutes, captaincy, and deadline-dependent changes.
+- Treat local reports, projections, and summaries as transformations rather than public publishers.
+- If fewer than four usable public publishers are available, keep the recommendation provisional and state the missing coverage.
+- Before picking any player, find at least five distinct public-news articles about that player published within the preceding 14 days.
+- Record every qualifying article in publicNewsArticles with playerId, publisher, title, direct URL, publishedAt, and retrievedAt.
+- Apply the five-article rule to all 15 selected players. A player without five qualifying articles cannot appear in a final recommendation.
 - Select a legal 15-player squad within £${DEFAULT_STARTING_BUDGET.toFixed(1)}m.
 - Cite evidence for every squad, shortlist, starting XI, captaincy, bench, chip, risk, and change-condition decision.
 - Fill evidenceReferences with source, reportPath, note, and relevant player IDs where applicable.
 - Fill claimLedger v3 with explicit OBSERVATION, DERIVED_FACT, ASSUMPTION, FORECAST, and DECISION kinds; list every authored decision in decisionIds.
+- Build one immutable evidenceSnapshot and reference its snapshotId from every observation, forecast, DecisionEvaluation, canonical state, and factual claim.
+- Add canonical DecisionEvaluation records for squad, structure, starting XI, bench order, captaincy, transfers, and chip selection.
+- Select the highest eligible objectiveScore unless selectedBy is explicit_override with a concrete overrideReason.
+- Put all computable explanation facts in factualClaims; prose must render those facts rather than inventing counts, rankings, prices, or totals.
 - Give every forecast its model, model version, input facts, input assumptions, output value, uncertainty, and horizon.
 - Keep evaluative or causal interpretation out of observations and derived facts, and use only phase-relevant warnings.
 - Treat generated reports as transformations of their originating observations, not as independent corroborating sources.
@@ -273,6 +288,8 @@ The coding agent must read the evidence files, reason from current public inform
 ## Hard Stop
 
 Do not treat stale public API data as official 2026/27 GW1 data.
+
+Do not treat a recommendation as final when its public-source claims are not represented in claimLedger with direct URLs, retrieval times, and decision lineage.
 
 ## Context Notes Loaded
 

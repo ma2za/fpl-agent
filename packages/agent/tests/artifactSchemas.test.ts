@@ -6,6 +6,8 @@ import {
   ArtifactValidationError,
   AgentDecisionArtifactSchema,
   CandidateArtifactSchema,
+  ClubScenarioSetSchema,
+  ConcentrationRiskReportSchema,
   EvidenceReportSchema,
   FixtureHorizonReportSchema,
   DraftDeltaReportSchema,
@@ -13,6 +15,8 @@ import {
   ProjectionUncertaintyReportSchema,
   RecommendationArtifactSchema,
   RobustnessReportSchema,
+  ScenarioComparisonSchema,
+  SharedAssumptionGraphSchema,
   SquadCandidateSchema,
   ToolEvidenceArtifactSchema,
   WeeklyStrategySchema,
@@ -134,6 +138,52 @@ describe("artifact schemas", () => {
     expect(AgentDecisionArtifactSchema.safeParse(candidate).success).toBe(false);
   });
 
+  it("validates correlated-scenario artifacts as tool evidence", () => {
+    const generatedAt = "2026-08-13T00:00:00.000Z";
+    const graph = SharedAssumptionGraphSchema.parse({
+      schemaVersion: 1,
+      artifactKind: "tool_evidence",
+      generatedAt,
+      assumptions: [{ assumptionId: "asm:attack:1", kind: "team_attack", teamId: 1, label: "Attack" }],
+      dependencies: [{ playerId: 1, assumptionId: "asm:attack:1", sensitivity: 2 }]
+    });
+    const scenarios = ClubScenarioSetSchema.parse({
+      schemaVersion: 1,
+      artifactKind: "tool_evidence",
+      generatedAt,
+      scenarioSetId: "club:1",
+      teamId: 1,
+      scenarios: [
+        { level: "strong", probability: 0.25, shocks: [] },
+        { level: "baseline", probability: 0.5, shocks: [] },
+        { level: "weak", probability: 0.25, shocks: [] }
+      ]
+    });
+    const report = ConcentrationRiskReportSchema.parse({
+      schemaVersion: 1,
+      artifactKind: "tool_evidence",
+      generatedAt,
+      model: "shared-assumption-scenarios",
+      modelVersion: "0.0.15",
+      concentrationPenaltyWeight: 0,
+      candidates: [],
+      assumptions: []
+    });
+    const comparison = ScenarioComparisonSchema.parse({
+      schemaVersion: 1,
+      artifactKind: "tool_evidence",
+      generatedAt,
+      candidateIds: [],
+      metrics: [],
+      decisionPolicy: "No selection."
+    });
+
+    expect(scenarios.scenarios).toHaveLength(3);
+    for (const artifact of [graph, scenarios, report, comparison]) {
+      expect(AgentDecisionArtifactSchema.safeParse(artifact).success).toBe(false);
+    }
+  });
+
   it("rejects malformed fixture horizon artifacts at the read boundary", () => {
     expect(() => parseArtifactJson(
       JSON.stringify({
@@ -156,11 +206,14 @@ describe("artifact schemas", () => {
       "agentDecision",
       "candidate",
       "claimLedger",
+      "clubScenarioSet",
+      "concentrationRiskReport",
       "counterfactualComparison",
       "counterfactualSet",
       "currentRoleReport",
       "draftDeltaReport",
       "evidenceReport",
+      "evidenceSnapshot",
       "fixtureHorizonReport",
       "fixtureTicker",
       "languageValidationReport",
@@ -170,10 +223,13 @@ describe("artifact schemas", () => {
       "optimizationProof",
       "optimizationRequest",
       "publicEvidenceReport",
+      "publicationGate",
       "recommendation",
       "riskReport",
       "robustnessReport",
+      "scenarioComparison",
       "setPieceReport",
+      "sharedAssumptionGraph",
       "squadCandidate",
       "strategyEvidence",
       "teamNewsReport",

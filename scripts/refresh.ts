@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   EvidenceReportSchema,
+  EvidenceSnapshotSchema,
   AdapterCoverageReportSchema,
   CurrentRoleReportSchema,
   FixtureHorizonReportSchema,
@@ -36,6 +37,7 @@ import {
   renderTeamNewsReportMarkdown,
   runRefresh,
   type EvidenceSource,
+  type EvidenceSnapshotComponentKind,
   type AgentRoleEvidenceInput,
   type RefreshInput,
   type RefreshStage
@@ -81,6 +83,37 @@ function argValue(name: string) {
 
 function sha256(value: string | Buffer) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+async function snapshotComponent(
+  kind: EvidenceSnapshotComponentKind,
+  filePath: string,
+  sourceId: string,
+  version: string | null,
+  retrievedAt: string
+) {
+  try {
+    return {
+      kind,
+      status: "available" as const,
+      sourceId,
+      version,
+      observedAt: retrievedAt,
+      retrievedAt,
+      contentHash: sha256(await readFile(filePath))
+    };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    return {
+      kind,
+      status: "missing" as const,
+      sourceId: null,
+      version,
+      observedAt: null,
+      retrievedAt: null,
+      contentHash: null
+    };
+  }
 }
 
 async function readAgentRoleEvidence(filePath: string) {
@@ -601,6 +634,60 @@ function buildStages(input: {
           artifactTimestamp: input.generatedAt
         });
         await writeReport(outputDir, "evidence-report.json", "evidence-report.md", report, renderEvidenceReportMarkdown(report));
+      }
+    },
+    {
+      id: "evidence-snapshot",
+      required: true,
+      phase: 4,
+      artifacts: [artifact("evidence-snapshot.json", EvidenceSnapshotSchema)],
+      run: async ({ outputDir }) => {
+        const fixtureInput = input.data.inputs.find((item) => item.id === "fixtures")!;
+        const component = async (
+          kind: Parameters<typeof snapshotComponent>[0],
+          filePath: string,
+          sourceId: string,
+          version: string | null,
+          retrievedAt: string
+        ) => snapshotComponent(kind, filePath, sourceId, version, retrievedAt);
+        const components = await Promise.all([
+          component("bootstrap", bootstrapInput.path, "src:fpl-bootstrap", null, bootstrapInput.fetchedAt),
+          component("fixtures", fixtureInput.path, "src:fpl-fixtures", null, fixtureInput.fetchedAt),
+          component("prices", bootstrapInput.path, "src:fpl-bootstrap", null, bootstrapInput.fetchedAt),
+          component("availability", bootstrapInput.path, "src:fpl-bootstrap", null, bootstrapInput.fetchedAt),
+          component("ownership", bootstrapInput.path, "src:fpl-bootstrap", null, bootstrapInput.fetchedAt),
+          component("team_news", path.join(outputDir, "team-news-report.json"), "src:team-news-report", null, input.generatedAt),
+          component("predicted_lineups", path.join(outputDir, "current-role-report.json"), "src:current-role-report", null, input.generatedAt),
+          component("set_pieces", path.join(outputDir, "set-pieces-report.json"), "src:set-pieces-report", null, input.generatedAt),
+          component("betting_markets", path.join(outputDir, "odds-report.json"), "src:odds-report", null, input.generatedAt),
+          component("projection_model", path.join(outputDir, "projections.json"), "src:projection-model", "0.0.15", input.generatedAt),
+          component("appearance_model", path.join(outputDir, "projection-uncertainty-report.json"), "src:appearance-model", "0.0.12", input.generatedAt),
+          input.agentRoleEvidence
+            ? {
+                kind: "manual_overrides" as const,
+                status: "available" as const,
+                sourceId: "src:agent-role-evidence",
+                version: null,
+                observedAt: input.generatedAt,
+                retrievedAt: input.generatedAt,
+                contentHash: sha256(JSON.stringify(input.agentRoleEvidence))
+              }
+            : {
+                kind: "manual_overrides" as const,
+                status: "not_applicable" as const,
+                sourceId: null,
+                version: null,
+                observedAt: null,
+                retrievedAt: null,
+                contentHash: null
+              }
+        ]);
+        const snapshotId = `snapshot:${sha256(JSON.stringify(components))}`;
+        await writeJson(path.join(outputDir, "evidence-snapshot.json"), {
+          snapshotId,
+          createdAt: input.generatedAt,
+          components
+        });
       }
     }
   ];

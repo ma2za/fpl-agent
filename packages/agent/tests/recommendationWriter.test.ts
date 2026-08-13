@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { writeRecommendationFiles, type WeeklyRecommendation } from "../src";
+import { variantRecommendation } from "./fixtures/variantRecommendation";
 
 const recommendation: WeeklyRecommendation = {
   gameweek: 1,
@@ -78,13 +79,14 @@ const recommendation: WeeklyRecommendation = {
 describe("writeRecommendationFiles", () => {
   it("writes JSON and markdown files for legal recommendations", async () => {
     const outputDir = await mkdtemp(path.join(tmpdir(), "fpl-agent-rec-"));
+    const validRecommendation = variantRecommendation();
 
     await writeRecommendationFiles(outputDir, {
-      recommendation,
+      recommendation: validRecommendation,
       projections: [],
       transferCandidates: [],
       captainCandidates: [],
-      legalityReport: recommendation.legality
+      legalityReport: validRecommendation.legality
     });
 
     await expect(readFile(path.join(outputDir, "recommendation.json"), "utf8")).resolves.toContain(
@@ -118,7 +120,7 @@ describe("writeRecommendationFiles", () => {
       "Illegal test recommendation."
     );
     await expect(readFile(path.join(outputDir, "agent-brief.md"), "utf8")).resolves.toContain(
-      "Legality: invalid"
+      "Publication status: invalid"
     );
     await expect(readFile(path.join(outputDir, "manual-checklist.md"), "utf8")).rejects.toThrow();
   });

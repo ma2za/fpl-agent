@@ -79,6 +79,7 @@ function evidenceReferenceErrors(recommendation: WeeklyRecommendation) {
   const errors: string[] = [];
   const requiredAreas = [
     "squad",
+    "structure",
     "starting-xi",
     "shortlist",
     "captaincy",
@@ -246,6 +247,33 @@ export function evaluateRecommendationQuality(recommendation: WeeklyRecommendati
 
   if (!gates.some((gate) => gate.gate === "club-exposure")) {
     addGate(gates, "club-exposure", "pass", "No club concentration warning.");
+  }
+
+  const hasTripleExposure = [...clubCounts.values()].some((count) => count === MAX_PLAYERS_PER_CLUB);
+  const hasConcentrationEvidence = recommendation.evidenceReferences.some((reference) =>
+    ["squad", "structure"].includes(reference.area) &&
+    /(?:concentration-risk-report|scenario-comparison)\.(?:json|md)$/i.test(reference.reportPath)
+  );
+  const rationale = JSON.stringify({
+    decisionAnalysis: recommendation.decisionAnalysis,
+    action: recommendation.recommendedAction.explanation,
+    pickTeam: recommendation.pickTeam.explanation,
+    captaincy: recommendation.captaincy.explanation
+  });
+  const assertsFixtureJustifiedTriple = /fixtures?\s+(?:justify|support|favor)\w*[^.]*\btriple\b|\btriple\b[^.]*\b(?:because|due to)\b[^.]*fixtures?/i.test(rationale);
+  if (hasTripleExposure && assertsFixtureJustifiedTriple && !hasConcentrationEvidence) {
+    addGate(
+      gates,
+      "concentration-evidence",
+      "fail",
+      "Triple-club exposure requires cited correlated scenario or concentration-risk evidence."
+    );
+  } else {
+    addGate(gates, "concentration-evidence", "pass", hasTripleExposure
+      ? hasConcentrationEvidence
+        ? "Triple-club exposure cites correlated scenario evidence."
+        : "Triple-club exposure makes no fixture-only concentration claim."
+      : "No triple-club concentration requires scenario evidence.");
   }
 
   if (lowMinutePlayers.length > 0) {
