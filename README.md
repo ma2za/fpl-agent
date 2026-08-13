@@ -6,6 +6,16 @@ Version: `0.0.15`
 
 The repo is designed so a coding agent can read the squad config, FPL rules, public FPL API data, news notes, generated outputs, and methodology docs, then author recommendations for a human manager to apply manually.
 
+## Vision
+
+`fpl-agent` is intended to become a durable, local player-intelligence workspace rather than a collection of gameweek-only snapshots. Repeated refreshes will accumulate official performance, public news, role evidence, source coverage, and historical revisions for every active FPL player in an ignored local SQLite store.
+
+The evidence history will preserve canonical source URLs, publishers, publication and retrieval times, content hashes, adapter versions, credibility, relevance, disagreement, and missing coverage. Official FPL performance will cover the full active player pool; public-web research will record explicit coverage for every player, including completed searches that find no relevant report.
+
+Before selecting a final squad, the coding agent must use repository tools to inspect a current dossier for every selected player and cite the exact stored evidence used. Deterministic tools may collect, normalize, compare, and reject unsupported decisions, but they must never select the final squad. The project remains public-source, read-only with respect to FPL, free of authenticated FPL access, and dependent on the human manager to apply every accepted action manually.
+
+Continuous updates mean cumulative, idempotent ingestion whenever `pnpm refresh` runs. No background daemon or hosted scheduler is planned.
+
 ## What It Is
 
 - A TypeScript pnpm monorepo.
@@ -41,16 +51,18 @@ Generated recommendations are instructions for a human, not executable FPL actio
 ## Intended Workflow
 
 ```txt
-cron or human starts analysis
-public FPL API data is fetched
+human or coding agent starts a refresh
+official data for every active player is fetched and appended to the local evidence store
+an all-player public-news research worklist is generated
+coding agent searches the public web and ingests cited findings and coverage
+current player dossiers are built from stored news, evidence, and performance
 manual squad config or public manager data is read
 rules and methodology are applied
-evidence files are written
-coding agent reviews facts and news
-the agent authors recommendation files
+coding agent inspects every selected player's dossier and authors recommendation files
+verification checks legality, freshness, and exact stored evidence references
 human reads manual-checklist.md
 human manually applies accepted changes in FPL
-postmortem compares recommendation to actual outcome
+later refreshes append final performance and postmortems compare frozen decisions to outcomes
 ```
 
 ## Install

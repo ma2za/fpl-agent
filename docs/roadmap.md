@@ -431,22 +431,28 @@ Status: delivered.
 
 ## Planned Releases
 
-### 0.0.16: Evidence Readiness and Executable Triggers
+### 0.0.16: Longitudinal Player Evidence, Readiness, and Triggers
 
-Turn uncertainty and change conditions into machine-evaluable monitoring plans while leaving responses to the agent.
+Create durable all-player evidence memory and turn uncertainty and change conditions into machine-evaluable monitoring plans while leaving responses to the agent.
 
 Scope:
 
-- Calculate `READY`, `CAUTION`, or `INSUFFICIENT` readiness for each player and decision area from current-role evidence, appearance probabilities, data freshness, and source coverage.
+- Add an ignored local SQLite store for immutable ingestion runs, source documents, news observations, role evidence, official player snapshots, fixture-level performance, discovery coverage, and artifact lineage.
+- On every refresh, retrieve and append official profiles, prices, ownership, availability, fixtures, current-season histories, minutes, points, and scoring components for every active FPL player.
+- Deduplicate identical content by canonical URL and content hash while preserving append-only revisions, observation times, and prior values.
+- Generate an all-player web-research worklist using player and club aliases, and record completed searches even when they find no relevant article.
+- Let the coding agent ingest public-web findings with canonical URL, publisher, title, publication and retrieval times, affected players, category, short excerpt, credibility, relevance, and content hash.
+- Calculate `READY`, `CAUTION`, or `INSUFFICIENT` readiness for each player and decision area from stored current-role evidence, appearance probabilities, data freshness, and source coverage.
 - Let the agent assign `LOCK`, `LIKELY`, `PROVISIONAL`, or `AVOID` decision statuses.
 - Reject agent classifications that are stronger than their evidence readiness permits.
 - Block final verification when required rules, prices, or fixtures are stale, a starter is unsupported, or more than two intended starters have insufficient role evidence.
 - Emit a provisional workspace instead of a final recommendation when a final gate fails.
 - Replace each prose-only change condition with a trigger containing `triggerId`, metric, subject, operator, threshold, evidence dependency, affected decision IDs, candidate response set, re-analysis scope, next check time, and expiry.
 - Support triggers for start probability, availability, price tier, source disagreement, transfer status, lineup consensus, odds movement, and competition phase.
-- Evaluate triggers after every successful refresh and at scheduled T-48h, T-24h, and T-2h checkpoints.
+- Evaluate triggers after every successful refresh, including when refresh is invoked at T-48h, T-24h, and T-2h checkpoints.
 - Record `inactive`, `armed`, `fired`, `acknowledged`, `expired`, and `superseded` states.
 - Require the coding agent to select every response; a fired trigger may request re-analysis but cannot transfer, lock, or replace a player.
+- Emit missing or stale dossier warnings without blocking publication in this release; blocking enforcement begins in `0.0.17`.
 
 Artifacts:
 
@@ -455,17 +461,32 @@ Artifacts:
 - `TriggerPlan`
 - `TriggerEvaluation`
 - `ProvisionalDecisionWorkspace`
+- `PlayerEvidenceSnapshot`
+- `NewsObservation`
+- `PlayerPerformanceObservation`
+- `DiscoveryCoverage`
+- `PlayerDossier`
+- `EvidenceStoreManifest`
+
+Planned commands:
+
+- `pnpm player-store:status`
+- `pnpm evidence:worklist -- --gw <n|auto>`
+- `pnpm evidence:ingest -- --gw <n> --input <path>`
+- `pnpm player:dossier -- --player <id|name> --gw <n>`
 
 Release gate:
 
-- Test readiness boundaries, stale-data failures, scheduled evaluations, idempotent refreshes, and every trigger-state transition.
+- Test SQLite migrations, idempotent refreshes, full active-player coverage, content deduplication, append-only revisions, offline behavior, failed-ingestion rollback, provenance validation, readiness boundaries, stale-data failures, checkpoint evaluations, and every trigger-state transition.
+- Verify that identical inputs do not create duplicate observations and that a changed source creates a linked revision without overwriting history.
+- Verify that every active player receives an official snapshot and a discovery-coverage record, including explicit zero-result searches.
 - Exercise concrete Kinsky first-choice, Osula start-probability, secure £4.0m defender, and Slater role-loss triggers.
 - Verify that a fired trigger identifies affected decisions and counterfactual requests without choosing a squad action.
 - Prove that phase changes expire or rewrite invalid trigger conditions.
 
-### 0.0.17: Replacement Liquidity, Captaincy Sensitivity, and Decision Workspace
+### 0.0.17: Evidence-Enforced Decision Workspace, Liquidity, and Captaincy
 
-Replace vague flexibility and captaincy language with reachable alternatives and sensitivity evidence.
+Require current stored evidence for selected players and replace vague flexibility and captaincy language with reachable alternatives and sensitivity evidence.
 
 Scope:
 
@@ -477,6 +498,11 @@ Scope:
 - Mark a captaincy evidence edge `clear` only when the leader has at least a 60 percent probability of being best and remains first across configured sensitivity scenarios.
 - Otherwise report the edge as `marginal` or `unresolved`.
 - Build an agent decision workspace containing optimized counterfactuals, utility vectors, concentration scenarios, readiness, triggers, liquidity, captaincy sensitivity, unresolved assumptions, and dependency prompts.
+- Require the coding agent to query and inspect a current dossier for every player in the selected 15 before authoring the final recommendation.
+- Add per-selection references to the evidence-store snapshot, dossier, performance observations, news observations, and query time used by the agent.
+- Block final verification when a selected player lacks a current official snapshot, completed current-refresh discovery coverage, or evidence satisfying existing freshness and publication rules.
+- Emit a provisional workspace rather than a final recommendation when selected-player dossier gates fail; named alternatives retain visible warnings but are not hard-gated.
+- Expose history, source disagreement, changes since the prior refresh, and unresolved evidence gaps without letting tools rank or select the final squad.
 - Require the agent to author squad, transfers, XI, bench, captaincy, chip, statuses, trigger responses, and rationale.
 
 Artifacts:
@@ -485,25 +511,30 @@ Artifacts:
 - `ReplacementLiquidityReport`
 - `CaptaincySensitivity`
 - `AgentDecisionWorkspace`
+- `SelectionEvidenceReference`
 
 Release gate:
 
 - Test reachability across bank, selling price, position changes, club limits, paired moves, and preseason phase semantics.
 - Verify that an unreachable target cannot contribute to replacement liquidity.
 - Test captaincy ties, marginal edges, sensitivity reversals, and missing-distribution behavior.
+- Test missing, stale, mismatched, and exact selected-player dossier references, including the warning-to-blocking migration from `0.0.16`.
+- Verify that incomplete alternative dossiers warn without failing an otherwise supported selected 15.
 - Verify that workspace generation never writes final player choices.
 
-### 0.0.18: Calibration and Decision Postmortems
+### 0.0.18: Performance Outcomes, Calibration, and Postmortems
 
 Measure whether evidence, forecasts, candidate generation, and agent decisions improve without learning incorrectly from outcomes.
 
 Scope:
 
 - Freeze pre-deadline observations, assumptions, forecasts, distributions, candidates, scenarios, triggers, and the agent-authored decision.
+- Append finalized fixture and gameweek performance for every active player to the same evidence store.
 - Measure projected-points error, expected-minutes error, start and appearance Brier scores, interval coverage, calibration by probability band, captaincy regret, transfer regret, substitution value, bench-spend efficiency, concentration regret, and decision regret.
 - Calculate decision regret only against legal optimized alternatives available from frozen pre-deadline evidence.
 - Separate source error, transformation error, forecast error, evidence-gap error, decision error, and normal outcome variance.
 - Compare forecast calibration by evidence dimension, source publisher, adapter version, and model version.
+- Store late official corrections as linked revisions without mutating frozen pre-deadline dossiers or decisions.
 - Audit fired and missed triggers against frozen evidence arrival times.
 - Require at least 100 player-gameweek observations before proposing parameter changes.
 - Keep parameter adoption agent-authored, reviewed, versioned, and reversible; never self-apply changes.
@@ -513,6 +544,7 @@ Release gate:
 
 - Prove that post-deadline information cannot enter frozen forecast or decision-regret calculations.
 - Test calibration sample thresholds, versioning, trigger audits, archive rendering, and missing-outcome handling.
+- Test full-player outcome ingestion, idempotent final-data refreshes, late score corrections, revision lineage, and immutable pre-deadline snapshots.
 - Reconstruct whether a failure originated in source evidence, transformation, assumption, forecast, optimization request, or agent decision.
 
 ## Delivery Dependencies and Migration
@@ -525,9 +557,9 @@ Release gate:
 | `0.0.13` | probabilistic projections | Generate both legacy raw totals and new utility vectors for one release | Squad utility and substitution metrics |
 | `0.0.14` | squad utility | Preserve authored variants; mark unoptimized variants ineligible for structural-comparison evidence | Independently optimized legal candidate sets |
 | `0.0.15` | counterfactual sets | Treat independent-player totals as baseline-only and disclose missing covariance | Concentration scenarios and shared-assumption risk |
-| `0.0.16` | probabilities, scenarios, and candidate requests | Convert prose conditions to draft triggers for agent review; never infer thresholds silently | Evaluated readiness and trigger states |
-| `0.0.17` | optimized candidates and trigger scopes | Keep existing transfer evidence readable; add phase-specific reachability | Liquidity, captaincy sensitivity, and complete decision workspace |
-| `0.0.18` | frozen outputs from all prior releases | Archive schema and model versions with every decision state | Calibration and attributable postmortems |
+| `0.0.16` | probabilities, scenarios, candidate requests, and public all-player inputs | Create the SQLite store additively; keep existing JSON readable; convert prose conditions to draft triggers; warn on dossier gaps | Longitudinal player dossiers, evaluated readiness, and trigger states |
+| `0.0.17` | optimized candidates, trigger scopes, and current dossiers | Keep existing transfer evidence readable; add phase-specific reachability and migrate selected-player dossier warnings to blocking gates | Evidence-enforced workspace, liquidity, and captaincy sensitivity |
+| `0.0.18` | frozen outputs and longitudinal performance from all prior releases | Archive schema and model versions with every decision state; append corrections as revisions | Calibration and attributable postmortems |
 
 Implementation order is strict where the downstream calculation would otherwise manufacture precision. In particular:
 
@@ -562,6 +594,12 @@ Planned releases add versioned contracts for:
 - `SubstitutionUtilityReport`
 - `OptimizationRequest`
 - `EvidenceReadinessReport`
+- `PlayerEvidenceSnapshot`
+- `NewsObservation`
+- `PlayerPerformanceObservation`
+- `DiscoveryCoverage`
+- `PlayerDossier`
+- `EvidenceStoreManifest`
 - `TriggerPlan`
 - `SquadCandidate`
 - `CounterfactualComparison`
@@ -569,6 +607,7 @@ Planned releases add versioned contracts for:
 - `TransferGraph`
 - `CaptaincySensitivity`
 - `AgentDecisionWorkspace`
+- `SelectionEvidenceReference`
 - `AgentDecisionArtifact`
 - `CalibrationReport`
 
@@ -582,6 +621,7 @@ Planned releases add versioned contracts for:
 - evidence-readiness results;
 - optimized counterfactual IDs for material structural comparisons;
 - concentration and robustness evidence for concentrated exposures;
+- exact evidence-store snapshot and dossier references for every selected player;
 - agent rationale;
 - agent-authored operational trigger responses.
 
@@ -591,6 +631,8 @@ Enforcement rules:
 - Scripts may calculate legality, projections, probabilities, robustness, concentration scenarios, sensitivity, substitution utility, transfer reachability, and optimized counterfactuals.
 - Scripts must never populate final squad IDs, transfers, formation, XI, bench order, captain, vice-captain, or chip in an agent decision artifact.
 - Verification rejects unsupported or illegal decisions without replacing them.
+- In `0.0.16`, incomplete selected-player dossiers produce warnings; from `0.0.17`, missing or stale selected-player dossier references block final publication and produce a provisional workspace.
+- Named alternatives remain warning-only unless they become selected players.
 - Comparison reports may expose Pareto dominance and metric differences but must not contain `winner`, `recommendedVariant`, `selectedVariant`, or equivalent fields.
 - Agent prompts require legal full-squad counterfactuals for major structural choices.
 - Phase-aware validation rejects risks and rationales that are impossible in the current competition state.
@@ -714,11 +756,15 @@ The agent decides which evidence and tradeoffs determine the final recommendatio
 | Explanations contain false causality | `0.0.10` | Language validation reports unsupported causal and safety claims. |
 | Preseason price-change warning is invalid | `0.0.10` | Phase policy suppresses price-movement risk before the opening deadline. |
 | Change conditions are not executable | `0.0.16` | Typed triggers fire from measurable thresholds and request agent re-analysis without choosing an action. |
+| Player evidence is lost between gameweeks | `0.0.16` | Idempotent refreshes append all-player observations and revisions to a provenance-preserving SQLite store. |
+| Selections do not prove evidence-tool use | `0.0.17` | Every selected player references the exact current dossier and stored observations used by the coding agent. |
 
 ## Cross-Release Acceptance Requirements
 
 - Preserve the authenticated-action safety boundary.
 - Preserve transactional and offline evidence refresh behavior.
+- Preserve cumulative, idempotent player evidence across refreshes without adding a daemon or hosted scheduler.
+- Require official snapshot and discovery-coverage records for every active player.
 - Keep public adapters configurable and usable without paid credentials.
 - Preserve root-source attribution and content hashes through every transformation.
 - Treat missing evidence as a first-class result rather than historical certainty.
@@ -736,6 +782,7 @@ The agent decides which evidence and tradeoffs determine the final recommendatio
 - Individual evidence commands remain non-transactional outside the shared refresh workflow.
 - Direct player-market odds remain dependent on public availability.
 - Source coverage may remain incomplete; evidence gates must expose that limitation.
+- Broad public-web discovery is performed by the coding agent during the refresh workflow and ingested through repository tools; the repository does not add a mandatory search API.
 
 ## Safety Boundary
 
