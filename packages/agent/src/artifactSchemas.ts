@@ -57,7 +57,8 @@ const observationClaim = z.object({
   retrievedAt: z.string().min(1),
   reliability: z.number().min(0).max(1),
   freshness: z.enum(["fresh", "stale", "unknown"]),
-  value: z.unknown()
+  value: z.unknown(),
+  snapshotId: z.string().min(1).optional()
 }).strict();
 const factClaim = z.object({
   id: factId,
@@ -83,7 +84,7 @@ const transformationClaim = z.object({
 const decisionClaim = z.object({
   id: decisionId,
   area: z.enum([
-    "squad", "starting-xi", "shortlist", "transfers", "captaincy",
+    "squad", "structure", "starting-xi", "shortlist", "transfers", "captaincy",
     "bench", "chip", "risks", "change-conditions"
   ]),
   factIds: z.array(factId),
@@ -133,7 +134,8 @@ export const ClaimLedgerV3Schema = z.object({
       z.string(), z.number(), z.boolean(), z.null(), z.array(z.unknown()), z.record(z.string(), z.unknown())
     ]),
     uncertainty: z.string().min(1),
-    horizon: z.string().min(1)
+    horizon: z.string().min(1),
+    snapshotId: z.string().min(1).optional()
   }).strict()),
   transformations: z.array(transformationClaim),
   decisions: z.array(decisionClaim.extend({
@@ -297,6 +299,87 @@ const decisionAnalysis = looseObject({
   }))
 });
 
+export const EvidenceSnapshotSchema = looseObject({
+  snapshotId: z.string().min(1),
+  createdAt: z.string().min(1),
+  components: z.array(looseObject({
+    kind: z.enum([
+      "bootstrap", "fixtures", "prices", "availability", "ownership", "team_news",
+      "predicted_lineups", "set_pieces", "betting_markets", "projection_model",
+      "appearance_model", "manual_overrides"
+    ]),
+    status: z.enum(["available", "missing", "not_applicable"]),
+    sourceId: z.string().nullable(),
+    version: z.string().nullable(),
+    observedAt: z.string().nullable(),
+    retrievedAt: z.string().nullable(),
+    contentHash: z.string().nullable()
+  }))
+});
+
+const candidateScore = looseObject({
+  candidateId: z.string().min(1),
+  rawExpectedPoints: z.number().nullable(),
+  objectiveScore: z.number(),
+  eligible: z.boolean(),
+  ineligibilityReasons: stringArray,
+  lowerBound: z.number().nullable(),
+  upperBound: z.number().nullable(),
+  state: looseObject({
+    playerIds: z.array(z.number()),
+    squadCost: z.number(),
+    clubCounts: z.array(looseObject({ teamId: z.number(), count: z.number() }))
+  }).optional()
+});
+
+const decisionEvaluation = looseObject({
+  decisionId: z.string().min(1),
+  decisionType: z.enum(["squad", "structure", "starting_xi", "bench_order", "captaincy", "transfers", "chip"]),
+  snapshotId: z.string().min(1),
+  objectiveId: z.string().min(1),
+  objectiveMetric: z.enum(["raw_expected_points", "risk_adjusted_utility", "structural_utility", "rules_utility"]),
+  horizon: z.enum(["GW1", "GW1-3", "GW1-5", "GW1-6", "structural"]),
+  candidateScores: z.array(candidateScore).min(1),
+  selectedCandidateId: z.string().min(1),
+  selectedBy: z.enum(["objective_score", "explicit_override"]),
+  overrideReason: z.string().nullable(),
+  constraintsApplied: stringArray,
+  riskAdjustments: stringArray,
+  uncertainty: z.string(),
+  tieBreakersApplied: stringArray,
+  evidenceIds: stringArray
+});
+
+const canonicalDecisionState = looseObject({
+  snapshotId: z.string().min(1),
+  floatingPointTolerance: z.number().positive(),
+  displayedProjectionScope: z.enum(["uncaptained", "captained"]),
+  squadCost: z.number(),
+  clubCounts: z.array(looseObject({ teamId: z.number(), count: z.number() })),
+  positionCounts: looseObject({ GKP: z.number(), DEF: z.number(), MID: z.number(), FWD: z.number() }),
+  playerProjections: z.array(looseObject({
+    playerId: z.number(),
+    projectedPoints: z.number(),
+    startProbability: z.number().optional(),
+    appearanceProbability: z.number().optional()
+  })),
+  uncaptainedXIProjection: z.number(),
+  captainMarginalProjection: z.number(),
+  captainedTeamProjection: z.number()
+});
+
+const factualClaim = looseObject({
+  id: z.string().min(1),
+  decisionId: z.string().min(1),
+  snapshotId: z.string().min(1),
+  kind: z.enum(["club_count", "squad_cost", "player_price", "projection_score", "projection_ranking", "transfer_count", "formation", "captaincy"]),
+  statement: z.string().min(1),
+  candidateId: z.string().nullable(),
+  subjectId: z.string().nullable(),
+  value: z.union([z.string(), z.number(), z.boolean()]),
+  dependencyIds: stringArray
+});
+
 const recommendationFields = {
   schemaVersion,
   gameweek: z.number(),
@@ -304,6 +387,10 @@ const recommendationFields = {
   deadline: z.string(),
   deadlineStatus,
   dataMode,
+  evidenceSnapshot: EvidenceSnapshotSchema.optional(),
+  decisionEvaluations: z.array(decisionEvaluation).optional(),
+  canonicalState: canonicalDecisionState.optional(),
+  factualClaims: z.array(factualClaim).optional(),
   squadBefore: looseObject({
     players: z.array(playerForRules),
     bank: z.number(),
@@ -335,6 +422,7 @@ const recommendationFields = {
   evidenceReferences: z.array(looseObject({
     area: z.enum([
       "squad",
+      "structure",
       "starting-xi",
       "shortlist",
       "transfers",
@@ -349,6 +437,14 @@ const recommendationFields = {
     note: z.string(),
     playerIds: z.array(z.number()).optional()
   })),
+  publicNewsArticles: z.array(looseObject({
+    playerId: z.number(),
+    publisher: z.string(),
+    title: z.string(),
+    url: z.string().url(),
+    publishedAt: z.string(),
+    retrievedAt: z.string()
+  })).optional(),
   risks: stringArray,
   whatWouldChangeMyMind: stringArray,
   legality: validationResult,
@@ -579,10 +675,23 @@ export const StrategyEvidenceSchema = looseObject({
   warnings: stringArray
 });
 
+export const PublicationGateSchema = looseObject({
+  publicationStatus: z.enum(["valid", "valid_with_warnings", "invalid"]),
+  validators: z.array(looseObject({
+    validator: z.enum(["snapshot", "decision-objective", "numerical-invariants", "factual-claims"]),
+    status: z.enum(["pass", "warn", "fail"]),
+    errors: stringArray,
+    warnings: stringArray
+  })),
+  errors: stringArray,
+  warnings: stringArray
+});
+
 export const LegalityReportSchema = validationResult.extend({
   schemaVersion,
   quality: qualityReport.optional(),
-  strategyQuality: qualityReport.optional()
+  strategyQuality: qualityReport.optional(),
+  publicationGate: PublicationGateSchema.optional()
 }).passthrough();
 
 export const FixtureTickerSchema = looseObject({
@@ -1222,6 +1331,114 @@ export const DraftDeltaReportSchema = z.object({
   supportedRobustnessMetrics: stringArray
 }).strict();
 
+const sharedAssumptionKind = z.enum([
+  "team_attack",
+  "team_defense",
+  "tactical_role",
+  "clean_sheet_environment",
+  "penalties",
+  "manager_selection"
+]);
+
+export const SharedAssumptionGraphSchema = z.object({
+  schemaVersion: z.literal(1),
+  artifactKind: z.literal("tool_evidence"),
+  generatedAt: z.string(),
+  assumptions: z.array(z.object({
+    assumptionId: z.string().min(1),
+    kind: sharedAssumptionKind,
+    teamId: z.number().int().positive(),
+    label: z.string().min(1)
+  }).strict()),
+  dependencies: z.array(z.object({
+    playerId: z.number().int().positive(),
+    assumptionId: z.string().min(1),
+    sensitivity: z.number()
+  }).strict())
+}).strict();
+
+export const ClubScenarioSetSchema = z.object({
+  schemaVersion: z.literal(1),
+  artifactKind: z.literal("tool_evidence"),
+  generatedAt: z.string(),
+  scenarioSetId: z.string().min(1),
+  teamId: z.number().int().positive(),
+  scenarios: z.array(z.object({
+    level: z.enum(["strong", "baseline", "weak"]),
+    probability: z.number().min(0).max(1),
+    shocks: z.array(z.object({
+      assumptionId: z.string().min(1),
+      value: z.number()
+    }).strict())
+  }).strict()).length(3)
+}).strict();
+
+const candidateConcentrationRisk = z.object({
+  candidateId: z.string().min(1),
+  exposureClass: z.enum(["maximum_two", "triple"]),
+  clubConcentrations: z.array(z.object({
+    teamId: z.number().int().positive(),
+    playerIds: z.array(z.number().int().positive()),
+    count: z.number().int().positive()
+  }).strict()),
+  assumptionConcentrations: z.array(z.object({
+    assumptionId: z.string().min(1),
+    playerIds: z.array(z.number().int().positive()),
+    count: z.number().int().positive()
+  }).strict()),
+  expectedUtility: z.number(),
+  independentP10: z.number(),
+  correlatedP10: z.number(),
+  squadVariance: z.number().nonnegative(),
+  concentrationPenalty: z.number().nonnegative(),
+  penalizedObjective: z.number(),
+  maxScenarioRegret: z.number().nonnegative(),
+  expectedScenarioRegret: z.number().nonnegative(),
+  pairwiseCovariances: z.array(z.object({
+    playerAId: z.number().int().positive(),
+    playerBId: z.number().int().positive(),
+    covariance: z.number()
+  }).strict()),
+  downsideContributions: z.array(z.object({
+    playerId: z.number().int().positive(),
+    worstScenarioLoss: z.number().nonnegative()
+  }).strict()),
+  scenarioUtilities: z.array(z.object({
+    scenarioId: z.string().min(1),
+    probability: z.number().min(0).max(1),
+    utility: z.number(),
+    regret: z.number().nonnegative()
+  }).strict())
+}).strict();
+
+export const ConcentrationRiskReportSchema = z.object({
+  schemaVersion: z.literal(1),
+  artifactKind: z.literal("tool_evidence"),
+  generatedAt: z.string(),
+  model: z.literal("shared-assumption-scenarios"),
+  modelVersion: z.literal("0.0.15"),
+  concentrationPenaltyWeight: z.number().nonnegative(),
+  candidates: z.array(candidateConcentrationRisk),
+  assumptions: stringArray
+}).strict();
+
+export const ScenarioComparisonSchema = z.object({
+  schemaVersion: z.literal(1),
+  artifactKind: z.literal("tool_evidence"),
+  generatedAt: z.string(),
+  candidateIds: z.array(z.string().min(1)),
+  metrics: z.array(z.object({
+    candidateId: z.string().min(1),
+    exposureClass: z.enum(["maximum_two", "triple"]),
+    expectedUtility: z.number(),
+    correlatedP10: z.number(),
+    maxScenarioRegret: z.number().nonnegative(),
+    concentrationPenalty: z.number().nonnegative(),
+    penalizedObjective: z.number()
+  }).strict()),
+  decisionPolicy: z.string().min(1)
+}).strict();
+
 const optimizationHorizon = z.union([z.literal(1), z.literal(3), z.literal(6)]);
 const optimizationConstraints = z.object({
   budget: z.number().positive(),
@@ -1264,12 +1481,15 @@ export const OptimizationRequestSchema = z.object({
   gameweek: z.number().int().positive(),
   horizons: z.array(optimizationHorizon).min(1),
   scenarios: z.array(optimizationScenario).min(1),
-  objective: z.literal("role-adjusted-squad-utility"),
+  objective: z.enum(["role-adjusted-squad-utility", "concentration-penalized-squad-utility"]),
+  concentrationPenalty: z.object({ weight: z.number().nonnegative() }).strict().optional(),
   modelAssumptions: stringArray
 }).strict();
 
 const candidateMetrics = z.object({
   objective: z.number(),
+  unpenalizedObjective: z.number().optional(),
+  concentrationPenalty: z.number().nonnegative().optional(),
   rawProjection: z.number(),
   roleAdjustedProjection: z.number(),
   downside: z.number(),
@@ -1417,11 +1637,14 @@ export const ArtifactSchemas = {
   agentDecision: AgentDecisionArtifactSchema,
   candidate: CandidateArtifactSchema,
   claimLedger: ClaimLedgerSchema,
+  clubScenarioSet: ClubScenarioSetSchema,
+  concentrationRiskReport: ConcentrationRiskReportSchema,
   counterfactualComparison: CounterfactualComparisonSchema,
   counterfactualSet: CounterfactualSetSchema,
   languageValidationReport: LanguageValidationReportSchema,
   currentRoleReport: CurrentRoleReportSchema,
   evidenceReport: EvidenceReportSchema,
+  evidenceSnapshot: EvidenceSnapshotSchema,
   fixtureHorizonReport: FixtureHorizonReportSchema,
   fixtureTicker: FixtureTickerSchema,
   legalityReport: LegalityReportSchema,
@@ -1430,11 +1653,14 @@ export const ArtifactSchemas = {
   optimizationProof: OptimizationProofSchema,
   optimizationRequest: OptimizationRequestSchema,
   publicEvidenceReport: PublicEvidenceReportSchema,
+  publicationGate: PublicationGateSchema,
   recommendation: RecommendationArtifactSchema,
   robustnessReport: RobustnessReportSchema,
   draftDeltaReport: DraftDeltaReportSchema,
   riskReport: SquadRiskReportSchema,
+  scenarioComparison: ScenarioComparisonSchema,
   setPieceReport: SetPieceReportSchema,
+  sharedAssumptionGraph: SharedAssumptionGraphSchema,
   squadCandidate: SquadCandidateSchema,
   strategyEvidence: StrategyEvidenceSchema,
   teamNewsReport: TeamNewsReportSchema,

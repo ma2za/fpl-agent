@@ -167,4 +167,35 @@ describe("exact counterfactual optimization", () => {
     expect(comparison.decisionPolicy).toContain("does not select");
     expect(JSON.stringify(comparison)).not.toMatch(/winner|recommendedVariant|selectedVariant/);
   });
+
+  it("exposes a configurable concentration penalty separately from expected utility", () => {
+    const players = smallPool();
+    const unpenalized = optimizeScenario({ requestId: "penalty", scenario: baseScenario, horizon: 1, players }).best!;
+    const selectedIds = new Set(unpenalized.playerIds);
+    let concentrated = 0;
+    for (const player of players) {
+      if (selectedIds.has(player.id) && concentrated < 3) {
+        player.teamId = 100;
+        concentrated += 1;
+      } else {
+        player.teamId = 100 + player.id;
+      }
+    }
+    const result = optimizeScenario({
+      requestId: "penalty",
+      scenario: {
+        id: "fixed",
+        label: "Fixed concentrated squad",
+        constraints: { budget: 100, includedPlayerIds: unpenalized.playerIds }
+      },
+      horizon: 1,
+      players,
+      objective: "concentration-penalized-squad-utility",
+      concentrationPenalty: { weight: 0.5 }
+    }).best!;
+
+    expect(result.metrics.concentrationPenalty).toBe(2);
+    expect(result.metrics.objective).toBe(result.metrics.unpenalizedObjective! - 2);
+    expect(result.metrics.rawProjection).toBeGreaterThan(result.metrics.objective);
+  });
 });

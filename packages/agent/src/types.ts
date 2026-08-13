@@ -27,6 +27,7 @@ export type RecommendedAction = {
 
 export type RecommendationEvidenceArea =
   | "squad"
+  | "structure"
   | "starting-xi"
   | "shortlist"
   | "transfers"
@@ -42,6 +43,115 @@ export type RecommendationEvidenceReference = {
   reportPath: string;
   note: string;
   playerIds?: number[];
+};
+
+export type PlayerPublicNewsArticle = {
+  playerId: number;
+  publisher: string;
+  title: string;
+  url: string;
+  publishedAt: string;
+  retrievedAt: string;
+};
+
+export type EvidenceSnapshotComponentKind =
+  | "bootstrap"
+  | "fixtures"
+  | "prices"
+  | "availability"
+  | "ownership"
+  | "team_news"
+  | "predicted_lineups"
+  | "set_pieces"
+  | "betting_markets"
+  | "projection_model"
+  | "appearance_model"
+  | "manual_overrides";
+
+export type EvidenceSnapshot = {
+  snapshotId: string;
+  createdAt: string;
+  components: Array<{
+    kind: EvidenceSnapshotComponentKind;
+    status: "available" | "missing" | "not_applicable";
+    sourceId: string | null;
+    version: string | null;
+    observedAt: string | null;
+    retrievedAt: string | null;
+    contentHash: string | null;
+  }>;
+};
+
+export type DecisionType =
+  | "squad"
+  | "structure"
+  | "starting_xi"
+  | "bench_order"
+  | "captaincy"
+  | "transfers"
+  | "chip";
+
+export type DecisionCandidateScore = {
+  candidateId: string;
+  rawExpectedPoints: number | null;
+  objectiveScore: number;
+  eligible: boolean;
+  ineligibilityReasons: string[];
+  lowerBound: number | null;
+  upperBound: number | null;
+  state?: {
+    playerIds: number[];
+    squadCost: number;
+    clubCounts: Array<{ teamId: number; count: number }>;
+  };
+};
+
+export type DecisionEvaluation = {
+  decisionId: string;
+  decisionType: DecisionType;
+  snapshotId: string;
+  objectiveId: string;
+  objectiveMetric: "raw_expected_points" | "risk_adjusted_utility" | "structural_utility" | "rules_utility";
+  horizon: "GW1" | "GW1-3" | "GW1-5" | "GW1-6" | "structural";
+  candidateScores: DecisionCandidateScore[];
+  selectedCandidateId: string;
+  selectedBy: "objective_score" | "explicit_override";
+  overrideReason: string | null;
+  constraintsApplied: string[];
+  riskAdjustments: string[];
+  uncertainty: string;
+  tieBreakersApplied: string[];
+  evidenceIds: string[];
+};
+
+export type CanonicalDecisionState = {
+  snapshotId: string;
+  floatingPointTolerance: number;
+  displayedProjectionScope: "uncaptained" | "captained";
+  squadCost: number;
+  clubCounts: Array<{ teamId: number; count: number }>;
+  positionCounts: { GKP: number; DEF: number; MID: number; FWD: number };
+  playerProjections: Array<{
+    playerId: number;
+    projectedPoints: number;
+    startProbability?: number;
+    appearanceProbability?: number;
+  }>;
+  uncaptainedXIProjection: number;
+  captainMarginalProjection: number;
+  captainedTeamProjection: number;
+};
+
+export type DeterministicFactualClaim = {
+  id: string;
+  decisionId: string;
+  snapshotId: string;
+  kind: "club_count" | "squad_cost" | "player_price" | "projection_score" | "projection_ranking" | "transfer_count" | "formation" | "captaincy";
+  statement: string;
+  candidateId: string | null;
+  subjectId: string | null;
+  value: string | number | boolean;
+  dependencyIds: string[];
 };
 
 export type ComparedAlternative = {
@@ -103,6 +213,10 @@ export type WeeklyRecommendation = {
   decisionContext?: CompetitionState;
   claimLedger?: ClaimLedger;
   decisionIds?: string[];
+  evidenceSnapshot?: EvidenceSnapshot;
+  decisionEvaluations?: DecisionEvaluation[];
+  canonicalState?: CanonicalDecisionState;
+  factualClaims?: DeterministicFactualClaim[];
   gameweek: number;
   createdAt: string;
   deadline: string;
@@ -131,6 +245,7 @@ export type WeeklyRecommendation = {
   };
   decisionAnalysis?: DecisionAnalysis;
   evidenceReferences: RecommendationEvidenceReference[];
+  publicNewsArticles?: PlayerPublicNewsArticle[];
   risks: string[];
   whatWouldChangeMyMind: string[];
   legality: ValidationResult;
@@ -232,6 +347,7 @@ export type ClaimObservation = {
   reliability: number;
   freshness: "fresh" | "stale" | "unknown";
   value: unknown;
+  snapshotId?: string;
   kind?: "OBSERVATION";
   isSourceQuote?: boolean;
 };
@@ -264,6 +380,7 @@ export type ForecastClaim = {
   outputValue: unknown;
   uncertainty: string;
   horizon: string;
+  snapshotId?: string;
 };
 
 export type ClaimTransformation = {

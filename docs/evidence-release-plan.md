@@ -173,6 +173,14 @@ Implemented:
 - Dedicated `OptimizationRequest`, `SquadCandidate`, `CounterfactualSet`, `CounterfactualComparison`, and `OptimizationProof` schemas.
 - Neutral complete-vector and player-delta comparisons with no final-choice fields.
 - Recommendation quality failure when material premium, bench, or club-exposure rejections lack optimized counterfactual candidate IDs.
+- Shared assumption graphs for team attack, team defence, tactical role, clean-sheet environment, penalties, and manager selection.
+- Configurable strong, baseline, and weak club scenarios with joint candidate revaluation.
+- Pairwise covariance, squad variance, club and assumption concentration, correlated p10, scenario regret, and player downside contribution.
+- Neutral maximum-two and triple-club comparisons over independently optimized candidates.
+- A configurable concentration penalty reported separately from expected utility.
+- Immutable evidence snapshots covering source inputs, reports, projection models, and manual overrides.
+- Canonical decision evaluations for squad, structure, XI, bench, captaincy, transfers, and chips.
+- Publication gates for snapshot compatibility, declared objectives, numerical invariants, and deterministic factual claims.
 - Squad comparison for two authored recommendation files.
 - Authored variant listing, independent verification, and neutral comparison against shared gameweek evidence.
 - Full-squad structure comparison requirements in recommendation quality gates.
@@ -180,7 +188,7 @@ Implemented:
 
 Current limitations:
 
-- Appearance states are player-independent; correlated club and scenario states are deferred to `0.0.15`.
+- Appearance states remain player-independent outside explicit shared-assumption scenario analysis.
 - Preseason current-season match histories are usually empty, so cohort fallbacks are common and explicitly labeled.
 - FPL attack and defence strength fields may be unavailable; venue-specific overall strength and raw FDR remain visibly labelled low-confidence fallbacks.
 - Official Premier League fixture-release evidence remains separate and is never silently merged with the FPL schedule.
@@ -211,6 +219,8 @@ Implemented:
 - Captaincy comparisons and key omission analysis.
 - Legality, rationale, risk, confidence, projection-scope, and strategy checks.
 - Generated risk report, legality report, agent brief, and manual checklist.
+- Final-publication blocking when any selected player lacks five distinct public-news articles published within the preceding 14 days.
+- Invalid recommendations produce an explicit non-publication notice instead of actionable output.
 
 Current limitations:
 
@@ -237,6 +247,7 @@ pnpm fixtures -- --gw <n> --horizon <n>
 pnpm recommend -- --gw <n|auto>
 pnpm squad:utility -- --gw <n> [--thresholds 40,50,60] [--previous <recommendation.json>]
 pnpm counterfactuals -- --request <optimization-request.json> [--out <dir>]
+pnpm concentration -- --graph <file> --scenarios <file> --counterfactuals <file> --players <file> --out <dir> [--penalty <weight>]
 pnpm compare:squads -- --a <file> --b <file>
 pnpm variant:list -- --gw <gameweek>
 pnpm variant:verify -- --gw <gameweek> --variant <slug>

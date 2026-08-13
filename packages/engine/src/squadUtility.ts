@@ -207,7 +207,7 @@ export function buildRobustnessReport(input: {
       benchSlots
     },
     assumptions: [
-      "Player appearance states are independent; correlated appearance scenarios are deferred to 0.0.15.",
+      "Player appearance states are independent in this report; use concentration analysis for explicit shared-assumption scenarios.",
       "Squad-point distributions exclude captaincy, chips, and transfer costs.",
       "Conditional football outcomes are simulated independently from each projection's mean and variance."
     ]

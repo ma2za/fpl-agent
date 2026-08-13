@@ -2,7 +2,7 @@ import { copyFile, mkdir, mkdtemp, readFile, rm, stat, utimes } from "node:fs/pr
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { RefreshManifestSchema } from "../src";
+import { EvidenceSnapshotSchema, RefreshManifestSchema } from "../src";
 import { acquireRefreshData, refresh } from "../../../scripts/refresh";
 
 const temporaryDirectories: string[] = [];
@@ -91,11 +91,18 @@ describe("refresh command integration", () => {
     });
     expect(second.manifest.stages.find((stage) => stage.id === "odds")?.status).toBe("failed");
     expect(second.manifest.stages.find((stage) => stage.id === "evidence-summary")?.status).toBe("success");
+    expect(second.manifest.stages.find((stage) => stage.id === "evidence-snapshot")?.status).toBe("success");
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
     expect(RefreshManifestSchema.parse(JSON.parse(
       await readFile(path.join(recommendationsDir, "gw-1", "refresh-manifest.json"), "utf8")
     )).status).toBe("success");
+    const snapshot = EvidenceSnapshotSchema.parse(JSON.parse(await readFile(
+      path.join(recommendationsDir, "gw-1", "evidence-snapshot.json"),
+      "utf8"
+    )));
+    expect(snapshot.snapshotId).toMatch(/^snapshot:[a-f0-9]{64}$/);
+    expect(snapshot.components).toHaveLength(12);
     expect(await readFile(path.join(recommendationsDir, "gw-1", "team-news-report.json"), "utf8"))
       .not.toContain(".refresh-");
     expect(JSON.parse(await readFile(

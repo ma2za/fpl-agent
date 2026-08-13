@@ -3,6 +3,7 @@ export * from "./agentRoleEvidence";
 export * from "./artifactSchemas";
 export * from "./canonicalize";
 export * from "./currentRole";
+export * from "./decisionConsistency";
 export * from "./evidence";
 export * from "./evidenceReport";
 export * from "./epistemic";

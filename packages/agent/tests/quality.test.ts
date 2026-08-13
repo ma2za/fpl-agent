@@ -133,6 +133,7 @@ const recommendation: WeeklyRecommendation = {
   },
   evidenceReferences: [
     { area: "squad", source: "test", reportPath: "test.md", note: "Squad evidence." },
+    { area: "structure", source: "test", reportPath: "test.md", note: "Structure evidence." },
     { area: "starting-xi", source: "test", reportPath: "test.md", note: "XI evidence." },
     { area: "shortlist", source: "test", reportPath: "test.md", note: "Shortlist evidence." },
     { area: "captaincy", source: "test", reportPath: "test.md", note: "Captaincy evidence." },
@@ -171,6 +172,27 @@ describe("evaluateRecommendationQuality", () => {
 
     expect(result.isValid).toBe(true);
     expect(result.warnings).toContain("Squad leaves £8.0 in the bank.");
+  });
+
+  it("rejects a triple-club rationale without concentration evidence", () => {
+    const result = evaluateRecommendationQuality({
+      ...recommendation,
+      squadBefore: {
+        ...recommendation.squadBefore,
+        players: recommendation.squadBefore.players.map((player) =>
+          player.id === 8 ? { ...player, teamId: 1 } : player
+        )
+      },
+      decisionAnalysis: {
+        ...recommendation.decisionAnalysis!,
+        squadStructure: ["Fixtures justify triple exposure."]
+      }
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain(
+      "Triple-club exposure requires cited correlated scenario or concentration-risk evidence."
+    );
   });
 
   it("fails when captaincy rationale is missing", () => {

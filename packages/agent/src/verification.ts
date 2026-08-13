@@ -11,6 +11,7 @@ import {
 } from "../../rules/src";
 import { evaluateRecommendationQuality } from "./quality";
 import { recommendationRationale, validateEpistemicLanguage } from "./epistemic";
+import { evaluatePublicationGate, type PublicationGate } from "./decisionConsistency";
 import { validateClaimLedger } from "./provenance";
 import type {
   LanguageValidationReport,
@@ -18,6 +19,41 @@ import type {
   StrategyQualityReport,
   WeeklyRecommendation
 } from "./types";
+
+const REQUIRED_PUBLIC_NEWS_ARTICLES_PER_PLAYER = 5;
+const PUBLIC_NEWS_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+
+function publicNewsCoverageErrors(recommendation: WeeklyRecommendation) {
+  const errors: string[] = [];
+  const selectedPlayers = new Map(recommendation.squadBefore.players.map((player) => [player.id, player.name]));
+  const selectedAt = Date.parse(recommendation.createdAt);
+  const articlesByPlayer = new Map<number, Set<string>>();
+
+  for (const article of recommendation.publicNewsArticles ?? []) {
+    if (!selectedPlayers.has(article.playerId)) continue;
+
+    const publishedAt = Date.parse(article.publishedAt);
+    const retrievedAt = Date.parse(article.retrievedAt);
+    const validUrl = /^https?:\/\//i.test(article.url);
+    const recent = Number.isFinite(selectedAt) && Number.isFinite(publishedAt) &&
+      publishedAt <= selectedAt && selectedAt - publishedAt <= PUBLIC_NEWS_MAX_AGE_MS;
+
+    if (!article.publisher.trim() || !article.title.trim() || !validUrl || !Number.isFinite(retrievedAt) || !recent) continue;
+
+    const urls = articlesByPlayer.get(article.playerId) ?? new Set<string>();
+    urls.add(article.url);
+    articlesByPlayer.set(article.playerId, urls);
+  }
+
+  for (const [playerId, playerName] of selectedPlayers) {
+    const articleCount = articlesByPlayer.get(playerId)?.size ?? 0;
+    if (articleCount < REQUIRED_PUBLIC_NEWS_ARTICLES_PER_PLAYER) {
+      errors.push(`${playerName} requires ${REQUIRED_PUBLIC_NEWS_ARTICLES_PER_PLAYER} distinct public-news articles published within 14 days of selection; found ${articleCount}.`);
+    }
+  }
+
+  return errors;
+}
 
 export type VerifyRecommendationOptions = {
   forceDeadline?: boolean;
@@ -27,6 +63,7 @@ export type VerifyRecommendationResult = ValidationResult & {
   quality: RecommendationQualityReport;
   strategyQuality?: StrategyQualityReport;
   languageValidation?: LanguageValidationReport;
+  publicationGate: PublicationGate;
 };
 
 function mergeResults(...results: ValidationResult[]): ValidationResult {
@@ -90,6 +127,8 @@ function actionErrors(recommendation: WeeklyRecommendation) {
       if (!decisionAreas.has(area)) errors.push(`Claim ledger is missing dependencies for ${area}.`);
     }
   }
+
+  errors.push(...publicNewsCoverageErrors(recommendation));
 
   if (
     [
@@ -183,6 +222,7 @@ export function verifyRecommendation(
     })
   );
   const quality = evaluateRecommendationQuality(recommendation);
+  const publicationGate = evaluatePublicationGate(recommendation);
   const languageValidation = recommendation.claimLedger?.schemaVersion === 3 && recommendation.decisionContext
     ? validateEpistemicLanguage(
         recommendation.claimLedger,
@@ -192,17 +232,20 @@ export function verifyRecommendation(
     : undefined;
 
   return {
-    isValid: result.isValid && customErrors.length === 0 && quality.isValid && (languageValidation?.isValid ?? true),
+    isValid: result.isValid && customErrors.length === 0 && quality.isValid &&
+      publicationGate.publicationStatus !== "invalid" && (languageValidation?.isValid ?? true),
     errors: [
       ...result.errors,
       ...customErrors,
       ...quality.errors,
+      ...publicationGate.errors,
       ...(languageValidation?.findings
         .filter((finding) => finding.severity === "error")
         .map((finding) => `${finding.claimId}: ${finding.rule} (${finding.phrase}).`) ?? [])
     ],
-    warnings: [...result.warnings, ...warnings, ...quality.warnings],
+    warnings: [...result.warnings, ...warnings, ...quality.warnings, ...publicationGate.warnings],
     quality,
-    languageValidation
+    languageValidation,
+    publicationGate
   };
 }

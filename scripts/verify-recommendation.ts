@@ -130,6 +130,12 @@ async function main() {
             message: "Final recommendation has not been authored by the coding agent."
           }
         ]
+      },
+      publicationGate: {
+        publicationStatus: "invalid",
+        validators: [],
+        errors: ["Final recommendation has not been authored by the coding agent."],
+        warnings: []
       }
     };
 
@@ -207,8 +213,6 @@ async function main() {
     await writeFile(evidenceReportMarkdownPath, renderEvidenceReportMarkdown(evidenceReport), "utf8");
     await writeFile(riskReportJsonPath, `${JSON.stringify(riskReport, null, 2)}\n`, "utf8");
     await writeFile(riskReportMarkdownPath, renderSquadRiskReportMarkdown(riskReport), "utf8");
-    await writeFile(agentBriefPath, renderAgentBrief(recommendation), "utf8");
-    await writeFile(manualChecklistPath, renderManualChecklist(recommendation), "utf8");
     legality.strategyQuality = strategyQuality;
     legality.isValid = legality.isValid && strategyQuality.isValid;
     legality.errors = [...legality.errors, ...strategyQuality.errors];
@@ -220,6 +224,15 @@ async function main() {
       ...(minutesRiskReport?.warnings ?? []),
       ...(publicEvidenceReport?.warnings ?? [])
     ];
+  }
+
+  if (isWeeklyRecommendation(recommendation) && legality.isValid) {
+    await writeFile(agentBriefPath, renderAgentBrief(recommendation), "utf8");
+    await writeFile(manualChecklistPath, renderManualChecklist(recommendation), "utf8");
+  } else {
+    const invalidNotice = `# Recommendation Not Published\n\nPublication status: invalid\n\n${legality.errors.map((error) => `- ${error}`).join("\n")}\n`;
+    await writeFile(agentBriefPath, invalidNotice, "utf8");
+    await writeFile(manualChecklistPath, invalidNotice, "utf8");
   }
 
   await writeFile(legalityPath, `${JSON.stringify(legality, null, 2)}\n`, "utf8");

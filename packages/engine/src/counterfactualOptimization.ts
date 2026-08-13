@@ -42,7 +42,8 @@ export type OptimizationRequest = {
   gameweek: number;
   horizons: OptimizationHorizon[];
   scenarios: OptimizationScenario[];
-  objective: "role-adjusted-squad-utility";
+  objective: "role-adjusted-squad-utility" | "concentration-penalized-squad-utility";
+  concentrationPenalty?: { weight: number };
   modelAssumptions: string[];
 };
 
@@ -60,6 +61,8 @@ export type SquadCandidate = {
   cost: number;
   metrics: {
     objective: number;
+    unpenalizedObjective?: number;
+    concentrationPenalty?: number;
     rawProjection: number;
     roleAdjustedProjection: number;
     downside: number;
@@ -141,7 +144,9 @@ function constraintsSatisfied(players: OptimizationPlayer[], constraints: Optimi
 function lineupFor(
   squad: OptimizationPlayer[],
   horizon: OptimizationHorizon,
-  constraints: OptimizationConstraints
+  constraints: OptimizationConstraints,
+  objective: OptimizationRequest["objective"],
+  concentrationPenaltyWeight: number
 ) {
   const metric = (player: OptimizationPlayer) => player.horizons[horizon];
   const formations = constraints.formations ?? (Object.keys(VALID_FORMATIONS) as Array<keyof typeof VALID_FORMATIONS>);
@@ -168,6 +173,12 @@ function lineupFor(
     }) || benchConfidence < (constraints.bench?.minimumRoleConfidence ?? 0)) continue;
     const roleAdjustedProjection = starters.reduce((sum, player) => sum + metric(player).roleAdjustedProjection, 0);
     const benchValue = bench.reduce((sum, player) => sum + metric(player).benchValue, 0);
+    const clubCounts = new Map<number, number>();
+    for (const player of squad) clubCounts.set(player.teamId, (clubCounts.get(player.teamId) ?? 0) + 1);
+    const concentrationPenalty = objective === "concentration-penalized-squad-utility"
+      ? [...clubCounts.values()].reduce((sum, count) => sum + Math.max(0, count - 1) ** 2, 0) * concentrationPenaltyWeight
+      : 0;
+    const unpenalizedObjective = roleAdjustedProjection + benchValue;
     const result = {
       playerIds: squad.map((player) => player.id).sort((a, b) => a - b),
       startingXI: starters.map((player) => player.id),
@@ -175,7 +186,9 @@ function lineupFor(
       formation,
       cost: round(squad.reduce((sum, player) => sum + player.price, 0), 1),
       metrics: {
-        objective: round(roleAdjustedProjection + benchValue),
+        objective: round(unpenalizedObjective - concentrationPenalty),
+        unpenalizedObjective: round(unpenalizedObjective),
+        concentrationPenalty: round(concentrationPenalty),
         rawProjection: round(starters.reduce((sum, player) => sum + metric(player).rawProjection, 0)),
         roleAdjustedProjection: round(roleAdjustedProjection),
         downside: round(starters.reduce((sum, player) => sum + metric(player).downside, 0)),
@@ -199,6 +212,8 @@ export function optimizeScenario(input: {
   scenario: OptimizationScenario;
   horizon: OptimizationHorizon;
   players: OptimizationPlayer[];
+  objective?: OptimizationRequest["objective"];
+  concentrationPenalty?: OptimizationRequest["concentrationPenalty"];
 }) {
   const required = REQUIRED_SQUAD_COUNTS;
   const constraints = input.scenario.constraints;
@@ -234,7 +249,13 @@ export function optimizeScenario(input: {
     const needed = 15 - selected.length;
     if (needed === 0) {
       if (!constraintsSatisfied(selected, constraints)) return;
-      const lineup = lineupFor(selected, input.horizon, constraints);
+      const lineup = lineupFor(
+        selected,
+        input.horizon,
+        constraints,
+        input.objective ?? "role-adjusted-squad-utility",
+        input.concentrationPenalty?.weight ?? 0
+      );
       if (!lineup) return;
       feasibleSquads += 1;
       const candidate: SquadCandidate = {
@@ -364,7 +385,14 @@ export function buildCounterfactualSet(request: OptimizationRequest, players: Op
   const proofs: OptimizationProof[] = [];
   for (const scenario of request.scenarios) {
     for (const horizon of request.horizons) {
-      const result = optimizeScenario({ requestId: request.requestId, scenario, horizon, players });
+      const result = optimizeScenario({
+        requestId: request.requestId,
+        scenario,
+        horizon,
+        players,
+        objective: request.objective,
+        concentrationPenalty: request.concentrationPenalty
+      });
       if (result.best) candidates.push(result.best);
       for (const candidate of result.pareto) {
         if (!candidates.some((item) => item.candidateId === candidate.candidateId)) candidates.push(candidate);
@@ -407,9 +435,9 @@ export function renderCounterfactualComparisonMarkdown(comparison: Counterfactua
 
 Generated: ${comparison.generatedAt}
 
-| Candidate | Objective | Raw | Role adjusted | Downside | Bench value | Role confidence |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-${comparison.metricVectors.map(({ candidateId, metrics }) => `| ${candidateId} | ${metrics.objective.toFixed(3)} | ${metrics.rawProjection.toFixed(3)} | ${metrics.roleAdjustedProjection.toFixed(3)} | ${metrics.downside.toFixed(3)} | ${metrics.benchValue.toFixed(3)} | ${metrics.roleConfidence.toFixed(3)} |`).join("\n")}
+| Candidate | Objective | Unpenalized | Concentration penalty | Raw | Role adjusted | Downside | Bench value | Role confidence |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+${comparison.metricVectors.map(({ candidateId, metrics }) => `| ${candidateId} | ${metrics.objective.toFixed(3)} | ${(metrics.unpenalizedObjective ?? metrics.objective).toFixed(3)} | ${(metrics.concentrationPenalty ?? 0).toFixed(3)} | ${metrics.rawProjection.toFixed(3)} | ${metrics.roleAdjustedProjection.toFixed(3)} | ${metrics.downside.toFixed(3)} | ${metrics.benchValue.toFixed(3)} | ${metrics.roleConfidence.toFixed(3)} |`).join("\n")}
 
 ## Player Deltas
 

@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present through `0.0.14` and the dependency-ordered plan from `0.0.15` through `0.0.18`.
+This document records the capabilities present through `0.0.15` and the dependency-ordered plan from `0.0.16` through `0.0.18`.
 
 ## Permanent Decision Boundary
 
@@ -12,7 +12,7 @@ This document records the capabilities present through `0.0.14` and the dependen
 - Tool-produced evidence and candidate artifacts must remain structurally separate from agent-authored decision artifacts.
 - Verification may reject illegal or unsupported decisions, but it must never replace them or choose an alternative.
 
-## Current State: 0.0.14
+## Current State: 0.0.15
 
 ### Workspace
 
@@ -66,6 +66,11 @@ The exact covered and uncovered rule behavior is listed in `docs/rules-coverage.
 - Exact deterministic branch-and-bound optimization for independently constrained counterfactual squads.
 - GW1, GW1-GW3, and GW1-GW6 objectives with raw, role-adjusted, downside, bench-value, and role-confidence vectors.
 - Neutral counterfactual comparisons, optimization proofs, and material structural-rejection citation gates.
+- Shared-assumption strong, baseline, and weak scenarios for concentrated club exposures.
+- Pairwise covariance, squad variance, correlated p10, concentration penalties, scenario regret, and downside contribution.
+- Neutral maximum-two and triple-club comparisons over independently optimized candidates.
+- Immutable evidence snapshots, canonical decision evaluations, numerical invariants, and factual-claim publication gates.
+- Final recommendations require five distinct recent public-news articles for every selected player.
 
 ### Evidence Sources
 
@@ -89,6 +94,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 - Weekly strategy consistency checks.
 - Generated legality, risk, brief, and manual-checklist outputs.
 - Variant-local legality, risk, brief, checklist, and comparison outputs without final selection.
+- Invalid publication gates write a non-publication notice instead of an agent brief or manual checklist.
 
 ### Website
 
@@ -98,7 +104,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Operational State
 
-- The locked local test suite passes 40 test files and 301 tests at the `0.0.14` status update.
+- The locked local test suite passes 41 test files and 310 tests at the `0.0.15` status update.
 - Evidence commands write local files for review.
 - Final squad, transfer, captaincy, bench, and chip decisions remain coding-agent-authored.
 - The human manager performs every change in the official FPL interface.
@@ -153,7 +159,7 @@ Current limitation:
 
 Current limitation:
 
-- Appearance states are independent between players until correlated scenarios are delivered in `0.0.15`.
+- Appearance states are independent in baseline probability artifacts; explicit shared-assumption scenarios model correlated club exposure separately.
 - Preseason current-season histories are usually empty, so cohort fallbacks are common and remain explicitly labeled.
 
 ### Epistemic Integrity and Phase-Aware Language
@@ -339,7 +345,7 @@ Scope:
 - Compare every authored draft against its immediately preceding draft when available.
 - Show raw projection delta, role-adjusted delta, expected-starter delta, autosub delta, downside delta, and bench-cost delta.
 - Store metric vectors rather than collapsing robustness into an undisclosed overall score.
-- Disclose the initial independent-appearance assumption until correlated appearance scenarios are delivered in `0.0.15`.
+- Disclose the independent-appearance baseline and use explicit shared-assumption scenarios for correlated exposure.
 
 Artifacts:
 
@@ -392,8 +398,6 @@ Release gate:
 
 Status: delivered.
 
-## Planned Releases
-
 ### 0.0.15: Concentration and Correlated Scenario Analysis
 
 Measure portfolio risk when several selections depend on the same team-strength or tactical assumption.
@@ -422,6 +426,10 @@ Release gate:
 - Verify that shared team-strength shocks affect every dependent player and are not counted as independent events.
 - Compare optimal maximum-two and triple-club candidates with expected utility, p10, and scenario regret.
 - Reject an unsupported “fixtures justify triple exposure” rationale when no concentration evidence is cited.
+
+Status: delivered.
+
+## Planned Releases
 
 ### 0.0.16: Evidence Readiness and Executable Triggers
 

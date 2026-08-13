@@ -140,11 +140,12 @@ export function buildEvidencePack(input: BuildEvidencePackInput): EvidencePack {
       },
       requiredProvenance: {
         claimLedger: {
-          schemaVersion: 1,
+          schemaVersion: 3,
           sources: [],
           observations: [],
           facts: [],
           assumptions: [],
+          forecasts: [],
           transformations: [],
           decisions: []
         },
@@ -154,6 +155,22 @@ export function buildEvidencePack(input: BuildEvidencePackInput): EvidencePack {
           "Represent generated reports as transformations, not independent sources.",
           "Link every fact to observations and every assumption to facts plus a model version.",
           "Link every authored decision to its fact and assumption dependencies."
+        ]
+      },
+      requiredDecisionConsistency: {
+        evidenceSnapshot: {
+          snapshotId: "<immutable snapshot ID>",
+          createdAt: input.createdAt,
+          components: []
+        },
+        decisionEvaluations: [],
+        canonicalState: null,
+        factualClaims: [],
+        rules: [
+          "Use one snapshot for observations, forecasts, decisions, and factual claims.",
+          "Select the highest eligible objective score unless an explicit override is recorded.",
+          "Derive displayed projections, squad cost, club counts, and position counts from canonical state.",
+          "Represent deterministic prose facts as validated factualClaims."
         ]
       },
       squadBefore: {
