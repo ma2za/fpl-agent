@@ -251,6 +251,12 @@ The coding agent must read the evidence files, reason from current public inform
 - recommendation-template.json
 - public-evidence-report.json
 - public-evidence-report.md
+- evidence-store-manifest.json
+- evidence-research-worklist.json
+- player-dossier-index.json
+- evidence-readiness-report.json
+- decision-status-report.json
+- trigger-evaluation.json
 - packages/content/strategy/season-plan.md
 - packages/content/strategy/weekly/gw-${input.gameweek}.md
 - packages/content/strategy/weekly/gw-${input.gameweek}.json
@@ -259,6 +265,8 @@ The coding agent must read the evidence files, reason from current public inform
 
 - Confirm whether official 2026/27 FPL data is live.
 - Confirm player prices, positions, clubs, availability, and GW1 fixtures from current sources.
+- Run player:dossier for every player considered for the selected 15 and inspect stored official history, news, role evidence, coverage, disagreements, and unresolved gaps before selecting them.
+- Treat missing or non-READY selected-player dossiers as visible 0.0.16 warnings and use the provisional decision workspace when present.
 - Use at least four distinct public publishers, including at least two official primary sources, before treating the recommendation as final.
 - Open the current public pages and use specific claims from them; configured or captured pages that do not inform a decision do not count.
 - Tie direct public URLs and retrieval times to squad structure, availability or expected minutes, captaincy, and deadline-dependent changes.

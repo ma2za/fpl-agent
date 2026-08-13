@@ -26,6 +26,7 @@ import {
   readArtifactFile
 } from "../src";
 import { variantRecommendation } from "./fixtures/variantRecommendation";
+import { EvidenceReadinessReportSchema } from "../../player-store/src";
 
 const fixtureDir = path.join("packages", "agent", "tests", "fixtures", "legacy-artifacts");
 
@@ -95,6 +96,19 @@ describe("artifact schemas", () => {
     expect(AgentDecisionArtifactSchema.safeParse(candidate).success).toBe(false);
     expect(ToolEvidenceArtifactSchema.safeParse(decision).success).toBe(false);
     expect(CandidateArtifactSchema.safeParse(decision).success).toBe(false);
+  });
+
+  it("does not parse player-intelligence evidence as an agent decision", () => {
+    const readiness = EvidenceReadinessReportSchema.parse({
+      schemaVersion: 1,
+      generatedAt: "2026-08-01T00:00:00.000Z",
+      gameweek: 1,
+      items: [],
+      summary: { ready: 0, caution: 0, insufficient: 0, selectedInsufficient: 0 },
+      warnings: []
+    });
+
+    expect(AgentDecisionArtifactSchema.safeParse(readiness).success).toBe(false);
   });
 
   it("keeps optimization requests and squad candidates separate from final decisions", () => {

@@ -40,20 +40,50 @@ import {
   type EvidenceSnapshotComponentKind,
   type AgentRoleEvidenceInput,
   type RefreshInput,
+  type RefreshSidecar,
   type RefreshStage
 } from "../packages/agent/src";
 import {
   BootstrapStaticSchema,
   FixtureSchema,
+  PlayerSummarySchema,
   bootstrapCachePath,
   createFplApiClient,
   fixturesCachePath,
   normalizePlayers,
+  playerSummaryCachePath,
   readValidatedJsonCache,
   type BootstrapStatic,
   type Fixture,
   type NormalizedPlayer
 } from "../packages/fpl-api/src";
+import {
+  DecisionStatusInputSchema,
+  DecisionStatusReportSchema,
+  EvidenceReadinessReportSchema,
+  TriggerPlanSchema,
+  buildDecisionStatusReport,
+  buildEvidenceReadinessReport,
+  buildPlayerDossier,
+  buildProvisionalDecisionWorkspace,
+  buildResearchWorklist,
+  buildStoreManifest,
+  clonePlayerStore,
+  evaluateTriggerPlan,
+  ingestOfficialRun,
+  latestResearchWorklist,
+  migratePlayerStore,
+  openPlayerStore,
+  playerIdsForRun,
+  previousTriggerEvaluation,
+  recordArtifactLineage,
+  recordTriggerEvaluations,
+  renderDecisionStatusMarkdown,
+  renderReadinessMarkdown,
+  renderTriggerEvaluationMarkdown,
+  validatePlayerStore,
+  type PlayerSummaryResult
+} from "../packages/player-store/src";
 import { CURRENT_SQUAD } from "../config/squad";
 import { CURRENT_ROLE_ADAPTERS } from "../config/current-role";
 import { buildLocalEvidenceReport } from "./evidence-sources";
@@ -70,11 +100,29 @@ type AcquiredRefreshData = {
   bootstrap: BootstrapStatic;
   fixtures: Fixture[];
   players: NormalizedPlayer[];
+  summaries: PlayerSummaryResult[];
   inputs: RefreshInput[];
   publish: () => Promise<void>;
 };
 
 const fixtureArraySchema = FixtureSchema.array();
+
+async function mapWithConcurrency<T, R>(items: T[], concurrency: number, operation: (item: T) => Promise<R>) {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      results[index] = await operation(items[index]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+function wait(milliseconds: number) {
+  return milliseconds > 0 ? new Promise((resolve) => setTimeout(resolve, milliseconds)) : Promise.resolve();
+}
 
 function argValue(name: string) {
   const index = process.argv.indexOf(name);
@@ -119,6 +167,15 @@ async function snapshotComponent(
 async function readAgentRoleEvidence(filePath: string) {
   try {
     return parseCodingAgentRoleEvidence(JSON.parse(await readFile(filePath, "utf8")));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+async function readOptionalJson<T>(filePath: string, schema: { parse: (value: unknown) => T }) {
+  try {
+    return schema.parse(JSON.parse(await readFile(filePath, "utf8")));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
@@ -179,6 +236,8 @@ export async function acquireRefreshData(input: {
   temporaryRoot?: string;
   fetchImpl?: typeof fetch;
   rejectStale?: boolean;
+  playerConcurrency?: number;
+  summaryRetryDelaysMs?: number[];
 }): Promise<AcquiredRefreshData> {
   const rawDir = input.rawDir ?? path.join("data", "raw");
   const processedDir = input.processedDir ?? path.join("data", "processed");
@@ -188,6 +247,7 @@ export async function acquireRefreshData(input: {
   let fixtures: Fixture[];
   let sourceBootstrapPath = bootstrapPath;
   let sourceFixturesPath = fixturesPath;
+  let temporaryDir: string | null = null;
 
   if (input.offline) {
     const results = await Promise.allSettled([
@@ -207,7 +267,7 @@ export async function acquireRefreshData(input: {
     bootstrap = (results[0] as PromiseFulfilledResult<BootstrapStatic>).value;
     fixtures = (results[1] as PromiseFulfilledResult<Fixture[]>).value;
   } else {
-    const temporaryDir = path.join(
+    temporaryDir = path.join(
       input.temporaryRoot ?? path.join("data", "cache", "refresh-inputs"),
       input.runId
     );
@@ -226,6 +286,72 @@ export async function acquireRefreshData(input: {
   }
 
   const players = normalizePlayers(bootstrap);
+  const summaryRetryDelays = input.summaryRetryDelaysMs ?? [250, 1_000];
+  const summaryCacheDir = input.offline ? rawDir : temporaryDir!;
+  const summaries = await mapWithConcurrency(
+    bootstrap.elements,
+    input.playerConcurrency ?? 6,
+    async (player): Promise<PlayerSummaryResult> => {
+      const cachePath = playerSummaryCachePath(player.id, summaryCacheDir);
+      if (input.offline) {
+        try {
+          const [summary, file] = await Promise.all([
+            readValidatedJsonCache(cachePath, PlayerSummarySchema),
+            stat(cachePath)
+          ]);
+          const ageHours = Math.max(0, (input.now.getTime() - file.mtime.getTime()) / 3_600_000);
+          return {
+            playerId: player.id,
+            status: ageHours <= 24 ? "available" : "stale",
+            retrievedAt: file.mtime.toISOString(),
+            contentHash: sha256(JSON.stringify(summary)),
+            fixtures: summary.fixtures,
+            history: summary.history,
+            error: ageHours <= 24 ? null : `Player summary cache is ${ageHours.toFixed(1)} hours old.`
+          };
+        } catch (error) {
+          return {
+            playerId: player.id,
+            status: "missing",
+            retrievedAt: null,
+            contentHash: null,
+            fixtures: [],
+            history: [],
+            error: error instanceof Error ? error.message : String(error)
+          };
+        }
+      }
+
+      const client = createFplApiClient({ cacheDir: summaryCacheDir, fetchImpl: input.fetchImpl, forceRefresh: true });
+      let lastError: unknown;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const summary = await client.getPlayerSummary(player.id);
+          return {
+            playerId: player.id,
+            status: "available",
+            retrievedAt: input.now.toISOString(),
+            contentHash: sha256(JSON.stringify(summary)),
+            fixtures: summary.fixtures,
+            history: summary.history,
+            error: null
+          };
+        } catch (error) {
+          lastError = error;
+          if (attempt < 2) await wait(summaryRetryDelays[attempt] ?? summaryRetryDelays.at(-1) ?? 0);
+        }
+      }
+      return {
+        playerId: player.id,
+        status: "failed",
+        retrievedAt: input.now.toISOString(),
+        contentHash: null,
+        fixtures: [],
+        history: [],
+        error: lastError instanceof Error ? lastError.message : String(lastError)
+      };
+    }
+  );
   const mode = input.offline ? "offline" as const : "live" as const;
   const inputs = await Promise.all([
     fileInput({ id: "bootstrap", filePath: sourceBootstrapPath, sourceMode: mode, maxAgeHours: 24, now: input.now }),
@@ -252,6 +378,7 @@ export async function acquireRefreshData(input: {
     bootstrap,
     fixtures,
     players,
+    summaries,
     inputs,
     publish: input.offline
       ? async () => undefined
@@ -261,6 +388,15 @@ export async function acquireRefreshData(input: {
         await writeJsonAtomic(bootstrapPath, bootstrap);
         await writeJsonAtomic(fixturesPath, fixtures);
         await writeJsonAtomic(path.join(processedDir, "players.json"), players);
+        await Promise.all(summaries
+          .filter((summary) => summary.status === "available")
+          .map(async (summary) => {
+            const source = await readValidatedJsonCache(
+              playerSummaryCachePath(summary.playerId, summaryCacheDir),
+              PlayerSummarySchema
+            );
+            await writeJsonAtomic(playerSummaryCachePath(summary.playerId, rawDir), source);
+          }));
       }
   };
 }
@@ -356,6 +492,7 @@ function source(input: {
 }
 
 function buildStages(input: {
+  runId: string;
   gameweek: number;
   generatedAt: string;
   now: Date;
@@ -366,6 +503,9 @@ function buildStages(input: {
   targetDir: string;
   data: AcquiredRefreshData;
   agentRoleEvidence: AgentRoleEvidenceInput | null;
+  stagedPlayerStorePath: string;
+  decisionStatuses: ReturnType<typeof DecisionStatusInputSchema.parse> | null;
+  triggerPlan: ReturnType<typeof TriggerPlanSchema.parse> | null;
 }): RefreshStage[] {
   const bootstrapInput = input.data.inputs.find((item) => item.id === "bootstrap")!;
   const roleAdapters = currentRoleAdapterInputs(
@@ -621,6 +761,214 @@ function buildStages(input: {
       }
     },
     {
+      id: "player-store-official",
+      required: true,
+      phase: 2,
+      artifacts: [artifact("evidence-research-worklist.json")],
+      run: async ({ outputDir }) => {
+        const roleReport = await readArtifactFile(path.join(outputDir, "current-role-report.json"), CurrentRoleReportSchema);
+        const rawPlayers = new Map(input.data.bootstrap.elements.map((player) => [player.id, player]));
+        const db = openPlayerStore(input.stagedPlayerStorePath);
+        try {
+          migratePlayerStore(db, input.generatedAt);
+          ingestOfficialRun(db, {
+            runId: input.runId,
+            gameweek: input.gameweek,
+            mode: input.offline ? "offline" : "live",
+            observedAt: input.generatedAt,
+            bootstrapHash: input.data.inputs.find((item) => item.id === "bootstrap")!.sha256,
+            fixturesHash: input.data.inputs.find((item) => item.id === "fixtures")!.sha256,
+            players: input.data.players.map((player) => {
+              const raw = rawPlayers.get(player.id)!;
+              return {
+                playerId: player.id,
+                name: player.name,
+                webName: player.webName,
+                teamId: player.teamId,
+                teamName: player.team,
+                position: player.position,
+                price: player.price,
+                status: player.status,
+                selectedByPercent: player.selectedByPercent,
+                minutes: player.minutes,
+                totalPoints: player.totalPoints,
+                aliases: [player.name, player.webName, raw.first_name, raw.second_name],
+                officialFields: raw
+              };
+            }),
+            summaries: input.data.summaries,
+            roleObservations: roleReport.observations.filter((observation) => rawPlayers.has(observation.playerId)).map((observation) => ({
+              observationId: observation.id,
+              playerId: observation.playerId,
+              dimension: observation.dimension,
+              signal: observation.signal,
+              observedAt: observation.observedAt,
+              contentHash: observation.contentHash,
+              raw: observation
+            }))
+          });
+          const clubAliases = Object.fromEntries(input.data.bootstrap.teams.map((team) => [
+            team.id,
+            [team.name, ...(team.short_name ? [team.short_name] : [])]
+          ]));
+          const worklist = input.offline
+            ? latestResearchWorklist(db, input.gameweek) ?? buildResearchWorklist(db, {
+                runId: input.runId, gameweek: input.gameweek, generatedAt: input.generatedAt, clubAliases
+              })
+            : buildResearchWorklist(db, {
+                runId: input.runId, gameweek: input.gameweek, generatedAt: input.generatedAt, clubAliases
+              });
+          await writeJson(path.join(outputDir, "evidence-research-worklist.json"), worklist);
+        } finally {
+          db.close();
+        }
+      }
+    },
+    {
+      id: "player-dossiers",
+      required: true,
+      phase: 3,
+      artifacts: [
+        artifact("player-dossier-index.json"),
+        artifact("evidence-readiness-report.json", EvidenceReadinessReportSchema),
+        artifact("evidence-readiness-report.md"),
+        artifact("decision-status-report.json", DecisionStatusReportSchema),
+        artifact("decision-status-report.md")
+      ],
+      run: async ({ outputDir }) => {
+        const [projections, currentRole, selected] = await Promise.all([
+          readArtifactFile(path.join(outputDir, "probabilistic-projections.json"), ProbabilisticProjectionArraySchema),
+          readArtifactFile(path.join(outputDir, "current-role-report.json"), CurrentRoleReportSchema),
+          selectedPlayerState(outputDir)
+        ]);
+        const db = openPlayerStore(input.stagedPlayerStorePath);
+        try {
+          const dossiers = playerIdsForRun(db, input.runId)
+            .map((playerId) => buildPlayerDossier(db, { playerId, generatedAt: input.generatedAt }));
+          const roleByPlayer = new Map(currentRole.items.map((item) => [item.playerId, item]));
+          const readiness = buildEvidenceReadinessReport({
+            generatedAt: input.generatedAt,
+            gameweek: input.gameweek,
+            dossiers,
+            selectedPlayerIds: selected.selectedPlayerIds,
+            projections: projections.map((projection) => ({
+              playerId: projection.playerId,
+              startProbability: projection.appearance.startProbability,
+              appearanceProbability: projection.appearance.appearanceProbability,
+              confidence: projection.appearance.overallEvidenceConfidence,
+              currentRoleEvidence: roleByPlayer.get(projection.playerId)?.currentEvidencePresent ?? false
+            }))
+          });
+          const statuses = buildDecisionStatusReport({
+            generatedAt: input.generatedAt,
+            gameweek: input.gameweek,
+            value: input.decisionStatuses,
+            readiness
+          });
+          await Promise.all([
+            writeJson(path.join(outputDir, "player-dossier-index.json"), {
+              schemaVersion: 1,
+              runId: input.runId,
+              generatedAt: input.generatedAt,
+              gameweek: input.gameweek,
+              players: dossiers.map((dossier) => ({
+                playerId: dossier.playerId,
+                dossierId: dossier.dossierId,
+                snapshotId: dossier.snapshot?.snapshotId ?? null,
+                performanceObservationIds: dossier.performance.map((item) => item.performanceId),
+                newsObservationIds: dossier.news.map((item) => item.observationId),
+                coverageId: dossier.coverage?.coverageId ?? null,
+                disagreements: dossier.disagreements,
+                gaps: dossier.gaps
+              }))
+            }),
+            writeReport(outputDir, "evidence-readiness-report.json", "evidence-readiness-report.md", readiness, renderReadinessMarkdown(readiness)),
+            writeReport(outputDir, "decision-status-report.json", "decision-status-report.md", statuses, renderDecisionStatusMarkdown(statuses))
+          ]);
+        } finally {
+          db.close();
+        }
+      }
+    },
+    {
+      id: "player-triggers",
+      required: true,
+      phase: 4,
+      artifacts: [
+        artifact("trigger-evaluation.json"),
+        artifact("trigger-evaluation.md"),
+        artifact("evidence-store-manifest.json"),
+        { ...artifact("provisional-decision-workspace.json"), optional: true }
+      ],
+      run: async ({ outputDir }) => {
+        const [projections, currentRole, readiness, statuses] = await Promise.all([
+          readArtifactFile(path.join(outputDir, "probabilistic-projections.json"), ProbabilisticProjectionArraySchema),
+          readArtifactFile(path.join(outputDir, "current-role-report.json"), CurrentRoleReportSchema),
+          readArtifactFile(path.join(outputDir, "evidence-readiness-report.json"), EvidenceReadinessReportSchema),
+          readArtifactFile(path.join(outputDir, "decision-status-report.json"), DecisionStatusReportSchema)
+        ]);
+        const metrics = new Map<string, string | number | boolean>();
+        for (const projection of projections) {
+          metrics.set(`start_probability:player:${projection.playerId}`, projection.appearance.startProbability);
+          metrics.set(`appearance_probability:player:${projection.playerId}`, projection.appearance.appearanceProbability);
+        }
+        for (const player of input.data.players) {
+          metrics.set(`availability:player:${player.id}`, player.status);
+          metrics.set(`price:player:${player.id}`, player.price);
+          metrics.set(`transfer_status:player:${player.id}`, player.status);
+        }
+        for (const item of currentRole.items) {
+          metrics.set(`source_disagreement:player:${item.playerId}`, item.disagreement);
+          metrics.set(`lineup_consensus:player:${item.playerId}`, item.confidence);
+        }
+        const event = input.data.bootstrap.events.find((item) => item.id === input.gameweek);
+        metrics.set("competition_phase:competition:fpl", event?.is_next ? "pre_deadline" : event?.is_current ? "current" : "other");
+        const db = openPlayerStore(input.stagedPlayerStorePath);
+        try {
+          const triggers = evaluateTriggerPlan({
+            generatedAt: input.generatedAt,
+            gameweek: input.gameweek,
+            runId: input.runId,
+            value: input.triggerPlan,
+            metrics,
+            previous: (triggerId) => previousTriggerEvaluation(db, triggerId, input.generatedAt)
+          });
+          recordTriggerEvaluations(db, input.runId, triggers.evaluations);
+          const workspace = buildProvisionalDecisionWorkspace({
+            generatedAt: input.generatedAt,
+            gameweek: input.gameweek,
+            readiness,
+            decisionStatuses: statuses,
+            triggers
+          });
+          await writeReport(outputDir, "trigger-evaluation.json", "trigger-evaluation.md", triggers, renderTriggerEvaluationMarkdown(triggers));
+          if (workspace) await writeJson(path.join(outputDir, "provisional-decision-workspace.json"), workspace);
+          const lineagePaths = [
+            "evidence-research-worklist.json", "player-dossier-index.json", "evidence-readiness-report.json",
+            "decision-status-report.json", "trigger-evaluation.json",
+            ...(workspace ? ["provisional-decision-workspace.json"] : [])
+          ];
+          recordArtifactLineage(db, {
+            runId: input.runId,
+            createdAt: input.generatedAt,
+            artifacts: await Promise.all(lineagePaths.map(async (relativePath) => ({
+              kind: path.basename(relativePath, path.extname(relativePath)),
+              path: path.join(input.targetDir, relativePath),
+              contentHash: sha256(await readFile(path.join(outputDir, relativePath)))
+            })))
+          });
+          await writeJson(path.join(outputDir, "evidence-store-manifest.json"), buildStoreManifest(db, {
+            runId: input.runId,
+            gameweek: input.gameweek,
+            generatedAt: input.generatedAt,
+            mode: input.offline ? "offline" : "live"
+          }));
+        } finally {
+          db.close();
+        }
+      }
+    },
+    {
       id: "evidence-summary",
       required: true,
       phase: 3,
@@ -705,6 +1053,11 @@ export async function refresh(input: {
   temporaryRoot?: string;
   fetchImpl?: typeof fetch;
   agentRoleEvidencePath?: string;
+  decisionStatusesPath?: string;
+  triggerPlanPath?: string;
+  playerStorePath?: string;
+  playerConcurrency?: number;
+  summaryRetryDelaysMs?: number[];
 }) {
   const now = input.now ?? new Date();
   const runId = input.runId ?? `${now.toISOString().replace(/[:.]/g, "-")}-${randomUUID()}`;
@@ -715,7 +1068,9 @@ export async function refresh(input: {
     rawDir: input.rawDir,
     processedDir: input.processedDir,
     temporaryRoot: input.temporaryRoot,
-    fetchImpl: input.fetchImpl
+    fetchImpl: input.fetchImpl,
+    playerConcurrency: input.playerConcurrency,
+    summaryRetryDelaysMs: input.summaryRetryDelaysMs
   });
   const gameweek = resolveGameweek(data.bootstrap, input.requestedGameweek);
   const deadline = resolveDeadline(data.bootstrap, gameweek, now);
@@ -726,11 +1081,35 @@ export async function refresh(input: {
   const agentRoleEvidence = await readAgentRoleEvidence(
     input.agentRoleEvidencePath ?? path.join("packages", "content", "context", "agent-role-evidence.json")
   );
+  const decisionStatuses = await readOptionalJson(
+    input.decisionStatusesPath ?? path.join("packages", "content", "context", "decision-statuses.json"),
+    DecisionStatusInputSchema
+  );
+  const triggerPlan = await readOptionalJson(
+    input.triggerPlanPath ?? path.join("packages", "content", "context", "trigger-plan.json"),
+    TriggerPlanSchema
+  );
+  const playerStorePath = input.playerStorePath ?? (input.recommendationsDir
+    ? path.join(path.dirname(input.recommendationsDir), "player-intelligence.sqlite")
+    : path.join("data", "player-intelligence", "player-intelligence.sqlite"));
+  const stagedPlayerStorePath = path.join(
+    input.temporaryRoot ?? path.join("data", "cache", "refresh-inputs"),
+    runId,
+    "player-intelligence.sqlite"
+  );
+  await clonePlayerStore(playerStorePath, stagedPlayerStorePath, now.toISOString());
+  const sidecars: RefreshSidecar[] = [{
+    id: "player-intelligence",
+    stagedPath: stagedPlayerStorePath,
+    targetPath: playerStorePath,
+    validate: async (filePath) => validatePlayerStore(filePath)
+  }];
   const result = await runRefresh({
     gameweek,
     mode: input.offline ? "offline" : "live",
     targetDir,
     stages: buildStages({
+      runId,
       gameweek,
       generatedAt: now.toISOString(),
       now,
@@ -740,13 +1119,17 @@ export async function refresh(input: {
       deadline,
       targetDir,
       data,
-      agentRoleEvidence
+      agentRoleEvidence,
+      stagedPlayerStorePath,
+      decisionStatuses,
+      triggerPlan
     }),
     inputs: data.inputs,
     deadline,
     concurrency: input.concurrency ?? 3,
     runId,
-    beforePromote: data.publish
+    beforePromote: data.publish,
+    sidecars
   });
 
   return { ...result, gameweek, targetDir };

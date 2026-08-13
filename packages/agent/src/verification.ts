@@ -57,6 +57,11 @@ function publicNewsCoverageErrors(recommendation: WeeklyRecommendation) {
 
 export type VerifyRecommendationOptions = {
   forceDeadline?: boolean;
+  selectedPlayerEvidence?: Array<{
+    playerId: number;
+    status: "READY" | "CAUTION" | "INSUFFICIENT";
+    reasonCodes: string[];
+  }> | null;
 };
 
 export type VerifyRecommendationResult = ValidationResult & {
@@ -182,6 +187,16 @@ export function verifyRecommendation(
   const warnings = recommendation.dataMode === "provisional"
     ? ["Provisional recommendation: player IDs, prices, fixtures, and availability may be stale."]
     : [];
+  if (options.selectedPlayerEvidence === null) {
+    warnings.push("Longitudinal player dossier readiness is unavailable for the selected squad.");
+  } else if (options.selectedPlayerEvidence) {
+    const evidence = new Map(options.selectedPlayerEvidence.map((item) => [item.playerId, item]));
+    for (const player of recommendation.squadBefore.players) {
+      const item = evidence.get(player.id);
+      if (!item) warnings.push(`${player.name} has no current longitudinal dossier readiness record.`);
+      else if (item.status !== "READY") warnings.push(`${player.name} dossier readiness is ${item.status}: ${item.reasonCodes.join(", ") || "no reason code"}.`);
+    }
+  }
   const customErrors = actionErrors(recommendation);
   const transferValidation = recommendation.decisionContext?.phase === "PRESEASON_DRAFT"
     ? { isValid: true, errors: [], warnings: [] }

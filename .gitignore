@@ -238,6 +238,7 @@ data/raw/**/*.json
 data/raw/**/*.csv
 data/processed/**/*.json
 data/cache/**/*.json
+data/player-intelligence/
 
 # Local season workspace
 docs/agent-handoff.md

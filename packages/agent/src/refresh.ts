@@ -19,6 +19,14 @@ export type RefreshInput = {
 
 export type RefreshArtifact = {
   relativePath: string;
+  optional?: boolean;
+  validate?: (filePath: string) => Promise<void>;
+};
+
+export type RefreshSidecar = {
+  id: string;
+  stagedPath: string;
+  targetPath: string;
   validate?: (filePath: string) => Promise<void>;
 };
 
@@ -68,6 +76,11 @@ export const RefreshManifestSchema = z.object({
   inputs: z.array(RefreshInputSchema),
   stages: z.array(RefreshStageResultSchema),
   artifacts: z.array(z.object({ relativePath: z.string(), sha256: z.string() })),
+  sidecars: z.array(z.object({
+    id: z.string(),
+    targetPath: z.string(),
+    sha256: z.string()
+  })).optional(),
   errors: z.array(z.string())
 });
 
@@ -112,25 +125,36 @@ async function runWithConcurrency<T>(
   await Promise.all(workers);
 }
 
-async function promoteDirectory(stagingDir: string, targetDir: string, backupDir: string) {
-  const targetExists = await exists(targetDir);
-
-  if (targetExists) {
-    await rename(targetDir, backupDir);
-  }
+async function promoteGroup(
+  items: Array<{ stagedPath: string; targetPath: string; backupPath: string }>,
+  renamePath: typeof rename = rename
+) {
+  const movedTargets: typeof items = [];
+  const promoted: typeof items = [];
 
   try {
-    await rename(stagingDir, targetDir);
-  } catch (error) {
-    if (targetExists) {
-      await rename(backupDir, targetDir);
+    for (const item of items) {
+      await mkdir(path.dirname(item.targetPath), { recursive: true });
+      await rm(item.backupPath, { recursive: true, force: true });
+      if (await exists(item.targetPath)) {
+        await renamePath(item.targetPath, item.backupPath);
+        movedTargets.push(item);
+      }
+      await renamePath(item.stagedPath, item.targetPath);
+      promoted.push(item);
     }
-
+  } catch (error) {
+    for (const item of [...promoted].reverse()) {
+      await rm(item.targetPath, { recursive: true, force: true });
+    }
+    for (const item of [...movedTargets].reverse()) {
+      if (await exists(item.backupPath)) await renamePath(item.backupPath, item.targetPath);
+    }
     throw error;
   }
 
-  if (targetExists) {
-    await rm(backupDir, { recursive: true, force: true });
+  for (const item of movedTargets) {
+    await rm(item.backupPath, { recursive: true, force: true });
   }
 }
 
@@ -146,6 +170,8 @@ export async function runRefresh(input: {
   now?: () => Date;
   timer?: () => number;
   beforePromote?: () => Promise<void>;
+  sidecars?: RefreshSidecar[];
+  renameForPromotion?: typeof rename;
 }) {
   const concurrency = input.concurrency ?? 3;
 
@@ -202,6 +228,8 @@ export async function runRefresh(input: {
 
         for (const artifact of stage.artifacts) {
           const filePath = path.join(stagingDir, artifact.relativePath);
+
+          if (!await exists(filePath) && artifact.optional) continue;
 
           if (!await exists(filePath)) {
             throw new Error(`Stage ${stage.id} did not create ${artifact.relativePath}.`);
@@ -280,7 +308,44 @@ export async function runRefresh(input: {
     return { manifest, promoted: false, stagingDir };
   }
 
-  await promoteDirectory(stagingDir, input.targetDir, backupDir);
+  try {
+    const sidecarResults = [];
+    for (const sidecar of input.sidecars ?? []) {
+      if (!await exists(sidecar.stagedPath)) throw new Error(`Sidecar ${sidecar.id} is missing its staged file.`);
+      await sidecar.validate?.(sidecar.stagedPath);
+      sidecarResults.push({ id: sidecar.id, targetPath: sidecar.targetPath, sha256: await hashFile(sidecar.stagedPath) });
+    }
+    if (sidecarResults.length > 0) manifest.sidecars = sidecarResults;
+    RefreshManifestSchema.parse(manifest);
+    await writeJsonAtomic(path.join(stagingDir, "refresh-manifest.json"), manifest);
+  } catch (error) {
+    const message = `sidecar-validation: ${error instanceof Error ? error.message : String(error)}`;
+    manifest.status = "failed";
+    manifest.errors.push(message);
+    manifest.endedAt = now().toISOString();
+    manifest.durationMs = Number((timer() - startedTimer).toFixed(3));
+    await writeJsonAtomic(path.join(stagingDir, "refresh-manifest.json"), manifest);
+    return { manifest, promoted: false, stagingDir };
+  }
+
+  const sidecars = input.sidecars ?? [];
+  try {
+    await promoteGroup([
+      { stagedPath: stagingDir, targetPath: input.targetDir, backupPath: backupDir },
+      ...sidecars.map((sidecar) => ({
+        stagedPath: sidecar.stagedPath,
+        targetPath: sidecar.targetPath,
+        backupPath: `${sidecar.targetPath}.refresh-backup-${runId}`
+      }))
+    ], input.renameForPromotion);
+  } catch (error) {
+    manifest.status = "failed";
+    manifest.errors.push(`promotion: ${error instanceof Error ? error.message : String(error)}`);
+    manifest.endedAt = now().toISOString();
+    manifest.durationMs = Number((timer() - startedTimer).toFixed(3));
+    if (await exists(stagingDir)) await writeJsonAtomic(path.join(stagingDir, "refresh-manifest.json"), manifest);
+    return { manifest, promoted: false, stagingDir: await exists(stagingDir) ? stagingDir : null };
+  }
 
   return { manifest, promoted: true, stagingDir: null };
 }

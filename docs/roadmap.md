@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present through `0.0.15` and the dependency-ordered plan from `0.0.16` through `0.0.18`.
+This document records the capabilities present through `0.0.16` and the dependency-ordered plan from `0.0.17` through `0.0.18`.
 
 ## Permanent Decision Boundary
 
@@ -12,7 +12,7 @@ This document records the capabilities present through `0.0.15` and the dependen
 - Tool-produced evidence and candidate artifacts must remain structurally separate from agent-authored decision artifacts.
 - Verification may reject illegal or unsupported decisions, but it must never replace them or choose an alternative.
 
-## Current State: 0.0.15
+## Current State: 0.0.16
 
 ### Workspace
 
@@ -21,6 +21,7 @@ This document records the capabilities present through `0.0.15` and the dependen
 - Public FPL API client with validation and local caching.
 - Deterministic rules and evidence packages.
 - Local content for context, strategy, recommendations, and postmortems.
+- Ignored local SQLite player-intelligence store with ordered migrations, foreign keys, immutable observations, revisions, and lineage.
 
 ### Public Data
 
@@ -60,6 +61,11 @@ The exact covered and uncovered rule behavior is listed in `docs/rules-coverage.
 - Recommendation templates that require coding-agent authorship.
 - Transactional evidence refresh with validated staging, bounded concurrency, offline mode, and atomic promotion.
 - Local refresh manifests with source freshness, stage duration, artifact hashes, and visible failures.
+- Grouped rollback-capable promotion of the gameweek directory and SQLite store.
+- Full active-player bootstrap snapshots, element-summary fixtures and performance, explicit history coverage, and an all-player research worklist.
+- Schema-validated partial coding-agent web-evidence ingestion with provenance, zero-result and blocked coverage, and transactional rollback.
+- Deterministic player dossiers, all-player dossier index, readiness reports, authored decision-status validation, executable trigger evaluation, and provisional workspaces.
+- Warning-only selected-player dossier verification in 0.0.16; the existing five-article publication gate remains blocking.
 - Role-adjusted squad utility vectors, deterministic downside distributions, and configurable point thresholds.
 - Exact independent-appearance automatic-substitution value with separate goalkeeper and first-, second-, and third-substitute contributions.
 - Bench cost, formation coverage, unresolved-role counts, and explicit previous-draft metric deltas.
@@ -104,7 +110,10 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Operational State
 
-- The locked local test suite passes 41 test files and 310 tests at the `0.0.15` status update.
+- The local release suite passes 45 test files and 332 tests at the `0.0.16` status update.
+- Type-check, production build, cached offline refresh, store validation, worklist generation, and dossier generation pass.
+- The accepted 600-player store baseline is 149.274 ms initial ingestion, 70.235 ms idempotent re-ingestion, 749.420 ms dossier-index generation, and 1.095 ms individual dossier query on Node 24.14.1, Windows x64.
+- The isolated five-test counterfactual optimization file passes; the full optimization command exceeded the 180-second release-gate timeout and was not relaxed.
 - Evidence commands write local files for review.
 - Final squad, transfer, captaincy, bench, and chip decisions remain coding-agent-authored.
 - The human manager performs every change in the official FPL interface.
@@ -429,11 +438,13 @@ Release gate:
 
 Status: delivered.
 
-## Planned Releases
+## Delivered Release
 
 ### 0.0.16: Longitudinal Player Evidence, Readiness, and Triggers
 
-Create durable all-player evidence memory and turn uncertainty and change conditions into machine-evaluable monitoring plans while leaving responses to the agent.
+Status: delivered.
+
+Creates durable all-player evidence memory and turns uncertainty and change conditions into machine-evaluable monitoring plans while leaving responses to the agent.
 
 Scope:
 
@@ -468,12 +479,13 @@ Artifacts:
 - `PlayerDossier`
 - `EvidenceStoreManifest`
 
-Planned commands:
+Commands:
 
 - `pnpm player-store:status`
 - `pnpm evidence:worklist -- --gw <n|auto>`
 - `pnpm evidence:ingest -- --gw <n> --input <path>`
 - `pnpm player:dossier -- --player <id|name> --gw <n>`
+- `pnpm benchmark:player-store`
 
 Release gate:
 
@@ -483,6 +495,8 @@ Release gate:
 - Exercise concrete Kinsky first-choice, Osula start-probability, secure £4.0m defender, and Slater role-loss triggers.
 - Verify that a fired trigger identifies affected decisions and counterfactual requests without choosing a squad action.
 - Prove that phase changes expire or rewrite invalid trigger conditions.
+
+## Planned Releases
 
 ### 0.0.17: Evidence-Enforced Decision Workspace, Liquidity, and Captaincy
 

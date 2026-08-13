@@ -181,6 +181,19 @@ describe("verifyRecommendation", () => {
     expect(result.quality.gates.length).toBeGreaterThan(0);
   });
 
+  it("reports selected-player dossier gaps as non-blocking 0.0.16 warnings", () => {
+    const result = verifyRecommendation(recommendation, {
+      selectedPlayerEvidence: recommendation.squadBefore.players.map((player) => ({
+        playerId: player.id,
+        status: player.id === 1 ? "INSUFFICIENT" : "READY",
+        reasonCodes: player.id === 1 ? ["incomplete_research_coverage"] : []
+      }))
+    });
+
+    expect(result.isValid).toBe(true);
+    expect(result.warnings).toContain("Goalkeeper 1 dossier readiness is INSUFFICIENT: incomplete_research_coverage.");
+  });
+
   it("blocks a selected player without five recent public-news articles", () => {
     const result = verifyRecommendation({
       ...recommendation,

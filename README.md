@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.15`
+Version: `0.0.16`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -77,7 +77,12 @@ pnpm install
 pnpm dev
 pnpm test
 pnpm benchmark:fixtures
+pnpm benchmark:player-store
 pnpm refresh -- --gw auto
+pnpm player-store:status
+pnpm evidence:worklist -- --gw auto
+pnpm evidence:ingest -- --gw 1 --input path/to/evidence-batch.json
+pnpm player:dossier -- --player 1 --gw 1
 pnpm fetch:data
 pnpm fetch:pl-fixtures -- --gw 1 --horizon 6
 pnpm evidence -- --gw 1
@@ -102,7 +107,13 @@ pnpm postmortem -- --gw 1
 
 `pnpm dev` starts the read-only website.
 
-`pnpm refresh -- --gw {n|auto}` fetches shared public FPL inputs once, builds evidence in an isolated staging directory with bounded concurrency, validates generated artifacts, and atomically promotes a complete gameweek set. Add `--offline` to prohibit network access and use validated caches. Required failures preserve the previous set; stage outcomes remain visible in `refresh-manifest.json` and optional-source gaps remain visible in evidence coverage.
+`pnpm refresh -- --gw {n|auto}` fetches shared public FPL inputs once, fetches every active player's public element summary with six workers and bounded retries, appends official evidence to the staged SQLite store, builds evidence in an isolated staging directory, and atomically promotes the gameweek and database together. Add `--offline` to prohibit network access and reuse validated summary caches. Required failures restore both prior targets; exhausted player-summary requests become explicit coverage gaps rather than aborting the refresh.
+
+`pnpm player-store:status` validates the ignored local SQLite store and reports its schema, latest official run, and observation counts.
+
+`pnpm evidence:worklist -- --gw {n|auto}` materializes the current all-player research worklist. After the coding agent searches public sources, `pnpm evidence:ingest -- --gw {n} --input {file}` transactionally ingests a schema-validated partial batch, including completed zero-result or blocked searches. No full article body is stored.
+
+`pnpm player:dossier -- --player {id|name} --gw {n} [--at {timestamp}]` writes deterministic JSON and Markdown dossiers from the stored official snapshots, fixtures, performance, source documents, news, role observations, coverage, disagreements, revisions, and gaps.
 
 `pnpm fetch:data` fetches public FPL API data, writes raw cache files, writes timestamped snapshots, and writes normalized player data.
 
@@ -142,7 +153,7 @@ See `docs/concentration-analysis.md` for the input format.
 
 `pnpm variant:list`, `pnpm variant:verify`, and `pnpm variant:compare` manage authored alternatives under `gw-{n}/variants/{slug}/`. Variant verification reuses shared gameweek evidence and the same legality, quality, strategy, freshness, and risk checks as the primary recommendation. Comparison reports remain neutral, expose unavailable evidence explicitly, and never select a variant.
 
-`pnpm verify -- --gw {n}` re-validates an agent-authored recommendation and weekly strategy, rewrites the legality report, brief, checklist, and risk report, and exits non-zero when the recommendation is missing, illegal, missing required rationale, or missing pick-versus-alternative analysis.
+`pnpm verify -- --gw {n}` re-validates an agent-authored recommendation and weekly strategy, rewrites the legality report, brief, checklist, and risk report, and exits non-zero when the recommendation is missing, illegal, missing required rationale, or missing pick-versus-alternative analysis. In 0.0.16 it adds non-blocking warnings for missing or non-READY selected-player dossiers while preserving the existing five-article publication gate unchanged.
 
 Postmortem commands are placeholders until later milestones implement those workflows.
 

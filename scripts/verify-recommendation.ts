@@ -35,6 +35,7 @@ import {
   type WeeklyStrategy
 } from "../packages/agent/src";
 import { RISK_PROFILE } from "../config/risk-profile";
+import { EvidenceReadinessReportSchema } from "../packages/player-store/src";
 import { buildLocalEvidenceReport } from "./evidence-sources";
 
 function argValue(name: string) {
@@ -109,11 +110,16 @@ async function main() {
   const agentBriefPath = path.join(outputDir, "agent-brief.md");
   const manualChecklistPath = path.join(outputDir, "manual-checklist.md");
   const recommendation = await readArtifactFile(recommendationPath, RecommendationArtifactSchema);
+  const evidenceReadiness = await readArtifactFileIfExists(
+    path.join(outputDir, "evidence-readiness-report.json"),
+    EvidenceReadinessReportSchema
+  );
   const seasonPlanPath = path.join("packages", "content", "strategy", "season-plan.md");
   const weeklyStrategyPath = path.join("packages", "content", "strategy", "weekly", `gw-${gameweek}.json`);
   const legality: VerifyRecommendationResult = isWeeklyRecommendation(recommendation)
     ? verifyRecommendation(recommendation, {
-      forceDeadline: process.argv.includes("--force-deadline")
+      forceDeadline: process.argv.includes("--force-deadline"),
+      selectedPlayerEvidence: evidenceReadiness?.items ?? null
     })
     : {
       isValid: false,

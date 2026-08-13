@@ -1,8 +1,11 @@
 {
   "name": "fpl-agent",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "private": true,
   "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22"
+  },
   "packageManager": "pnpm@11.9.0",
   "scripts": {
     "dev": "corepack pnpm --filter @fpl-agent/web dev",
@@ -15,11 +18,16 @@
     "benchmark:variants": "tsx scripts/benchmark-variants.ts",
     "benchmark:fixtures": "tsx scripts/benchmark-fixtures.ts",
     "benchmark:probability": "tsx scripts/benchmark-probability.ts",
+    "benchmark:player-store": "tsx scripts/benchmark-player-store.ts",
     "analyze:squad": "tsx scripts/optimize-squad.ts",
     "squad:utility": "tsx scripts/generate-squad-utility.ts",
     "counterfactuals": "tsx scripts/generate-counterfactuals.ts",
     "concentration": "tsx scripts/generate-concentration-analysis.ts",
     "refresh": "tsx scripts/refresh.ts",
+    "player-store:status": "tsx scripts/player-store-status.ts",
+    "evidence:worklist": "tsx scripts/generate-evidence-worklist.ts",
+    "evidence:ingest": "tsx scripts/ingest-player-evidence.ts",
+    "player:dossier": "tsx scripts/generate-player-dossier.ts",
     "fetch:data": "tsx scripts/fetch-fpl-data.ts",
     "fetch:players": "tsx scripts/fetch-player-data.ts",
     "fetch:pl-fixtures": "tsx scripts/fetch-premier-league-fixtures.ts",
