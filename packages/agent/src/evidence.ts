@@ -168,9 +168,13 @@ export function buildEvidencePack(input: BuildEvidencePackInput): EvidencePack {
         factualClaims: [],
         rules: [
           "Use one snapshot for observations, forecasts, decisions, and factual claims.",
-          "Select the highest eligible objective score unless an explicit override is recorded.",
+          "Select the highest eligible objective score. Discretionary overrides are invalid.",
+          "Persist multiple meaningful legal candidates for squad, structure, starting XI, and captaincy decisions.",
+          "Persist material structural counterfactual compositions and comparable metrics directly in candidateScores.",
+          "Decompose every non-raw objectiveScore into evidenced scoreComponents.",
           "Derive displayed projections, squad cost, club counts, and position counts from canonical state.",
-          "Represent deterministic prose facts as validated factualClaims."
+          "Represent every auditable deterministic or source-derived prose fact as a validated factualClaim.",
+          "Give every selected starter at or below the material-risk threshold exactly one structured risk response."
         ]
       },
       squadBefore: {

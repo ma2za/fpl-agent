@@ -219,7 +219,7 @@ Implemented:
 - Captaincy comparisons and key omission analysis.
 - Legality, rationale, risk, confidence, projection-scope, and strategy checks.
 - Generated risk report, legality report, agent brief, and manual checklist.
-- Final-publication blocking when any selected player lacks five distinct public-news articles published within the preceding 14 days.
+- Final-publication blocking when any selected player lacks completed current research coverage or the squad lacks five distinct relevant public-news articles published within the preceding 14 days.
 - Invalid recommendations produce an explicit non-publication notice instead of actionable output.
 
 Current limitations:

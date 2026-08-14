@@ -138,7 +138,9 @@ async function snapshotComponent(
   filePath: string,
   sourceId: string,
   version: string | null,
-  retrievedAt: string
+  retrievedAt: string,
+  coverageStatus: "usable" | "partial" | "no_matching_rows" | "missing" = "usable",
+  matchedRecordCount: number | null = null
 ) {
   try {
     return {
@@ -148,7 +150,9 @@ async function snapshotComponent(
       version,
       observedAt: retrievedAt,
       retrievedAt,
-      contentHash: sha256(await readFile(filePath))
+      contentHash: sha256(await readFile(filePath)),
+      coverageStatus,
+      matchedRecordCount
     };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
@@ -159,7 +163,9 @@ async function snapshotComponent(
       version,
       observedAt: null,
       retrievedAt: null,
-      contentHash: null
+      contentHash: null,
+      coverageStatus: "missing" as const,
+      matchedRecordCount: 0
     };
   }
 }
@@ -792,7 +798,14 @@ function buildStages(input: {
                 selectedByPercent: player.selectedByPercent,
                 minutes: player.minutes,
                 totalPoints: player.totalPoints,
-                aliases: [player.name, player.webName, raw.first_name, raw.second_name],
+                aliases: [
+                  player.name,
+                  player.webName,
+                  raw.first_name,
+                  raw.second_name,
+                  `${raw.first_name} ${raw.second_name.split(/\s+/).at(-1)}`,
+                  `${raw.first_name} ${raw.second_name.split(/\s+/).find((part: string) => !["da", "de", "do", "dos"].includes(part.toLocaleLowerCase()))}`
+                ],
                 officialFields: raw
               };
             }),
@@ -991,13 +1004,16 @@ function buildStages(input: {
       artifacts: [artifact("evidence-snapshot.json", EvidenceSnapshotSchema)],
       run: async ({ outputDir }) => {
         const fixtureInput = input.data.inputs.find((item) => item.id === "fixtures")!;
+        const oddsReport = await readOptionalJson(path.join(outputDir, "odds-report.json"), OddsReportSchema);
         const component = async (
           kind: Parameters<typeof snapshotComponent>[0],
           filePath: string,
           sourceId: string,
           version: string | null,
-          retrievedAt: string
-        ) => snapshotComponent(kind, filePath, sourceId, version, retrievedAt);
+          retrievedAt: string,
+          coverageStatus?: "usable" | "partial" | "no_matching_rows" | "missing",
+          matchedRecordCount?: number | null
+        ) => snapshotComponent(kind, filePath, sourceId, version, retrievedAt, coverageStatus, matchedRecordCount);
         const components = await Promise.all([
           component("bootstrap", bootstrapInput.path, "src:fpl-bootstrap", null, bootstrapInput.fetchedAt),
           component("fixtures", fixtureInput.path, "src:fpl-fixtures", null, fixtureInput.fetchedAt),
@@ -1007,7 +1023,19 @@ function buildStages(input: {
           component("team_news", path.join(outputDir, "team-news-report.json"), "src:team-news-report", null, input.generatedAt),
           component("predicted_lineups", path.join(outputDir, "current-role-report.json"), "src:current-role-report", null, input.generatedAt),
           component("set_pieces", path.join(outputDir, "set-pieces-report.json"), "src:set-pieces-report", null, input.generatedAt),
-          component("betting_markets", path.join(outputDir, "odds-report.json"), "src:odds-report", null, input.generatedAt),
+          component(
+            "betting_markets",
+            path.join(outputDir, "odds-report.json"),
+            "src:odds-report",
+            null,
+            input.generatedAt,
+            !oddsReport || oddsReport.summary.matchedFixtures === 0
+              ? "no_matching_rows"
+              : oddsReport.summary.coverageStatus === "covered"
+                ? "usable"
+                : oddsReport.summary.coverageStatus,
+            oddsReport?.summary.matchedFixtures ?? 0
+          ),
           component("projection_model", path.join(outputDir, "projections.json"), "src:projection-model", "0.0.15", input.generatedAt),
           component("appearance_model", path.join(outputDir, "projection-uncertainty-report.json"), "src:appearance-model", "0.0.12", input.generatedAt),
           input.agentRoleEvidence
@@ -1018,7 +1046,9 @@ function buildStages(input: {
                 version: null,
                 observedAt: input.generatedAt,
                 retrievedAt: input.generatedAt,
-                contentHash: sha256(JSON.stringify(input.agentRoleEvidence))
+                contentHash: sha256(JSON.stringify(input.agentRoleEvidence)),
+                coverageStatus: "usable" as const,
+                matchedRecordCount: null
               }
             : {
                 kind: "manual_overrides" as const,
@@ -1027,7 +1057,9 @@ function buildStages(input: {
                 version: null,
                 observedAt: null,
                 retrievedAt: null,
-                contentHash: null
+                contentHash: null,
+                coverageStatus: "not_applicable" as const,
+                matchedRecordCount: 0
               }
         ]);
         const snapshotId = `snapshot:${sha256(JSON.stringify(components))}`;

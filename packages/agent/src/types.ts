@@ -79,6 +79,8 @@ export type EvidenceSnapshot = {
     observedAt: string | null;
     retrievedAt: string | null;
     contentHash: string | null;
+    coverageStatus?: "usable" | "partial" | "no_matching_rows" | "missing" | "not_applicable";
+    matchedRecordCount?: number | null;
   }>;
 };
 
@@ -99,6 +101,12 @@ export type DecisionCandidateScore = {
   ineligibilityReasons: string[];
   lowerBound: number | null;
   upperBound: number | null;
+  metrics?: Record<string, number>;
+  scoreComponents?: Array<{
+    name: string;
+    value: number;
+    evidenceIds: string[];
+  }>;
   state?: {
     playerIds: number[];
     squadCost: number;
@@ -146,12 +154,25 @@ export type DeterministicFactualClaim = {
   id: string;
   decisionId: string;
   snapshotId: string;
-  kind: "club_count" | "squad_cost" | "player_price" | "projection_score" | "projection_ranking" | "transfer_count" | "formation" | "captaincy";
+  kind: "club_count" | "squad_cost" | "player_price" | "projection_score" | "projection_ranking" | "transfer_count" | "formation" | "captaincy" | "fixture" | "start_probability" | "appearance_probability" | "ownership" | "role" | "set_piece" | "source_fact";
   statement: string;
   candidateId: string | null;
   subjectId: string | null;
   value: string | number | boolean;
   dependencyIds: string[];
+  validation: {
+    status: "validated" | "rejected";
+    method: string;
+  };
+};
+
+export type MaterialRiskPolicy = {
+  startProbabilityThreshold: number;
+  selectedStarterCoverage: Array<{
+    playerId: number;
+    resolution: "change_condition" | "explicit_coverage_reason" | "risk_waiver";
+    statement: string;
+  }>;
 };
 
 export type ComparedAlternative = {
@@ -217,6 +238,7 @@ export type WeeklyRecommendation = {
   decisionEvaluations?: DecisionEvaluation[];
   canonicalState?: CanonicalDecisionState;
   factualClaims?: DeterministicFactualClaim[];
+  materialRiskPolicy?: MaterialRiskPolicy;
   gameweek: number;
   createdAt: string;
   deadline: string;

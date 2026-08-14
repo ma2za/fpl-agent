@@ -53,6 +53,14 @@ export const DiscoveryCoverageSchema = z.object({
   status: z.enum(["pending", "searched_with_results", "searched_zero_results", "blocked"]),
   searchedAt: isoDate.nullable(),
   queries: z.array(z.string().min(1)).min(1),
+  searches: z.array(z.object({
+    query: z.string().min(1),
+    provider: z.string().min(1),
+    searchedAt: isoDate,
+    status: z.enum(["completed", "blocked"]),
+    resultUrls: z.array(z.string().url()),
+    relevantUrls: z.array(z.string().url())
+  })).default([]),
   resultCount: z.number().int().nonnegative(),
   note: z.string()
 });
@@ -106,6 +114,14 @@ export const EvidenceIngestionBatchSchema = z.object({
     status: z.enum(["searched_with_results", "searched_zero_results", "blocked"]),
     searchedAt: isoDate,
     queries: z.array(z.string().min(1)).min(1),
+    searches: z.array(z.object({
+      query: z.string().min(1),
+      provider: z.string().min(1),
+      searchedAt: isoDate,
+      status: z.enum(["completed", "blocked"]),
+      resultUrls: z.array(z.string().url()),
+      relevantUrls: z.array(z.string().url())
+    })).min(1),
     note: z.string()
   })),
   documents: z.array(ingestionDocument),

@@ -272,17 +272,22 @@ The coding agent must read the evidence files, reason from current public inform
 - Tie direct public URLs and retrieval times to squad structure, availability or expected minutes, captaincy, and deadline-dependent changes.
 - Treat local reports, projections, and summaries as transformations rather than public publishers.
 - If fewer than four usable public publishers are available, keep the recommendation provisional and state the missing coverage.
-- Before picking any player, find at least five distinct public-news articles about that player published within the preceding 14 days.
+- Complete current research coverage for every selected player before treating the recommendation as final.
 - Record every qualifying article in publicNewsArticles with playerId, publisher, title, direct URL, publishedAt, and retrievedAt.
-- Apply the five-article rule to all 15 selected players. A player without five qualifying articles cannot appear in a final recommendation.
+- Require at least five distinct qualifying public-news articles across the selected squad, published within the preceding 14 days.
 - Select a legal 15-player squad within £${DEFAULT_STARTING_BUDGET.toFixed(1)}m.
 - Cite evidence for every squad, shortlist, starting XI, captaincy, bench, chip, risk, and change-condition decision.
 - Fill evidenceReferences with source, reportPath, note, and relevant player IDs where applicable.
 - Fill claimLedger v3 with explicit OBSERVATION, DERIVED_FACT, ASSUMPTION, FORECAST, and DECISION kinds; list every authored decision in decisionIds.
 - Build one immutable evidenceSnapshot and reference its snapshotId from every observation, forecast, DecisionEvaluation, canonical state, and factual claim.
 - Add canonical DecisionEvaluation records for squad, structure, starting XI, bench order, captaincy, transfers, and chip selection.
-- Select the highest eligible objectiveScore unless selectedBy is explicit_override with a concrete overrideReason.
-- Put all computable explanation facts in factualClaims; prose must render those facts rather than inventing counts, rankings, prices, or totals.
+- Select the highest eligible objectiveScore. Discretionary overrides are invalid, including when prose preferences contradict raw expected points.
+- Include multiple meaningful legal candidates for every optimized squad, structure, starting-XI, and captaincy evaluation.
+- Persist material structural counterfactual compositions and comparable metrics directly in the structure candidateScores.
+- Decompose every non-raw objectiveScore into evidenced scoreComponents that sum to the score.
+- Put every auditable deterministic or source-derived explanation fact in factualClaims with resolvable dependencies and validated status.
+- Give every selected starter at or below the declared material start-probability threshold exactly one change condition, explicit coverage reason, or risk waiver.
+- Record source availability separately from usable evidence coverage in every snapshot component.
 - Give every forecast its model, model version, input facts, input assumptions, output value, uncertainty, and horizon.
 - Keep evaluative or causal interpretation out of observations and derived facts, and use only phase-relevant warnings.
 - Treat generated reports as transformations of their originating observations, not as independent corroborating sources.

@@ -313,7 +313,9 @@ export const EvidenceSnapshotSchema = looseObject({
     version: z.string().nullable(),
     observedAt: z.string().nullable(),
     retrievedAt: z.string().nullable(),
-    contentHash: z.string().nullable()
+    contentHash: z.string().nullable(),
+    coverageStatus: z.enum(["usable", "partial", "no_matching_rows", "missing", "not_applicable"]).optional(),
+    matchedRecordCount: z.number().int().nonnegative().nullable().optional()
   }))
 });
 
@@ -325,6 +327,12 @@ const candidateScore = looseObject({
   ineligibilityReasons: stringArray,
   lowerBound: z.number().nullable(),
   upperBound: z.number().nullable(),
+  metrics: z.record(z.string(), z.number()).optional(),
+  scoreComponents: z.array(looseObject({
+    name: z.string().min(1),
+    value: z.number(),
+    evidenceIds: stringArray
+  })).optional(),
   state: looseObject({
     playerIds: z.array(z.number()),
     squadCost: z.number(),
@@ -372,12 +380,25 @@ const factualClaim = looseObject({
   id: z.string().min(1),
   decisionId: z.string().min(1),
   snapshotId: z.string().min(1),
-  kind: z.enum(["club_count", "squad_cost", "player_price", "projection_score", "projection_ranking", "transfer_count", "formation", "captaincy"]),
+  kind: z.enum(["club_count", "squad_cost", "player_price", "projection_score", "projection_ranking", "transfer_count", "formation", "captaincy", "fixture", "start_probability", "appearance_probability", "ownership", "role", "set_piece", "source_fact"]),
   statement: z.string().min(1),
   candidateId: z.string().nullable(),
   subjectId: z.string().nullable(),
   value: z.union([z.string(), z.number(), z.boolean()]),
-  dependencyIds: stringArray
+  dependencyIds: stringArray,
+  validation: looseObject({
+    status: z.enum(["validated", "rejected"]),
+    method: z.string().min(1)
+  })
+});
+
+const materialRiskPolicy = looseObject({
+  startProbabilityThreshold: z.number().min(0).max(1),
+  selectedStarterCoverage: z.array(looseObject({
+    playerId: z.number(),
+    resolution: z.enum(["change_condition", "explicit_coverage_reason", "risk_waiver"]),
+    statement: z.string().min(1)
+  }))
 });
 
 const recommendationFields = {
@@ -391,6 +412,7 @@ const recommendationFields = {
   decisionEvaluations: z.array(decisionEvaluation).optional(),
   canonicalState: canonicalDecisionState.optional(),
   factualClaims: z.array(factualClaim).optional(),
+  materialRiskPolicy: materialRiskPolicy.optional(),
   squadBefore: looseObject({
     players: z.array(playerForRules),
     bank: z.number(),
@@ -678,7 +700,7 @@ export const StrategyEvidenceSchema = looseObject({
 export const PublicationGateSchema = looseObject({
   publicationStatus: z.enum(["valid", "valid_with_warnings", "invalid"]),
   validators: z.array(looseObject({
-    validator: z.enum(["snapshot", "decision-objective", "numerical-invariants", "factual-claims"]),
+    validator: z.enum(["snapshot", "decision-objective", "score-decomposition", "numerical-invariants", "factual-claims", "risk-coverage"]),
     status: z.enum(["pass", "warn", "fail"]),
     errors: stringArray,
     warnings: stringArray

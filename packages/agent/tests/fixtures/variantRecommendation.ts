@@ -1,6 +1,7 @@
 import {
   benchCandidateId,
   captainCandidateId,
+  recommendationRationale,
   squadCandidateId,
   startingXiCandidateId,
   transferCandidateId,
@@ -43,7 +44,9 @@ export function withDecisionConsistency(recommendation: WeeklyRecommendation) {
   for (const player of recommendation.squadBefore.players) positions[player.position as keyof typeof positions] += 1;
   const playerProjections = recommendation.squadBefore.players.map((player) => ({
     playerId: player.id,
-    projectedPoints: pointValue
+    projectedPoints: pointValue,
+    startProbability: 0.9,
+    appearanceProbability: 0.95
   }));
   const captainProjection = pointValue;
 
@@ -61,7 +64,9 @@ export function withDecisionConsistency(recommendation: WeeklyRecommendation) {
       version: "test",
       observedAt: recommendation.createdAt,
       retrievedAt: recommendation.createdAt,
-      contentHash: `hash-${kind}`
+      contentHash: `hash-${kind}`,
+      coverageStatus: "usable" as const,
+      matchedRecordCount: null
     }))
   };
   recommendation.canonicalState = {
@@ -76,7 +81,7 @@ export function withDecisionConsistency(recommendation: WeeklyRecommendation) {
     captainMarginalProjection: captainProjection,
     captainedTeamProjection: recommendation.pickTeam.projectedPoints + captainProjection
   };
-  const candidate = (candidateId: string, score = 1, state?: { playerIds: number[]; squadCost: number; clubCounts: Array<{ teamId: number; count: number }> }) => ({
+  const candidate = (candidateId: string, score = 1, state?: { playerIds: number[]; squadCost: number; clubCounts: Array<{ teamId: number; count: number }> }, metrics?: Record<string, number>) => ({
     candidateId,
     rawExpectedPoints: score,
     objectiveScore: score,
@@ -84,21 +89,29 @@ export function withDecisionConsistency(recommendation: WeeklyRecommendation) {
     ineligibilityReasons: [],
     lowerBound: score - 1,
     upperBound: score + 1,
-    state
+    state,
+    metrics
   });
   const evaluation = (
     decisionId: string,
     decisionType: NonNullable<WeeklyRecommendation["decisionEvaluations"]>[number]["decisionType"],
     selectedCandidateId: string,
-    candidateScores = [candidate(selectedCandidateId)]
+    candidateScores = [candidate(selectedCandidateId)],
+    objectiveMetric: "raw_expected_points" | "structural_utility" = "raw_expected_points"
   ) => ({
     decisionId,
     decisionType,
     snapshotId,
-    objectiveId: "test-raw-ev",
-    objectiveMetric: "raw_expected_points" as const,
+    objectiveId: objectiveMetric === "raw_expected_points" ? "test-raw-ev" : "test-structural-utility",
+    objectiveMetric,
     horizon: decisionType === "squad" || decisionType === "structure" ? "structural" as const : "GW1" as const,
-    candidateScores,
+    candidateScores: candidateScores.map((item) => objectiveMetric === "raw_expected_points" ? item : {
+      ...item,
+      scoreComponents: [
+        { name: "gw1 expected points term", value: item.objectiveScore - 0.5, evidenceIds: ["fact:test"] },
+        { name: "horizon adjustment", value: 0.5, evidenceIds: ["fact:test"] }
+      ]
+    }),
     selectedCandidateId,
     selectedBy: "objective_score" as const,
     overrideReason: null,
@@ -109,12 +122,28 @@ export function withDecisionConsistency(recommendation: WeeklyRecommendation) {
     evidenceIds: ["fact:test"]
   });
   const squadId = squadCandidateId(playerIds);
+  const alternativePlayerIds = [...playerIds.slice(0, -1), 999];
+  const secondAlternativePlayerIds = [...playerIds.slice(0, -2), 998, playerIds.at(-1)!];
+  const selectedState = { playerIds, squadCost, clubCounts };
+  const alternativeState = { playerIds: alternativePlayerIds, squadCost, clubCounts };
+  const secondAlternativeState = { playerIds: secondAlternativePlayerIds, squadCost, clubCounts };
+  const alternativeXi = [...recommendation.pickTeam.startingXI.slice(0, -1), recommendation.pickTeam.benchOrder[1]!];
   const captainId = captainCandidateId(recommendation.captaincy.captainPlayerId);
   const viceId = captainCandidateId(recommendation.captaincy.viceCaptainPlayerId);
   recommendation.decisionEvaluations = [
-    evaluation("dec:squad", "squad", squadId, [candidate(squadId, 1, { playerIds, squadCost, clubCounts })]),
-    evaluation("dec:structure", "structure", "structure:balanced"),
-    evaluation("dec:starting-xi", "starting_xi", startingXiCandidateId(recommendation.pickTeam.startingXI)),
+    evaluation("dec:squad", "squad", squadId, [
+      candidate(squadId, 2, selectedState),
+      candidate(squadCandidateId(alternativePlayerIds), 1, alternativeState)
+    ]),
+    evaluation("dec:structure", "structure", "structure:balanced", [
+      candidate("structure:balanced", 3, selectedState, { gw1ExpectedPoints: 60, gw1To3ExpectedPoints: 180 }),
+      candidate("test:premium:gw1:1", 2, alternativeState, { gw1ExpectedPoints: 59, gw1To3ExpectedPoints: 179 }),
+      candidate("test:bench:gw1:1", 1, secondAlternativeState, { gw1ExpectedPoints: 58, gw1To3ExpectedPoints: 178 })
+    ], "structural_utility"),
+    evaluation("dec:starting-xi", "starting_xi", startingXiCandidateId(recommendation.pickTeam.startingXI), [
+      candidate(startingXiCandidateId(recommendation.pickTeam.startingXI), 2, { ...selectedState, playerIds: recommendation.pickTeam.startingXI }),
+      candidate(startingXiCandidateId(alternativeXi), 1, { ...selectedState, playerIds: alternativeXi })
+    ]),
     evaluation("dec:bench", "bench_order", benchCandidateId(recommendation.pickTeam.benchOrder)),
     evaluation("dec:captaincy", "captaincy", captainId, [
       candidate(captainId, captainProjection),
@@ -123,7 +152,19 @@ export function withDecisionConsistency(recommendation: WeeklyRecommendation) {
     evaluation("dec:transfers", "transfers", transferCandidateId(recommendation)),
     evaluation("dec:chip", "chip", `chip:${recommendation.chip.chip}`)
   ];
-  recommendation.factualClaims = [];
+  recommendation.materialRiskPolicy = { startProbabilityThreshold: 0.78, selectedStarterCoverage: [] };
+  recommendation.factualClaims = recommendationRationale(recommendation).map((statement, index) => ({
+    id: `claim:test:${index + 1}`,
+    decisionId: "dec:squad",
+    snapshotId,
+    kind: "source_fact",
+    statement: statement.text,
+    candidateId: squadId,
+    subjectId: null,
+    value: statement.text,
+    dependencyIds: ["fact:test"],
+    validation: { status: "validated", method: "test fixture dependency" }
+  }));
   if (recommendation.claimLedger) {
     recommendation.claimLedger.observations = recommendation.claimLedger.observations.map((item) => ({ ...item, snapshotId }));
     if (recommendation.claimLedger.schemaVersion === 3) {

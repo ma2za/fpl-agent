@@ -24,8 +24,12 @@ import {
   type TriggerEvaluation
 } from "./types";
 
-export const PLAYER_STORE_SCHEMA_VERSION = 1;
+export const PLAYER_STORE_SCHEMA_VERSION = 2;
 export const DEFAULT_PLAYER_STORE_PATH = path.join("data", "player-intelligence", "player-intelligence.sqlite");
+const PLAYER_STORE_MIGRATIONS = [
+  { version: 1, name: "initial" },
+  { version: 2, name: "coverage-search-receipts" }
+] as const;
 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 
@@ -53,8 +57,8 @@ export function stableId(prefix: string, value: unknown) {
   return `${prefix}:${contentHash(value)}`;
 }
 
-function migrationSql() {
-  return readFileSync(new URL("../migrations/001_initial.sql", import.meta.url), "utf8");
+function migrationSql(version: number, name: string) {
+  return readFileSync(new URL(`../migrations/${String(version).padStart(3, "0")}_${name}.sql`, import.meta.url), "utf8");
 }
 
 export function openPlayerStore(filePath = DEFAULT_PLAYER_STORE_PATH, options: { readonly?: boolean } = {}) {
@@ -74,10 +78,10 @@ export function migratePlayerStore(db: Database.Database, appliedAt = new Date()
   if (current > PLAYER_STORE_SCHEMA_VERSION) {
     throw new Error(`Player store schema ${current} is newer than supported schema ${PLAYER_STORE_SCHEMA_VERSION}.`);
   }
-  if (current < 1) {
+  for (const migration of PLAYER_STORE_MIGRATIONS.filter((item) => item.version > current)) {
     const apply = db.transaction(() => {
-      db.exec(migrationSql());
-      db.prepare("INSERT INTO schema_migrations(version, name, applied_at) VALUES(1, 'initial', ?)").run(appliedAt);
+      db.exec(migrationSql(migration.version, migration.name));
+      db.prepare("INSERT INTO schema_migrations(version, name, applied_at) VALUES(?, ?, ?)").run(migration.version, migration.name, appliedAt);
     });
     apply.immediate();
   }
@@ -295,17 +299,28 @@ export function buildResearchWorklist(db: Database.Database, input: {
   const rows = db.prepare(`SELECT s.player_id, s.name, s.web_name, s.team_id, s.team_name
     FROM run_player_snapshots r JOIN player_snapshots s ON s.snapshot_id = r.snapshot_id
     WHERE r.run_id = ? ORDER BY s.player_id`).all(input.runId) as Array<{
-      player_id: number; name: string; web_name: string; team_id: number; team_name: string;
+    player_id: number; name: string; web_name: string; team_id: number; team_name: string;
     }>;
-  const worklistId = stableId("worklist", { runId: input.runId, gameweek: input.gameweek, players: rows.map((row) => [row.player_id, row.name, row.team_name]) });
+  const aliasRows = db.prepare("SELECT player_id, alias FROM player_aliases ORDER BY player_id, alias").all() as Array<{ player_id: number; alias: string }>;
+  const aliasesByPlayer = new Map<number, string[]>();
+  for (const row of aliasRows) aliasesByPlayer.set(row.player_id, [...(aliasesByPlayer.get(row.player_id) ?? []), row.alias]);
+  const worklistPlayers = rows.map((row) => ({
+    ...row,
+    aliases: [...new Set([row.name, row.web_name, ...(aliasesByPlayer.get(row.player_id) ?? [])])].sort()
+  }));
+  const worklistId = stableId("worklist", {
+    runId: input.runId,
+    gameweek: input.gameweek,
+    players: worklistPlayers.map((row) => [row.player_id, row.name, row.team_name, row.aliases])
+  });
   const worklist: EvidenceResearchWorklist = EvidenceResearchWorklistSchema.parse({
     schemaVersion: 1,
     worklistId,
     runId: input.runId,
     gameweek: input.gameweek,
     generatedAt: input.generatedAt,
-    players: rows.map((row) => {
-      const aliases = [...new Set([row.name, row.web_name])].sort();
+    players: worklistPlayers.map((row) => {
+      const aliases = row.aliases;
       const clubAliases = [...new Set([row.team_name, ...(input.clubAliases?.[row.team_id] ?? [])])].sort();
       return {
         playerId: row.player_id,
@@ -349,6 +364,7 @@ export function ingestEvidenceBatch(db: Database.Database, value: unknown, now =
   if (!worklist) throw new Error(`Unknown evidence worklist ${batch.worklistId}.`);
   if (worklist.gameweek !== batch.gameweek) throw new Error(`Evidence batch GW${batch.gameweek} does not match its GW${worklist.gameweek} worklist.`);
   const worklistPlayers = new Set(EvidenceResearchWorklistSchema.parse(JSON.parse(worklist.raw_json)).players.map((player) => player.playerId));
+  const worklistItems = new Map(EvidenceResearchWorklistSchema.parse(JSON.parse(worklist.raw_json)).players.map((player) => [player.playerId, player]));
   for (const item of [...batch.coverage, ...batch.observations]) {
     if (!knownPlayers.has(item.playerId)) throw new Error(`Evidence batch references unknown player ${item.playerId}.`);
     if (!worklistPlayers.has(item.playerId)) throw new Error(`Player ${item.playerId} does not belong to worklist ${batch.worklistId}.`);
@@ -358,6 +374,35 @@ export function ingestEvidenceBatch(db: Database.Database, value: unknown, now =
   for (const coverage of batch.coverage) {
     if (Date.parse(coverage.searchedAt) > authoredAt || Date.parse(coverage.searchedAt) > now.getTime()) {
       throw new Error(`Player ${coverage.playerId} has a future search-completion time.`);
+    }
+    const declaredQueries = new Set(coverage.queries);
+    if (coverage.searches.some((search) => !declaredQueries.has(search.query))) {
+      throw new Error(`Player ${coverage.playerId} has a search receipt for an undeclared query.`);
+    }
+    for (const search of coverage.searches) {
+      if (Date.parse(search.searchedAt) > Date.parse(coverage.searchedAt) || Date.parse(search.searchedAt) > authoredAt) {
+        throw new Error(`Player ${coverage.playerId} has a future search receipt.`);
+      }
+      const resultUrls = new Set(search.resultUrls);
+      if (search.relevantUrls.some((url) => !resultUrls.has(url))) {
+        throw new Error(`Player ${coverage.playerId} has a relevant URL that is absent from its search results.`);
+      }
+      if (search.status === "blocked" && (search.resultUrls.length > 0 || search.relevantUrls.length > 0)) {
+        throw new Error(`Player ${coverage.playerId} has results attached to a blocked search.`);
+      }
+    }
+    if (coverage.status === "searched_zero_results") {
+      const aliases = worklistItems.get(coverage.playerId)?.aliases ?? [];
+      const normalizedAliases = aliases.map((alias) => alias.toLocaleLowerCase()).filter((alias) => alias.length >= 3);
+      const targeted = coverage.searches.some((search) => search.status === "completed"
+        && normalizedAliases.some((alias) => search.query.toLocaleLowerCase().includes(alias)));
+      if (!targeted) throw new Error(`Player ${coverage.playerId} zero-result coverage lacks a completed player-targeted search receipt.`);
+      if (coverage.searches.some((search) => search.relevantUrls.length > 0)) {
+        throw new Error(`Player ${coverage.playerId} is marked zero results but has relevant search results.`);
+      }
+    }
+    if (coverage.status === "blocked" && coverage.searches.some((search) => search.status !== "blocked")) {
+      throw new Error(`Player ${coverage.playerId} is marked blocked but has a completed search receipt.`);
     }
   }
   const documentHashes = new Set(batch.documents.map((document) => document.contentHash));
@@ -422,17 +467,28 @@ export function ingestEvidenceBatch(db: Database.Database, value: unknown, now =
       linkObservation.run(batch.batchId, parsed.observationId);
       resultCounts.set(parsed.playerId, (resultCounts.get(parsed.playerId) ?? 0) + 1);
     }
+    const documentUrlByHash = new Map(batch.documents.map((document) => [document.contentHash, document.canonicalUrl]));
+    const existingDocumentUrl = db.prepare("SELECT canonical_url FROM source_documents WHERE content_hash = ? ORDER BY rowid DESC LIMIT 1");
     const insertCoverage = db.prepare(`INSERT OR IGNORE INTO discovery_coverage(
-      coverage_id, worklist_id, player_id, status, searched_at, queries_json, result_count, note
-    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`);
+      coverage_id, worklist_id, player_id, status, searched_at, queries_json, searches_json, result_count, note
+    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     for (const coverage of batch.coverage) {
       const results = resultCounts.get(coverage.playerId) ?? 0;
       if (coverage.status === "searched_with_results" && results === 0) throw new Error(`Player ${coverage.playerId} is marked with results but has no observations.`);
       if (coverage.status === "searched_zero_results" && results !== 0) throw new Error(`Player ${coverage.playerId} is marked zero results but has observations.`);
       if (coverage.status === "blocked" && results !== 0) throw new Error(`Player ${coverage.playerId} is marked blocked but has observations.`);
+      if (coverage.status === "searched_with_results") {
+        const relevantUrls = new Set(coverage.searches.flatMap((search) => search.relevantUrls));
+        const observedUrls = batch.observations.filter((observation) => observation.playerId === coverage.playerId)
+          .map((observation) => documentUrlByHash.get(observation.documentContentHash)
+            ?? (existingDocumentUrl.get(observation.documentContentHash) as { canonical_url: string } | undefined)?.canonical_url);
+        if (observedUrls.some((url) => !url || !relevantUrls.has(url))) {
+          throw new Error(`Player ${coverage.playerId} has an observation without a matching relevant search-result receipt.`);
+        }
+      }
       const coverageId = stableId("coverage", { batchId: batch.batchId, ...coverage });
       insertCoverage.run(coverageId, batch.worklistId, coverage.playerId, coverage.status, coverage.searchedAt,
-        stableJson(coverage.queries), results, coverage.note);
+        stableJson(coverage.queries), stableJson(coverage.searches), results, coverage.note);
     }
   });
   transaction.immediate();
@@ -506,6 +562,7 @@ export function buildPlayerDossier(db: Database.Database, input: { playerId: num
   const coverage: DiscoveryCoverage | null = coverageRow ? DiscoveryCoverageSchema.parse({
     coverageId: coverageRow.coverage_id, worklistId: coverageRow.worklist_id, playerId: coverageRow.player_id,
     status: coverageRow.status, searchedAt: coverageRow.searched_at, queries: JSON.parse(String(coverageRow.queries_json)),
+    searches: coverageRow.searches_json ? JSON.parse(String(coverageRow.searches_json)) : [],
     resultCount: coverageRow.result_count, note: coverageRow.note
   }) : null;
   const historyRow = db.prepare(`SELECT c.status FROM player_summary_coverage c JOIN ingestion_runs i ON i.run_id = c.run_id
@@ -528,6 +585,7 @@ export function buildPlayerDossier(db: Database.Database, input: { playerId: num
   const gaps = [
     ...(historyCoverage === "available" ? [] : [`Player history coverage is ${historyCoverage}.`]),
     ...(!coverage || coverage.status === "pending" ? ["Current public-web research is pending."] : []),
+    ...(coverage && coverage.status !== "pending" && coverage.searches.length === 0 ? ["Current public-web research lacks verifiable search receipts."] : []),
     ...(news.length === 0 ? ["No stored public-news observations."] : []),
     ...(roleObservationIds.length === 0 ? ["No stored current-role observations."] : [])
   ];
@@ -599,7 +657,10 @@ export function playerStoreStatus(db: Database.Database) {
 export function buildStoreManifest(db: Database.Database, input: { runId: string; gameweek: number; generatedAt: string; mode: "live" | "offline" }): EvidenceStoreManifest {
   const count = (table: string) => Number((db.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get() as { count: number }).count);
   const history = db.prepare("SELECT player_id, status, error FROM player_summary_coverage WHERE run_id = ? ORDER BY player_id").all(input.runId) as Array<{ player_id: number; status: string; error: string | null }>;
-  const coverageComplete = Number((db.prepare("SELECT COUNT(DISTINCT player_id) AS count FROM discovery_coverage WHERE status != 'pending'").get() as { count: number }).count);
+  const coverageComplete = Number((db.prepare(`SELECT COUNT(DISTINCT player_id) AS count FROM discovery_coverage
+    WHERE status != 'pending' AND searches_json IS NOT NULL
+    AND worklist_id = (SELECT worklist_id FROM evidence_worklists WHERE gameweek = ? ORDER BY generated_at DESC, rowid DESC LIMIT 1)`)
+    .get(input.gameweek) as { count: number }).count);
   const logical = {
     runs: count("ingestion_runs"), players: count("players"), snapshots: count("player_snapshots"),
     performance: count("player_performance_observations"), fixtures: count("player_fixture_observations"), documents: count("source_documents"), news: count("news_observations"),

@@ -65,7 +65,7 @@ The exact covered and uncovered rule behavior is listed in `docs/rules-coverage.
 - Full active-player bootstrap snapshots, element-summary fixtures and performance, explicit history coverage, and an all-player research worklist.
 - Schema-validated partial coding-agent web-evidence ingestion with provenance, zero-result and blocked coverage, and transactional rollback.
 - Deterministic player dossiers, all-player dossier index, readiness reports, authored decision-status validation, executable trigger evaluation, and provisional workspaces.
-- Warning-only selected-player dossier verification in 0.0.16; the existing five-article publication gate remains blocking.
+- Selected-player research coverage is blocking; other dossier-readiness gaps remain warning-only in 0.0.16.
 - Role-adjusted squad utility vectors, deterministic downside distributions, and configurable point thresholds.
 - Exact independent-appearance automatic-substitution value with separate goalkeeper and first-, second-, and third-substitute contributions.
 - Bench cost, formation coverage, unresolved-role counts, and explicit previous-draft metric deltas.
@@ -76,7 +76,7 @@ The exact covered and uncovered rule behavior is listed in `docs/rules-coverage.
 - Pairwise covariance, squad variance, correlated p10, concentration penalties, scenario regret, and downside contribution.
 - Neutral maximum-two and triple-club comparisons over independently optimized candidates.
 - Immutable evidence snapshots, canonical decision evaluations, numerical invariants, and factual-claim publication gates.
-- Final recommendations require five distinct recent public-news articles for every selected player.
+- Final recommendations require completed current research coverage for every selected player and five distinct relevant public-news articles across the selected squad.
 
 ### Evidence Sources
 
@@ -110,10 +110,11 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Operational State
 
-- The local release suite passes 45 test files and 332 tests at the `0.0.16` status update.
+- The local release suite contains 46 test files and 336 tests. The final full-suite run passed 335 tests and hit the existing timeout in one counterfactual optimization test; the isolated five-test counterfactual file passed immediately afterward.
 - Type-check, production build, cached offline refresh, store validation, worklist generation, and dossier generation pass.
-- The accepted 600-player store baseline is 149.274 ms initial ingestion, 70.235 ms idempotent re-ingestion, 749.420 ms dossier-index generation, and 1.095 ms individual dossier query on Node 24.14.1, Windows x64.
-- The isolated five-test counterfactual optimization file passes; the full optimization command exceeded the 180-second release-gate timeout and was not relaxed.
+- The accepted 600-player store baseline is 156.779 ms initial ingestion, 78.167 ms idempotent re-ingestion, 1150.416 ms dossier-index generation, and 2.302 ms individual dossier query on Node 24.14.1, Windows x64.
+- A bounded live adapter smoke completed 48 of 50 configured UK football-news sources. The Times and talkSPORT were retained as explicit robots-blocked results; no blocked source was bypassed or counted as completed coverage.
+- Refresh median was 47.768 ms bounded versus 108.170 ms sequential, and probability median was 471.204 ms for 581 players. Fixture, rules, variant, and compatibility benchmarks completed.
 - Evidence commands write local files for review.
 - Final squad, transfer, captaincy, bench, and chip decisions remain coding-agent-authored.
 - The human manager performs every change in the official FPL interface.

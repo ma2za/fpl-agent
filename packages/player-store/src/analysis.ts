@@ -36,8 +36,9 @@ export function buildEvidenceReadinessReport(input: {
       playerId: dossier.playerId, startProbability: 0, appearanceProbability: 0, confidence: 0, currentRoleEvidence: false
     };
     const officialSnapshot = dossier.snapshot !== null;
-    const currentResearchCoverage = dossier.coverage?.status === "searched_with_results"
-      || dossier.coverage?.status === "searched_zero_results";
+    const hasSearchReceipts = (dossier.coverage?.searches.length ?? 0) > 0;
+    const currentResearchCoverage = hasSearchReceipts && (dossier.coverage?.status === "searched_with_results"
+      || dossier.coverage?.status === "searched_zero_results");
     const historyAvailable = dossier.historyCoverage === "available";
     const ready = projection.startProbability >= 0.8 && projection.appearanceProbability >= 0.9
       && projection.confidence >= 0.7 && projection.currentRoleEvidence && officialSnapshot

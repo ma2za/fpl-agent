@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { verifyRecommendation, type WeeklyRecommendation } from "../src";
+import { startingXiCandidateId, verifyRecommendation, type WeeklyRecommendation } from "../src";
 import { publicNewsArticlesFor, testClaimLedger, withDecisionConsistency } from "./fixtures/variantRecommendation";
 
 const recommendation: WeeklyRecommendation = {
@@ -181,7 +181,7 @@ describe("verifyRecommendation", () => {
     expect(result.quality.gates.length).toBeGreaterThan(0);
   });
 
-  it("reports selected-player dossier gaps as non-blocking 0.0.16 warnings", () => {
+  it("blocks incomplete selected-player research coverage", () => {
     const result = verifyRecommendation(recommendation, {
       selectedPlayerEvidence: recommendation.squadBefore.players.map((player) => ({
         playerId: player.id,
@@ -190,19 +190,19 @@ describe("verifyRecommendation", () => {
       }))
     });
 
-    expect(result.isValid).toBe(true);
-    expect(result.warnings).toContain("Goalkeeper 1 dossier readiness is INSUFFICIENT: incomplete_research_coverage.");
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain("Goalkeeper 1 lacks completed current research coverage.");
   });
 
-  it("blocks a selected player without five recent public-news articles", () => {
+  it("blocks a squad without five recent public-news articles", () => {
     const result = verifyRecommendation({
       ...recommendation,
-      publicNewsArticles: recommendation.publicNewsArticles?.filter((article) => article.playerId !== 1)
+      publicNewsArticles: recommendation.publicNewsArticles?.slice(0, 4)
     });
 
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain(
-      "Goalkeeper 1 requires 5 distinct public-news articles published within 14 days of selection; found 0."
+      "Selected squad requires 5 distinct public-news articles published within 14 days of selection; found 4."
     );
   });
 
@@ -226,6 +226,120 @@ describe("verifyRecommendation", () => {
     );
   });
 
+  it("does not allow an explicit override to bypass the declared objective", () => {
+    const overridden = structuredClone(recommendation);
+    const captaincy = overridden.decisionEvaluations!.find((item) => item.decisionType === "captaincy")!;
+    captaincy.candidateScores = captaincy.candidateScores.map((candidate) => ({
+      ...candidate,
+      rawExpectedPoints: candidate.candidateId === "player:8" ? 5.5 : 5.8,
+      objectiveScore: candidate.candidateId === "player:8" ? 5.5 : 5.8
+    }));
+    captaincy.selectedBy = "explicit_override";
+    captaincy.overrideReason = "Prefer the midfielder despite the lower declared score.";
+
+    const result = verifyRecommendation(overridden);
+
+    expect(result.publicationGate.publicationStatus).toBe("invalid");
+    expect(result.errors).toContain(
+      "Decision dec:captaincy selected player:8 with score 5.5, below the declared-objective maximum 5.8."
+    );
+    expect(result.errors).toContain(
+      "Decision dec:captaincy uses a discretionary explicit override; final decisions must maximize their declared objective."
+    );
+  });
+
+  it("rejects one-candidate optimized evaluations and orphaned structural counterfactuals", () => {
+    const invalid = structuredClone(recommendation);
+    const squad = invalid.decisionEvaluations!.find((item) => item.decisionType === "squad")!;
+    squad.candidateScores = squad.candidateScores.slice(0, 1);
+    const structure = invalid.decisionEvaluations!.find((item) => item.decisionType === "structure")!;
+    structure.candidateScores = structure.candidateScores.filter((candidate) => candidate.candidateId !== "test:premium:gw1:1");
+
+    const result = verifyRecommendation(invalid);
+
+    expect(result.errors).toContain("Optimized decision dec:squad must contain at least two meaningful eligible candidates.");
+    expect(result.errors).toContain("Material structural counterfactual test:premium:gw1:1 is not persisted in dec:structure.candidateScores.");
+  });
+
+  it("rejects undecomposed non-raw objective scores", () => {
+    const invalid = structuredClone(recommendation);
+    const structure = invalid.decisionEvaluations!.find((item) => item.decisionType === "structure")!;
+    delete structure.candidateScores[0]!.scoreComponents;
+
+    const result = verifyRecommendation(invalid);
+
+    expect(result.errors).toContain("Decision dec:structure candidate structure:balanced does not decompose its structural_utility score.");
+  });
+
+  it("rejects auditable prose when factualClaims is empty", () => {
+    const result = verifyRecommendation({ ...recommendation, factualClaims: [] });
+
+    expect(result.publicationGate.publicationStatus).toBe("invalid");
+    expect(result.errors.some((error) => error.includes("absent from factualClaims"))).toBe(true);
+  });
+
+  it("distinguishes source availability from usable evidence coverage", () => {
+    const invalid = structuredClone(recommendation);
+    const betting = invalid.evidenceSnapshot!.components.find((component) => component.kind === "betting_markets")!;
+    delete betting.coverageStatus;
+
+    const result = verifyRecommendation(invalid);
+
+    expect(result.errors).toContain(
+      "Evidence snapshot component betting_markets must distinguish source availability from usable coverage."
+    );
+
+    betting.coverageStatus = "no_matching_rows";
+    betting.matchedRecordCount = 0;
+    expect(verifyRecommendation(invalid).publicationGate.validators.find((item) => item.validator === "snapshot")?.status).toBe("pass");
+  });
+
+  it("requires risk coverage for Okafor at the material start-probability threshold", () => {
+    const invalid = structuredClone(recommendation);
+    invalid.squadBefore.players.find((player) => player.id === 8)!.name = "Noah Okafor";
+    invalid.canonicalState!.playerProjections.find((projection) => projection.playerId === 8)!.startProbability = 0.78;
+    invalid.materialRiskPolicy = { startProbabilityThreshold: 0.78, selectedStarterCoverage: [] };
+    const risk = "Noah Okafor models at 78 percent to start.";
+    invalid.risks = [risk];
+    invalid.factualClaims!.push({
+      id: "claim:okafor-start-risk",
+      decisionId: "dec:starting-xi",
+      snapshotId: invalid.evidenceSnapshot!.snapshotId,
+      kind: "start_probability",
+      statement: risk,
+      candidateId: startingXiCandidateId(invalid.pickTeam.startingXI),
+      subjectId: "8",
+      value: 0.78,
+      dependencyIds: ["fact:test"],
+      validation: { status: "validated", method: "canonical start-probability comparison" }
+    });
+
+    const result = verifyRecommendation(invalid);
+
+    expect(result.publicationGate.publicationStatus).toBe("invalid");
+    expect(result.errors).toContain(
+      "Material starter risk for player 8 requires exactly one change condition, explicit coverage reason, or risk waiver; found 0."
+    );
+
+    const changeCondition = "Bench Noah Okafor if unavailable.";
+    invalid.whatWouldChangeMyMind = [changeCondition];
+    invalid.materialRiskPolicy.selectedStarterCoverage = [{
+      playerId: 8,
+      resolution: "change_condition",
+      statement: changeCondition
+    }];
+    expect(verifyRecommendation(invalid).publicationGate.validators.find((item) => item.validator === "risk-coverage")?.status).toBe("pass");
+
+    invalid.materialRiskPolicy.selectedStarterCoverage.push({
+      playerId: 8,
+      resolution: "risk_waiver",
+      statement: risk
+    });
+    expect(verifyRecommendation(invalid).errors).toContain(
+      "Material starter risk for player 8 requires exactly one change condition, explicit coverage reason, or risk waiver; found 2."
+    );
+  });
+
   it("blocks a false structured club-count explanation", () => {
     const statement = "This route produces triple club representation.";
     const result = verifyRecommendation({
@@ -240,7 +354,8 @@ describe("verifyRecommendation", () => {
         candidateId: null,
         subjectId: "1",
         value: 3,
-        dependencyIds: ["squad:selected"]
+        dependencyIds: ["fact:test"],
+        validation: { status: "validated", method: "canonical club-count comparison" }
       }]
     });
 

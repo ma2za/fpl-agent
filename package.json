@@ -26,6 +26,8 @@
     "refresh": "tsx scripts/refresh.ts",
     "player-store:status": "tsx scripts/player-store-status.ts",
     "evidence:worklist": "tsx scripts/generate-evidence-worklist.ts",
+    "evidence:discover": "tsx scripts/discover-player-news.ts",
+    "evidence:discovery-batch": "tsx scripts/build-discovery-coverage-batch.ts",
     "evidence:ingest": "tsx scripts/ingest-player-evidence.ts",
     "player:dossier": "tsx scripts/generate-player-dossier.ts",
     "fetch:data": "tsx scripts/fetch-fpl-data.ts",

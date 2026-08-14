@@ -26,7 +26,9 @@ function dossier(playerId: number, overrides: Partial<PlayerDossier> = {}): Play
     performance: [], documents: [], news: [], roleObservationIds: ["role-obs:one"],
     coverage: {
       coverageId: stableId("coverage", playerId), worklistId: stableId("worklist", 1), playerId,
-      status: "searched_zero_results", searchedAt: at, queries: ["query"], resultCount: 0, note: ""
+      status: "searched_zero_results", searchedAt: at, queries: ["Player 1 news"],
+      searches: [{ query: "Player 1 news", provider: "test-search", searchedAt: at, status: "completed", resultUrls: [], relevantUrls: [] }],
+      resultCount: 0, note: ""
     },
     historyCoverage: "available", changes: [], disagreements: [], gaps: [],
     ...overrides

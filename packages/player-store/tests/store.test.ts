@@ -1,4 +1,5 @@
 import { mkdtemp, rm } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import Database from "better-sqlite3";
@@ -48,7 +49,7 @@ function officialInput(runId = "run-1", observedAt = firstAt, price = 7.5, point
       selectedByPercent: 10,
       minutes: 90,
       totalPoints: points,
-      aliases: ["Ada Player", "Ada"],
+      aliases: ["Ada Player", "Ada", "A. Player"],
       officialFields: { id: 1, now_cost: price * 10 }
     }],
     summaries: [{
@@ -79,9 +80,21 @@ describe("player intelligence store", () => {
     const newerPath = await storePath();
     const newer = new Database(newerPath);
     newer.exec("CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)");
-    newer.prepare("INSERT INTO schema_migrations VALUES(2, 'future', ?)").run(firstAt);
+    newer.prepare("INSERT INTO schema_migrations VALUES(3, 'future', ?)").run(firstAt);
     expect(() => migratePlayerStore(newer, firstAt)).toThrow("newer than supported");
     newer.close();
+
+    const legacyPath = await storePath();
+    const legacy = new Database(legacyPath);
+    legacy.exec(readFileSync(new URL("../migrations/001_initial.sql", import.meta.url), "utf8"));
+    legacy.prepare("INSERT INTO schema_migrations VALUES(1, 'initial', ?)").run(firstAt);
+    expect(migratePlayerStore(legacy, secondAt)).toBe(PLAYER_STORE_SCHEMA_VERSION);
+    expect((legacy.prepare("PRAGMA table_info(discovery_coverage)").all() as Array<{ name: string }>).map((column) => column.name)).toContain("searches_json");
+    expect(legacy.prepare("SELECT version, name FROM schema_migrations ORDER BY version").all()).toEqual([
+      { version: 1, name: "initial" },
+      { version: 2, name: "coverage-search-receipts" }
+    ]);
+    legacy.close();
   });
 
   it("deduplicates identical refreshes and appends superseding snapshot and performance revisions", async () => {
@@ -109,7 +122,7 @@ describe("player intelligence store", () => {
     const worklist = buildResearchWorklist(db, {
       runId: "run-1", gameweek: 1, generatedAt: firstAt, clubAliases: { 1: ["EFC"] }
     });
-    expect(worklist.players[0]).toMatchObject({ aliases: ["Ada", "Ada Player"], clubAliases: ["EFC", "Example FC"], status: "pending" });
+    expect(worklist.players[0]).toMatchObject({ aliases: ["A. Player", "Ada", "Ada Player"], clubAliases: ["EFC", "Example FC"], status: "pending" });
     const documentHash = contentHash("short captured source content");
     const batch = {
       schemaVersion: 1 as const,
@@ -117,7 +130,9 @@ describe("player intelligence store", () => {
       worklistId: worklist.worklistId,
       gameweek: 1,
       authorship: { kind: "coding_agent" as const, agent: "test-agent", authoredAt: secondAt },
-      coverage: [{ playerId: 1, status: "searched_with_results" as const, searchedAt: secondAt, queries: worklist.players[0].queries, note: "Search completed." }],
+      coverage: [{ playerId: 1, status: "searched_with_results" as const, searchedAt: secondAt, queries: worklist.players[0].queries,
+        searches: [{ query: worklist.players[0].queries[0], provider: "test-search", searchedAt: secondAt, status: "completed" as const,
+          resultUrls: ["https://example.com/ada-update"], relevantUrls: ["https://example.com/ada-update"] }], note: "Search completed." }],
       documents: [{
         canonicalUrl: "https://example.com/ada-update",
         publisher: "Example News",
@@ -156,7 +171,8 @@ describe("player intelligence store", () => {
       worklistId: worklist.worklistId,
       gameweek: 1,
       authorship: { kind: "coding_agent", agent: "test", authoredAt: secondAt },
-      coverage: [{ playerId: 999, status: "searched_zero_results", searchedAt: secondAt, queries: ["query"], note: "" }],
+      coverage: [{ playerId: 999, status: "searched_zero_results", searchedAt: secondAt, queries: ["query"],
+        searches: [{ query: "query", provider: "test", searchedAt: secondAt, status: "completed", resultUrls: [], relevantUrls: [] }], note: "" }],
       documents: [], observations: []
     };
     await expect(updatePlayerStoreTransactionally(filePath, {
@@ -166,6 +182,27 @@ describe("player intelligence store", () => {
     const preserved = openPlayerStore(filePath, { readonly: true });
     expect(playerStoreStatus(preserved).counts).toMatchObject({ runs: 1, documents: 0, news: 0 });
     preserved.close();
+  });
+
+  it("rejects generic club searches as player-level zero-result coverage", async () => {
+    const filePath = await storePath();
+    const db = openPlayerStore(filePath);
+    migratePlayerStore(db, firstAt);
+    ingestOfficialRun(db, officialInput());
+    const worklist = buildResearchWorklist(db, { runId: "run-1", gameweek: 1, generatedAt: firstAt });
+    const genericQuery = "Example FC team news injuries";
+    expect(() => ingestEvidenceBatch(db, {
+      schemaVersion: 1,
+      batchId: stableId("batch", "generic-search"),
+      worklistId: worklist.worklistId,
+      gameweek: 1,
+      authorship: { kind: "coding_agent", agent: "test", authoredAt: secondAt },
+      coverage: [{ playerId: 1, status: "searched_zero_results", searchedAt: secondAt, queries: [genericQuery],
+        searches: [{ query: genericQuery, provider: "test-search", searchedAt: secondAt, status: "completed", resultUrls: [], relevantUrls: [] }], note: "" }],
+      documents: [],
+      observations: []
+    }, new Date(secondAt))).toThrow("lacks a completed player-targeted search receipt");
+    db.close();
   });
 
   it("returns deterministic dossiers with historical cutoffs and prior revisions", async () => {

@@ -20,14 +20,14 @@ import type {
   WeeklyRecommendation
 } from "./types";
 
-const REQUIRED_PUBLIC_NEWS_ARTICLES_PER_PLAYER = 5;
+const REQUIRED_PUBLIC_NEWS_ARTICLES_PER_SQUAD = 5;
 const PUBLIC_NEWS_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 
 function publicNewsCoverageErrors(recommendation: WeeklyRecommendation) {
   const errors: string[] = [];
-  const selectedPlayers = new Map(recommendation.squadBefore.players.map((player) => [player.id, player.name]));
+  const selectedPlayers = new Set(recommendation.squadBefore.players.map((player) => player.id));
   const selectedAt = Date.parse(recommendation.createdAt);
-  const articlesByPlayer = new Map<number, Set<string>>();
+  const articleUrls = new Set<string>();
 
   for (const article of recommendation.publicNewsArticles ?? []) {
     if (!selectedPlayers.has(article.playerId)) continue;
@@ -40,16 +40,11 @@ function publicNewsCoverageErrors(recommendation: WeeklyRecommendation) {
 
     if (!article.publisher.trim() || !article.title.trim() || !validUrl || !Number.isFinite(retrievedAt) || !recent) continue;
 
-    const urls = articlesByPlayer.get(article.playerId) ?? new Set<string>();
-    urls.add(article.url);
-    articlesByPlayer.set(article.playerId, urls);
+    articleUrls.add(article.url);
   }
 
-  for (const [playerId, playerName] of selectedPlayers) {
-    const articleCount = articlesByPlayer.get(playerId)?.size ?? 0;
-    if (articleCount < REQUIRED_PUBLIC_NEWS_ARTICLES_PER_PLAYER) {
-      errors.push(`${playerName} requires ${REQUIRED_PUBLIC_NEWS_ARTICLES_PER_PLAYER} distinct public-news articles published within 14 days of selection; found ${articleCount}.`);
-    }
+  if (articleUrls.size < REQUIRED_PUBLIC_NEWS_ARTICLES_PER_SQUAD) {
+    errors.push(`Selected squad requires ${REQUIRED_PUBLIC_NEWS_ARTICLES_PER_SQUAD} distinct public-news articles published within 14 days of selection; found ${articleUrls.size}.`);
   }
 
   return errors;
@@ -187,17 +182,19 @@ export function verifyRecommendation(
   const warnings = recommendation.dataMode === "provisional"
     ? ["Provisional recommendation: player IDs, prices, fixtures, and availability may be stale."]
     : [];
+  const selectedPlayerCoverageErrors: string[] = [];
   if (options.selectedPlayerEvidence === null) {
-    warnings.push("Longitudinal player dossier readiness is unavailable for the selected squad.");
+    selectedPlayerCoverageErrors.push("Current longitudinal research coverage is unavailable for the selected squad.");
   } else if (options.selectedPlayerEvidence) {
     const evidence = new Map(options.selectedPlayerEvidence.map((item) => [item.playerId, item]));
     for (const player of recommendation.squadBefore.players) {
       const item = evidence.get(player.id);
-      if (!item) warnings.push(`${player.name} has no current longitudinal dossier readiness record.`);
+      if (!item) selectedPlayerCoverageErrors.push(`${player.name} has no current longitudinal dossier readiness record.`);
+      else if (item.reasonCodes.includes("incomplete_research_coverage")) selectedPlayerCoverageErrors.push(`${player.name} lacks completed current research coverage.`);
       else if (item.status !== "READY") warnings.push(`${player.name} dossier readiness is ${item.status}: ${item.reasonCodes.join(", ") || "no reason code"}.`);
     }
   }
-  const customErrors = actionErrors(recommendation);
+  const customErrors = [...actionErrors(recommendation), ...selectedPlayerCoverageErrors];
   const transferValidation = recommendation.decisionContext?.phase === "PRESEASON_DRAFT"
     ? { isValid: true, errors: [], warnings: [] }
     : validateTransfers({
