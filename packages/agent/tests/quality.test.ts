@@ -13,7 +13,9 @@ const recommendation: WeeklyRecommendation = {
     ownershipTreatment: "excluded",
     structureSimulationReportPath: "structure-simulation.json",
     rankSimulationReportPath: null,
-    projectionAdjustments: []
+    candidateSearch: { generator: "manual", exhaustive: false, playerUniverseSize: 100, candidatesGenerated: 6, candidatesSimulated: 6 },
+    projectionAdjustments: [],
+    projectionScenarioAdjustments: []
   },
   squadBefore: {
     bank: 1,
@@ -71,7 +73,7 @@ const recommendation: WeeklyRecommendation = {
     explanation: "Fixture test confidence."
   },
   decisionAnalysis: {
-    summary: "Test recommendation includes explicit player-pick comparisons.",
+    summary: "Among the 6 evaluated candidates, this recommendation has the strongest objective score and explicit player-pick comparisons.",
     squadStructure: [
       "Balanced 3-4-3 test structure.",
       "Keeps enough bank while covering every required position."
@@ -440,6 +442,41 @@ describe("evaluateRecommendationQuality", () => {
     expect(result.errors).toContain(
       `Projection adjustment for player ${recommendation.squadBefore.players[0].id} must be quantified, feature-unique, and evidence-backed.`
     );
+  });
+
+  it("rejects reasoning that hides a bounded candidate search", () => {
+    const result = evaluateRecommendationQuality({
+      ...recommendation,
+      decisionAnalysis: {
+        ...recommendation.decisionAnalysis!,
+        summary: "This is the globally optimal squad across all legal squads."
+      }
+    });
+    expect(result.errors).toContain("A non-exhaustive recommendation must say it was selected among the 6 evaluated candidates.");
+    expect(result.errors).toContain("A non-exhaustive candidate search must not claim global optimality.");
+  });
+
+  it("rejects handcrafted transfer-risk penalties in favor of scenario trees", () => {
+    const result = evaluateRecommendationQuality({
+      ...recommendation,
+      optimizationPolicy: {
+        ...recommendation.optimizationPolicy!,
+        projectionAdjustments: [{
+          playerId: 1,
+          baseProjection: 4,
+          adjustedProjection: 3.6,
+          features: [{
+            featureId: "transfer-availability-risk",
+            sourceKind: "manual_model_input",
+            pointsDelta: -0.4,
+            standardDeviation: 0.5,
+            evidenceIds: ["obs:transfer"],
+            translationModel: null
+          }]
+        }]
+      }
+    });
+    expect(result.errors).toContain("Transfer or availability uncertainty for player 1 must use an evidenced scenario tree, not a direct mean adjustment.");
   });
 
   it("fails when structure comparisons are missing", () => {

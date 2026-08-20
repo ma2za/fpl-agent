@@ -1,6 +1,6 @@
 {
   "name": "fpl-agent",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "private": true,
   "license": "Apache-2.0",
   "engines": {
@@ -24,6 +24,7 @@
     "counterfactuals": "tsx scripts/generate-counterfactuals.ts",
     "concentration": "tsx scripts/generate-concentration-analysis.ts",
     "simulate:structures": "tsx scripts/simulate-structures.ts",
+    "simulate:frontier": "tsx scripts/simulate-structures.ts",
     "refresh": "tsx scripts/refresh.ts",
     "player-store:status": "tsx scripts/player-store-status.ts",
     "evidence:worklist": "tsx scripts/generate-evidence-worklist.ts",

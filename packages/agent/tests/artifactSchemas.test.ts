@@ -226,6 +226,7 @@ describe("artifact schemas", () => {
       "counterfactualComparison",
       "counterfactualSet",
       "currentRoleReport",
+      "decisionMarginReport",
       "draftDeltaReport",
       "evidenceReport",
       "evidenceSnapshot",
@@ -271,6 +272,39 @@ describe("artifact schemas", () => {
       decisionPolicy: "No candidate is selected."
     } as const;
     expect(StructureSimulationReportSchema.parse(report)).toEqual(report);
+
+    const current = {
+      ...report,
+      modelVersion: "0.0.18",
+      results: report.results.map((result) => ({
+        ...result,
+        expectedPointsBreakdown: {
+          startingXI: result.expectedPoints - 6,
+          captainBonus: 5,
+          expectedAutosubs: 0.9,
+          viceCaptainFallback: 0.1,
+          total: result.expectedPoints
+        }
+      })),
+      objectiveDefinition: {
+        captainDoubling: true,
+        viceCaptainFallback: true,
+        automaticSubstitutions: true,
+        formationLegalityAfterSubstitutions: true,
+        goalkeeperSubstitution: true,
+        appearanceProbabilities: true,
+        scoringVariance: true,
+        correlatedMatchStates: true
+      },
+      searchScope: {
+        generator: "deterministic-branch-and-bound",
+        exhaustive: true,
+        playerUniverseSize: 500,
+        candidatesGenerated: 100,
+        candidatesSimulated: 100
+      }
+    } as const;
+    expect(StructureSimulationReportSchema.parse(current)).toEqual(current);
   });
 });
 

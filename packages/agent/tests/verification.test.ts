@@ -29,7 +29,9 @@ const recommendation: WeeklyRecommendation = {
     ownershipTreatment: "excluded",
     structureSimulationReportPath: "structure-simulation.json",
     rankSimulationReportPath: null,
-    projectionAdjustments: []
+    candidateSearch: { generator: "manual", exhaustive: false, playerUniverseSize: 100, candidatesGenerated: 6, candidatesSimulated: 6 },
+    projectionAdjustments: [],
+    projectionScenarioAdjustments: []
   },
   squadBefore: {
     bank: 11.5,
@@ -87,7 +89,7 @@ const recommendation: WeeklyRecommendation = {
     explanation: "Fixture test confidence."
   },
   decisionAnalysis: {
-    summary: "Test recommendation includes explicit player-pick comparisons.",
+    summary: "Among the 6 evaluated candidates, this recommendation has the strongest objective score and explicit player-pick comparisons.",
     squadStructure: [
       "Balanced 3-4-3 test structure.",
       "Keeps enough bank while covering every required position."

@@ -407,6 +407,13 @@ const optimizationPolicy = looseObject({
   ownershipTreatment: z.enum(["excluded", "simulated_field_distribution"]),
   structureSimulationReportPath: z.string().min(1),
   rankSimulationReportPath: z.string().nullable(),
+  candidateSearch: z.object({
+    generator: z.enum(["manual", "deterministic-branch-and-bound", "highs-milp-k-best"]),
+    exhaustive: z.boolean(),
+    playerUniverseSize: z.number().int().nonnegative(),
+    candidatesGenerated: z.number().int().positive(),
+    candidatesSimulated: z.number().int().positive()
+  }).strict().optional(),
   projectionAdjustments: z.array(looseObject({
     playerId: z.number(),
     baseProjection: z.number(),
@@ -419,7 +426,19 @@ const optimizationPolicy = looseObject({
       evidenceIds: stringArray,
       translationModel: z.string().nullable()
     }))
-  }))
+  })),
+  projectionScenarioAdjustments: z.array(z.object({
+    playerId: z.number().int().positive(),
+    featureId: z.string().min(1),
+    probabilityMethod: z.enum(["EVIDENCE_CONDITIONED_AUTHORED_PRIOR", "EMPIRICALLY_CALIBRATED_SCENARIO_MODEL"]),
+    scenarios: z.array(z.object({
+      scenarioId: z.string().min(1),
+      probability: z.number().min(0).max(1),
+      projectedPoints: z.number(),
+      standardDeviation: z.number().nonnegative(),
+      evidenceIds: stringArray
+    }).strict()).min(2)
+  }).strict()).optional()
 });
 
 const recommendationFields = {
@@ -1239,6 +1258,9 @@ const appearanceStateForecast = z.object({
     lower: z.number().min(0).max(1),
     upper: z.number().min(0).max(1)
   }).strict().optional(),
+  roleClass: z.enum(["SECURE_STARTER", "LIKELY_STARTER", "UNCERTAIN_STARTER", "ROTATION_OPTION", "BENCH_OPTION"]).optional(),
+  probabilityMethod: z.literal("HISTORICAL_PRIOR_WITH_ROLE_EVIDENCE_BLEND").optional(),
+  intervalMethod: z.literal("HEURISTIC_MODEL_UNCERTAINTY_BAND").optional(),
   source: z.enum(["current_role", "historical_role", "cohort_fallback"]),
   reasonCodes: stringArray
 }).strict().superRefine((forecast, context) => {
@@ -1316,24 +1338,78 @@ export const ProjectionUncertaintyReportSchema = z.object({
   warnings: stringArray
 }).strict();
 
-export const StructureSimulationReportSchema = z.object({
+const structureSimulationResult = z.object({
+  candidateId: z.string().min(1),
+  expectedPoints: z.number(),
+  p10: z.number(),
+  p50: z.number(),
+  p90: z.number(),
+  expectedRankUtility: z.number().nullable(),
+  objectiveScore: z.number(),
+  expectedPointsBreakdown: z.object({
+    startingXI: z.number(),
+    captainBonus: z.number(),
+    expectedAutosubs: z.number(),
+    viceCaptainFallback: z.number(),
+    total: z.number()
+  }).strict().optional()
+}).strict();
+
+const structureSimulationReportBase = {
   schemaVersion: z.literal(1),
   model: z.literal("shared-player-monte-carlo"),
-  modelVersion: z.literal("0.0.17"),
   mode: z.enum(["MAX_EXPECTED_POINTS", "MAX_EXPECTED_RANK", "MINI_LEAGUE_DEFEND", "MINI_LEAGUE_CHASE"]),
   seed: z.number().int().nonnegative(),
   sampleCount: z.number().int().positive(),
-  results: z.array(z.object({
-    candidateId: z.string().min(1),
-    expectedPoints: z.number(),
-    p10: z.number(),
-    p50: z.number(),
-    p90: z.number(),
-    expectedRankUtility: z.number().nullable(),
-    objectiveScore: z.number()
-  }).strict()).min(2),
+  results: z.array(structureSimulationResult).min(2),
   assumptions: stringArray,
   decisionPolicy: z.string().min(1)
+};
+
+export const StructureSimulationReportSchema = z.union([
+  z.object({ ...structureSimulationReportBase, modelVersion: z.literal("0.0.17") }).strict(),
+  z.object({
+    ...structureSimulationReportBase,
+    modelVersion: z.literal("0.0.18"),
+    objectiveDefinition: z.object({
+      captainDoubling: z.boolean(),
+      viceCaptainFallback: z.boolean(),
+      automaticSubstitutions: z.boolean(),
+      formationLegalityAfterSubstitutions: z.boolean(),
+      goalkeeperSubstitution: z.boolean(),
+      appearanceProbabilities: z.boolean(),
+      scoringVariance: z.boolean(),
+      correlatedMatchStates: z.boolean()
+    }).strict(),
+    searchScope: z.object({
+      generator: z.enum(["manual", "deterministic-branch-and-bound", "highs-milp-k-best"]),
+      exhaustive: z.boolean(),
+      deterministicSearchExhaustive: z.boolean().optional(),
+      legalSquadsEvaluatedDeterministically: z.number().int().nonnegative().optional(),
+      solutionsProvenOptimal: z.number().int().nonnegative().optional(),
+      playerUniverseSize: z.number().int().nonnegative(),
+      candidatesGenerated: z.number().int().positive(),
+      candidatesSimulated: z.number().int().positive()
+    }).strict()
+  }).strict()
+]);
+
+export const DecisionMarginReportSchema = z.object({
+  schemaVersion: z.literal(1),
+  modelVersion: z.literal("0.0.18"),
+  selectedCandidateId: z.string().min(1),
+  rivalCandidateId: z.string().min(1),
+  baseObjectiveMargin: z.number(),
+  perturbationStep: z.number().positive(),
+  margins: z.array(z.object({
+    playerId: z.number().int().positive(),
+    rivalCandidateId: z.string().min(1),
+    currentMean: z.number(),
+    breakEvenMean: z.number().nullable(),
+    margin: z.number().nonnegative().nullable(),
+    pointsPerMeanPoint: z.number(),
+    method: z.literal("COMMON_RANDOM_NUMBERS_FINITE_DIFFERENCE")
+  }).strict())
 }).strict();
 
 const squadUtilityVector = z.object({
@@ -1557,6 +1633,7 @@ export const OptimizationRequestSchema = z.object({
   scenarios: z.array(optimizationScenario).min(1),
   objective: z.enum(["role-adjusted-squad-utility", "concentration-penalized-squad-utility"]),
   concentrationPenalty: z.object({ weight: z.number().nonnegative() }).strict().optional(),
+  topCandidateLimit: z.number().int().min(1).max(1000).optional(),
   modelAssumptions: stringArray
 }).strict();
 
@@ -1593,13 +1670,18 @@ export const OptimizationProofSchema = z.object({
   requestId: z.string().min(1),
   scenarioId: z.string().min(1),
   horizon: optimizationHorizon,
-  algorithm: z.literal("deterministic-branch-and-bound"),
+  algorithm: z.enum(["deterministic-branch-and-bound", "highs-milp-k-best"]),
   exhaustive: z.literal(true),
-  nodesVisited: z.number().int().positive(),
+  nodesVisited: z.number().int().nonnegative(),
   branchesPruned: z.number().int().nonnegative(),
   feasibleSquads: z.number().int().nonnegative(),
   initialUpperBound: z.number(),
-  objectiveValue: z.number().nullable()
+  objectiveValue: z.number().nullable(),
+  candidatesRetained: z.number().int().nonnegative().optional(),
+  solutionsProvenOptimal: z.number().int().nonnegative().optional(),
+  frontierComplete: z.boolean().optional(),
+  solverRuns: z.number().int().nonnegative().optional(),
+  proofScope: z.literal("COMPLETE_LEGAL_SPACE_K_BEST").optional()
 }).strict();
 
 export const CounterfactualSetSchema = z.object({
@@ -1731,6 +1813,7 @@ export const ArtifactSchemas = {
   recommendation: RecommendationArtifactSchema,
   robustnessReport: RobustnessReportSchema,
   draftDeltaReport: DraftDeltaReportSchema,
+  decisionMarginReport: DecisionMarginReportSchema,
   riskReport: SquadRiskReportSchema,
   scenarioComparison: ScenarioComparisonSchema,
   setPieceReport: SetPieceReportSchema,

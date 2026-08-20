@@ -10,6 +10,7 @@
   "requestId": "gw1-structures",
   "gameweek": 1,
   "horizons": [1, 3, 6],
+  "topCandidateLimit": 100,
   "scenarios": [
     {
       "id": "player-included",
@@ -57,5 +58,9 @@ Constraints support:
 - premium-player and premium-defender price thresholds with counts
 - bench minimum or maximum cost and minimum role confidence
 - allowed formations
+
+The deterministic objective approximates full expected utility as role-adjusted starting-XI points, the best starter's captain bonus, and explicit bench reserve value. A local HiGHS mixed-integer model proves each next-best legal squad, adds an exclusion cut, and repeats until it has the configured top-N objective candidates. The optimization proof reports how many k-best solutions were proven optimal and retained.
+
+Pass the resulting counterfactual set to `pnpm simulate:frontier` for the second stage. The simulation report distinguishes exhaustive deterministic search from bounded probabilistic reranking, so explanations must say `among the N evaluated candidates` unless every legal candidate was simulated.
 
 The command writes the normalized request, candidate set, optimization proofs, complete-vector comparison, and Markdown comparison. These are tool evidence and candidate artifacts, not final recommendations.

@@ -258,7 +258,9 @@ export function variantRecommendation(gameweek = 1, replacedPlayerId?: number): 
       ownershipTreatment: "excluded",
       structureSimulationReportPath: "structure-simulation.json",
       rankSimulationReportPath: null,
-      projectionAdjustments: []
+      candidateSearch: { generator: "manual", exhaustive: false, playerUniverseSize: 100, candidatesGenerated: 6, candidatesSimulated: 6 },
+      projectionAdjustments: [],
+      projectionScenarioAdjustments: []
     },
     squadBefore: {
       players,
@@ -300,7 +302,7 @@ export function variantRecommendation(gameweek = 1, replacedPlayerId?: number): 
       explanation: "Evidence coverage supports medium confidence."
     },
     decisionAnalysis: {
-      summary: "Authored fixture variant with explicit comparisons.",
+      summary: "Among the 6 evaluated candidates, this authored fixture variant has the strongest objective score and explicit comparisons.",
       squadStructure: ["Balanced spending across the XI.", "Playable cover remains on the bench."],
       structureComparisons: [
         {

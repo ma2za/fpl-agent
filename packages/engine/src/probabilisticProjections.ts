@@ -136,6 +136,15 @@ function appearanceForecast(
     historicalRoleConfidence * 0.35 + currentConfidence * 0.45 + availabilityConfidence * 0.2
   );
   const startProbabilityUncertainty = clamp(0.02 + (1 - overallEvidenceConfidence) * 0.16, 0.02, 0.18);
+  const roleClass = conditionalStart >= 0.93
+    ? "SECURE_STARTER" as const
+    : conditionalStart >= 0.84
+      ? "LIKELY_STARTER" as const
+      : conditionalStart >= 0.65
+        ? "UNCERTAIN_STARTER" as const
+        : conditionalStart >= 0.4
+          ? "ROTATION_OPTION" as const
+          : "BENCH_OPTION" as const;
   const source = role?.currentEvidencePresent
     ? "current_role" as const
     : (player.minutes ?? 0) > 0
@@ -158,6 +167,9 @@ function appearanceForecast(
       lower: round(clamp(startProbability - startProbabilityUncertainty)),
       upper: round(clamp(startProbability + startProbabilityUncertainty))
     },
+    roleClass,
+    probabilityMethod: "HISTORICAL_PRIOR_WITH_ROLE_EVIDENCE_BLEND" as const,
+    intervalMethod: "HEURISTIC_MODEL_UNCERTAINTY_BAND" as const,
     source,
     reasonCodes: [
       source,

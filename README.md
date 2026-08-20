@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.17`
+Version: `0.0.18`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -147,9 +147,9 @@ For rendered-page capture, install the browser once with `corepack pnpm exec pla
 
 `pnpm squad:utility -- --gw {n}` writes role-adjusted squad utility, downside, bench-cost, formation-coverage, and exact expected automatic-substitution metrics for an authored recommendation. Use `--previous path/to/recommendation.json` to write the immediately preceding draft delta.
 
-`pnpm simulate:structures -- --input {file} --out {file}` compares complete candidate squads under shared player draws. Every result exposes expected points, p10, p50, p90, and the declared objective score. Expected-points mode excludes ownership entirely; rank-aware modes use field weights only through simulated competing scores. The report never selects a structure.
+`pnpm simulate:frontier -- --input {file} --out {file}` reranks a deterministic top-N candidate frontier with Monte Carlo simulation. It models shared Poisson match goals, team attack states, shared clean sheets, appearance states, formation-safe automatic substitutions, captain doubling, and vice-captain fallback. Every result exposes an additive expected-points decomposition, p10, p50, p90, the declared objective score, and the exact search scope. Add `sensitivityPlayerIds` to the request and `--margins-out {file}` to calculate the player-mean break-even points that flip the leading decision. Expected-points mode excludes ownership entirely; rank-aware modes use field weights only through simulated competing scores. The report never selects a structure.
 
-`pnpm counterfactuals -- --request {file}` independently optimizes every requested scenario for its GW1, GW1-GW3, and GW1-GW6 horizons. Requests support player inclusion and exclusion, budget, availability, club exposure, premium, premium-defence, bench-depth, and formation constraints. Outputs are neutral candidate, proof, Pareto, and comparison evidence and never select a final structure.
+`pnpm counterfactuals -- --request {file}` uses the local HiGHS mixed-integer solver to prove the exact k-best legal frontier for each requested scenario and GW1, GW1-GW3, or GW1-GW6 horizon. `topCandidateLimit` retains the best 1 to 1,000 deterministic approximations for probabilistic reranking. Requests support player inclusion and exclusion, budget, availability, club exposure, premium, premium-defence, bench-depth, and formation constraints. Outputs are neutral candidate, proof, Pareto, and comparison evidence and never select a final structure.
 
 See `docs/counterfactual-optimization.md` for the request format.
 

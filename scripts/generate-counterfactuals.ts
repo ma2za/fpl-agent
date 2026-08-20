@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
-  buildCounterfactualSet,
+  buildCounterfactualSetMilp,
   compareCounterfactuals,
   renderCounterfactualComparisonMarkdown,
   type OptimizationHorizon,
@@ -79,7 +79,7 @@ async function main() {
     readArtifactFile(path.join(directory, "probabilistic-projections.json"), ProbabilisticProjectionArraySchema) as Promise<ProbabilisticProjection[]>,
     readArtifactFile(path.join(directory, "fixture-horizon-report.json"), FixtureHorizonReportSchema)
   ]);
-  const set = CounterfactualSetSchema.parse(buildCounterfactualSet(
+  const set = CounterfactualSetSchema.parse(await buildCounterfactualSetMilp(
     request,
     optimizationPlayers(players, projections, fixtures)
   ));

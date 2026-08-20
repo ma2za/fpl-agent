@@ -3,6 +3,7 @@ import {
   buildCounterfactualSet,
   compareCounterfactuals,
   optimizeScenario,
+  optimizeScenarioMilp,
   type OptimizationPlayer,
   type OptimizationRequest,
   type OptimizationScenario
@@ -121,6 +122,40 @@ describe("exact counterfactual optimization", () => {
     expect(first.candidates.filter((candidate) => candidate.scenarioId === "player-2").every((candidate) => candidate.playerIds.includes(2))).toBe(true);
     expect(first.proofs.every((proof) => proof.nodesVisited > 0 && proof.initialUpperBound >= (proof.objectiveValue ?? 0))).toBe(true);
   });
+
+  it("retains a configurable deterministic top-N frontier for Monte Carlo reranking", () => {
+    const result = optimizeScenario({
+      requestId: "frontier",
+      scenario: baseScenario,
+      horizon: 1,
+      players: pool(),
+      topCandidateLimit: 25
+    });
+
+    expect(result.topCandidates).toHaveLength(25);
+    expect(result.proof.candidatesRetained).toBe(25);
+    expect(result.topCandidates.map((candidate) => candidate.metrics.objective)).toEqual(
+      [...result.topCandidates].map((candidate) => candidate.metrics.objective).sort((a, b) => b - a)
+    );
+    expect(new Set(result.topCandidates.map((candidate) => candidate.playerIds.join(","))).size).toBe(25);
+  }, 30_000);
+
+  it("uses MILP to prove an exact k-best legal frontier", async () => {
+    const players = smallPool();
+    const branchAndBound = optimizeScenario({ requestId: "milp", scenario: baseScenario, horizon: 1, players, topCandidateLimit: 5 });
+    const milp = await optimizeScenarioMilp({ requestId: "milp", scenario: baseScenario, horizon: 1, players, topCandidateLimit: 5 });
+
+    expect(milp.topCandidates).toHaveLength(5);
+    expect(milp.topCandidates.map((candidate) => candidate.metrics.objective)).toEqual(
+      branchAndBound.topCandidates.map((candidate) => candidate.metrics.objective)
+    );
+    expect(milp.proof).toMatchObject({
+      algorithm: "highs-milp-k-best",
+      exhaustive: true,
+      candidatesRetained: 5,
+      solutionsProvenOptimal: 5
+    });
+  }, 30_000);
 
   it("enforces structural constraints and preserves conflicting Pareto candidates", () => {
     const players = pool();

@@ -181,6 +181,13 @@ export type OptimizationPolicy = {
   ownershipTreatment: "excluded" | "simulated_field_distribution";
   structureSimulationReportPath: string;
   rankSimulationReportPath: string | null;
+  candidateSearch?: {
+    generator: "manual" | "deterministic-branch-and-bound" | "highs-milp-k-best";
+    exhaustive: boolean;
+    playerUniverseSize: number;
+    candidatesGenerated: number;
+    candidatesSimulated: number;
+  };
   projectionAdjustments: Array<{
     playerId: number;
     baseProjection: number;
@@ -192,6 +199,18 @@ export type OptimizationPolicy = {
       standardDeviation: number;
       evidenceIds: string[];
       translationModel: string | null;
+    }>;
+  }>;
+  projectionScenarioAdjustments?: Array<{
+    playerId: number;
+    featureId: string;
+    probabilityMethod: "EVIDENCE_CONDITIONED_AUTHORED_PRIOR" | "EMPIRICALLY_CALIBRATED_SCENARIO_MODEL";
+    scenarios: Array<{
+      scenarioId: string;
+      probability: number;
+      projectedPoints: number;
+      standardDeviation: number;
+      evidenceIds: string[];
     }>;
   }>;
 };

@@ -52,6 +52,9 @@ describe("probabilistic projections", () => {
     );
     expect(appearance.startProbabilityInterval!.lower).toBeLessThan(appearance.startProbability);
     expect(appearance.startProbabilityInterval!.upper).toBeGreaterThan(appearance.startProbability);
+    expect(appearance.roleClass).toBe("LIKELY_STARTER");
+    expect(appearance.probabilityMethod).toBe("HISTORICAL_PRIOR_WITH_ROLE_EVIDENCE_BLEND");
+    expect(appearance.intervalMethod).toBe("HEURISTIC_MODEL_UNCERTAINTY_BAND");
   });
 
   it("is deterministic for identical evidence and seed", () => {

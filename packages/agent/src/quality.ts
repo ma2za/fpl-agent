@@ -146,6 +146,11 @@ function decisionAnalysisErrors(recommendation: WeeklyRecommendation) {
     if (!rankMode && (policy.ownershipTreatment !== "excluded" || policy.rankSimulationReportPath !== null)) {
       errors.push("MAX_EXPECTED_POINTS must exclude ownership and rank effects.");
     }
+    if (!policy.candidateSearch) {
+      errors.push("Optimization policy must disclose its candidate-search scope.");
+    } else if (policy.candidateSearch.candidatesSimulated > policy.candidateSearch.candidatesGenerated) {
+      errors.push("Candidate search cannot simulate more unique candidates than it generated.");
+    }
     for (const adjustment of policy.projectionAdjustments) {
       const featureIds = adjustment.features.map((feature) => feature.featureId);
       const expected = adjustment.baseProjection + adjustment.features.reduce((sum, feature) => sum + feature.pointsDelta, 0);
@@ -153,6 +158,16 @@ function decisionAnalysisErrors(recommendation: WeeklyRecommendation) {
         adjustment.features.some((feature) => feature.evidenceIds.length === 0) ||
         adjustment.features.some((feature) => ["preseason_output", "lower_league_output"].includes(feature.sourceKind) && !hasText(feature.translationModel))) {
         errors.push(`Projection adjustment for player ${adjustment.playerId} must be quantified, feature-unique, and evidence-backed.`);
+      }
+      if (adjustment.features.some((feature) => /transfer|availability/i.test(feature.featureId))) {
+        errors.push(`Transfer or availability uncertainty for player ${adjustment.playerId} must use an evidenced scenario tree, not a direct mean adjustment.`);
+      }
+    }
+    for (const adjustment of policy.projectionScenarioAdjustments ?? []) {
+      const probability = adjustment.scenarios.reduce((sum, scenario) => sum + scenario.probability, 0);
+      if (Math.abs(probability - 1) > 0.001 || new Set(adjustment.scenarios.map((scenario) => scenario.scenarioId)).size !== adjustment.scenarios.length ||
+        adjustment.scenarios.some((scenario) => scenario.evidenceIds.length === 0)) {
+        errors.push(`Projection scenario adjustment for player ${adjustment.playerId} must be normalized, outcome-unique, and evidence-backed.`);
       }
     }
   }
@@ -187,6 +202,15 @@ function decisionAnalysisErrors(recommendation: WeeklyRecommendation) {
 
   if (!hasText(analysis.summary)) {
     errors.push("Decision analysis summary is required.");
+  }
+  if (policy?.candidateSearch && !policy.candidateSearch.exhaustive) {
+    const boundedScope = new RegExp(`\\bamong\\b[^.]{0,100}\\b${policy.candidateSearch.candidatesSimulated}\\b[^.]{0,60}\\b(?:evaluated|simulated|tested)\\b`, "i");
+    if (!boundedScope.test(analysis.summary)) {
+      errors.push(`A non-exhaustive recommendation must say it was selected among the ${policy.candidateSearch.candidatesSimulated} evaluated candidates.`);
+    }
+    if (/\b(?:globally optimal|global optimum|all legal squads|entire legal search space)\b/i.test(allDecisionReasons.join(" "))) {
+      errors.push("A non-exhaustive candidate search must not claim global optimality.");
+    }
   }
 
   if (analysis.squadStructure.length < 2 || analysis.squadStructure.some((item) => !hasText(item))) {

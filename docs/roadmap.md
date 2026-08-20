@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present through `0.0.17` and the dependency-ordered plan through `0.0.18`.
+This document records the capabilities present through `0.0.18` and the dependency-ordered plan through `0.0.19`.
 
 ## Permanent Decision Boundary
 
@@ -12,7 +12,7 @@ This document records the capabilities present through `0.0.17` and the dependen
 - Tool-produced evidence and candidate artifacts must remain structurally separate from agent-authored decision artifacts.
 - Verification may reject illegal or unsupported decisions, but it must never replace them or choose an alternative.
 
-## Current State: 0.0.17
+## Current State: 0.0.18
 
 ### Workspace
 
@@ -537,7 +537,22 @@ Release gate:
 - Test rationale rejection for club coverage, unsupported ownership, and unquantified model overrides.
 - Verify that structure simulation never writes a selected candidate or recommendation.
 
-### 0.0.18: Performance Outcomes, Calibration, and Postmortems
+### 0.0.18: Search Frontier, Correlated Simulation, and Decision Margins
+
+Replace small hand-authored candidate comparisons with a deterministic top-N legal-squad frontier and make the probabilistic objective auditable.
+
+Delivered:
+
+- Exact local HiGHS mixed-integer k-best search with configurable retention of the top 1 to 1,000 legal squads.
+- Monte Carlo reranking of the retained frontier with explicit search-scope metadata.
+- Expected-points decomposition into starting XI, captain bonus, automatic substitutions, and vice-captain fallback.
+- Shared Poisson match goals, team attacking states, and clean-sheet outcomes for correlation-aware structure distributions.
+- Explicit role classes and honest labels for heuristic model-uncertainty intervals.
+- Evidence-backed scenario mixtures for transfer and availability uncertainty, labeled as authored priors or empirically calibrated models.
+- Common-random-number break-even sensitivity against the nearest rival candidate.
+- Quality rejection of global-optimum language when probabilistic reranking covers only a bounded frontier.
+
+### 0.0.19: Performance Outcomes, Calibration, and Postmortems
 
 Measure whether evidence, forecasts, candidate generation, and agent decisions improve without learning incorrectly from outcomes.
 
@@ -574,7 +589,8 @@ Release gate:
 | `0.0.15` | counterfactual sets | Treat independent-player totals as baseline-only and disclose missing covariance | Concentration scenarios and shared-assumption risk |
 | `0.0.16` | probabilities, scenarios, candidate requests, and public all-player inputs | Create the SQLite store additively; keep existing JSON readable; convert prose conditions to draft triggers; warn on dossier gaps | Longitudinal player dossiers, evaluated readiness, and trigger states |
 | `0.0.17` | probabilistic projections, squad utility, counterfactuals, and typed evidence | Keep existing artifacts readable; require explicit objectives only on newly verified decisions | Quantified projection adjustments and probabilistic structure comparisons |
-| `0.0.18` | frozen outputs and longitudinal performance from all prior releases | Archive schema and model versions with every decision state; append corrections as revisions | Calibration and attributable postmortems |
+| `0.0.18` | explicit objectives and probabilistic structure comparisons | Preserve `0.0.17` simulation reports; require bounded-search language on newly verified decisions | Top-N frontier, correlated outcomes, EV decomposition, and decision margins |
+| `0.0.19` | frozen outputs and longitudinal performance from all prior releases | Archive schema and model versions with every decision state; append corrections as revisions | Calibration and attributable postmortems |
 
 Implementation order is strict where the downstream calculation would otherwise manufacture precision. In particular:
 
@@ -652,7 +668,7 @@ Enforcement rules:
 - Agent prompts require legal full-squad counterfactuals for major structural choices.
 - Phase-aware validation rejects risks and rationales that are impossible in the current competition state.
 - A local report cannot count as a root source when evaluating source independence.
-- Artifact v1 and v2 remain readable through `0.0.18`; new claim-ledger writes use v3 after `0.0.10`.
+- Artifact v1 and v2 remain readable through `0.0.19`; new claim-ledger writes use v3 after `0.0.10`.
 
 ## Epistemic Contract
 

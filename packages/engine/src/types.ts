@@ -45,6 +45,9 @@ export type AppearanceStateForecast = {
   evidenceUncertainty: number;
   startProbabilityUncertainty?: number;
   startProbabilityInterval?: { lower: number; upper: number };
+  roleClass?: "SECURE_STARTER" | "LIKELY_STARTER" | "UNCERTAIN_STARTER" | "ROTATION_OPTION" | "BENCH_OPTION";
+  probabilityMethod?: "HISTORICAL_PRIOR_WITH_ROLE_EVIDENCE_BLEND";
+  intervalMethod?: "HEURISTIC_MODEL_UNCERTAINTY_BAND";
   source: "current_role" | "historical_role" | "cohort_fallback";
   reasonCodes: string[];
 };
@@ -58,6 +61,20 @@ export type ProjectionFeatureAdjustment = {
   standardDeviation: number;
   evidenceIds: string[];
   translationModel: string | null;
+};
+
+export type ProjectionScenario = {
+  scenarioId: string;
+  probability: number;
+  projectedPoints: number;
+  standardDeviation: number;
+  evidenceIds: string[];
+};
+
+export type ProjectionScenarioAdjustment = {
+  featureId: string;
+  probabilityMethod: "EVIDENCE_CONDITIONED_AUTHORED_PRIOR" | "EMPIRICALLY_CALIBRATED_SCENARIO_MODEL";
+  scenarios: ProjectionScenario[];
 };
 
 export type AdjustedProjection = {
@@ -84,6 +101,18 @@ export type StructureSimulationPlayerDistribution = {
   position?: PlayerForEngine["position"];
   teamId?: number;
   price?: number;
+  fixtureId?: number;
+  opponentTeamId?: number;
+};
+
+export type StructureSimulationFixtureDistribution = {
+  fixtureId: number;
+  homeTeamId: number;
+  awayTeamId: number;
+  homeExpectedGoals: number;
+  awayExpectedGoals: number;
+  model: "INDEPENDENT_POISSON_FROM_EXPECTED_GOALS";
+  evidenceIds: string[];
 };
 
 export type StructureSimulationFieldCandidate = StructureSimulationCandidate & { weight: number };
@@ -91,7 +120,7 @@ export type StructureSimulationFieldCandidate = StructureSimulationCandidate & {
 export type StructureSimulationReport = {
   schemaVersion: 1;
   model: "shared-player-monte-carlo";
-  modelVersion: "0.0.17";
+  modelVersion: "0.0.17" | "0.0.18";
   mode: OptimizationMode;
   seed: number;
   sampleCount: number;
@@ -103,9 +132,56 @@ export type StructureSimulationReport = {
     p90: number;
     expectedRankUtility: number | null;
     objectiveScore: number;
+    expectedPointsBreakdown?: {
+      startingXI: number;
+      captainBonus: number;
+      expectedAutosubs: number;
+      viceCaptainFallback: number;
+      total: number;
+    };
   }>;
+  objectiveDefinition?: {
+    captainDoubling: boolean;
+    viceCaptainFallback: boolean;
+    automaticSubstitutions: boolean;
+    formationLegalityAfterSubstitutions: boolean;
+    goalkeeperSubstitution: boolean;
+    appearanceProbabilities: boolean;
+    scoringVariance: boolean;
+    correlatedMatchStates: boolean;
+  };
+  searchScope?: {
+    generator: "manual" | "deterministic-branch-and-bound" | "highs-milp-k-best";
+    exhaustive: boolean;
+    deterministicSearchExhaustive?: boolean;
+    legalSquadsEvaluatedDeterministically?: number;
+    solutionsProvenOptimal?: number;
+    playerUniverseSize: number;
+    candidatesGenerated: number;
+    candidatesSimulated: number;
+  };
   assumptions: string[];
   decisionPolicy: string;
+};
+
+export type DecisionMargin = {
+  playerId: number;
+  rivalCandidateId: string;
+  currentMean: number;
+  breakEvenMean: number | null;
+  margin: number | null;
+  pointsPerMeanPoint: number;
+  method: "COMMON_RANDOM_NUMBERS_FINITE_DIFFERENCE";
+};
+
+export type DecisionMarginReport = {
+  schemaVersion: 1;
+  modelVersion: "0.0.18";
+  selectedCandidateId: string;
+  rivalCandidateId: string;
+  baseObjectiveMargin: number;
+  perturbationStep: number;
+  margins: DecisionMargin[];
 };
 
 export type MinutesDistribution = {
