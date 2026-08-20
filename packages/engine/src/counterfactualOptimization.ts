@@ -1,5 +1,5 @@
 import { REQUIRED_SQUAD_COUNTS, VALID_FORMATIONS, type Position } from "../../rules/src";
-import type { PlayerForEngine } from "./types";
+import type { PlayerForEngine, ProjectionScenarioAdjustment } from "./types";
 import highsLoader from "highs";
 
 export type OptimizationHorizon = 1 | 3 | 6;
@@ -45,6 +45,7 @@ export type OptimizationRequest = {
   scenarios: OptimizationScenario[];
   objective: "role-adjusted-squad-utility" | "concentration-penalized-squad-utility";
   concentrationPenalty?: { weight: number };
+  projectionScenarioAdjustments?: Array<ProjectionScenarioAdjustment & { playerId: number }>;
   modelAssumptions: string[];
   topCandidateLimit?: number;
 };

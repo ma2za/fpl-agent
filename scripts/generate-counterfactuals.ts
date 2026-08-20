@@ -1,8 +1,10 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import {
   buildCounterfactualSetMilp,
   compareCounterfactuals,
+  applyProjectionScenarioAdjustment,
   renderCounterfactualComparisonMarkdown,
   type OptimizationHorizon,
   type OptimizationPlayer,
@@ -42,22 +44,25 @@ function fixtureFactor(report: FixtureHorizonReport, player: PlayerForEngine, ho
   return difficulty == null ? 1 : Math.max(0.75, Math.min(1.25, 1 + (3 - difficulty) * 0.08));
 }
 
-function optimizationPlayers(
+export function optimizationPlayers(
   players: PlayerForEngine[],
   projections: ProbabilisticProjection[],
-  fixtures: FixtureHorizonReport
+  fixtures: FixtureHorizonReport,
+  request: OptimizationRequest
 ) {
   const playerById = new Map(players.map((player) => [player.id, player]));
   return projections.flatMap((projection) => {
     const player = playerById.get(projection.playerId);
     if (!player) return [];
+    const scenarioAdjustment = request.projectionScenarioAdjustments?.find((item) => item.playerId === projection.playerId);
+    const adjusted = scenarioAdjustment ? applyProjectionScenarioAdjustment(scenarioAdjustment) : null;
     const horizons = Object.fromEntries(([1, 3, 6] as const).map((horizon) => {
       const multiplier = fixtureFactor(fixtures, player, horizon) * horizon;
       return [horizon, {
         rawProjection: projection.rawProjectionIfStarting * multiplier,
-        roleAdjustedProjection: projection.roleAdjustedProjection * multiplier,
-        downside: projection.p10 * multiplier,
-        benchValue: projection.roleAdjustedProjection * multiplier * 0.1,
+        roleAdjustedProjection: (adjusted?.mean ?? projection.roleAdjustedProjection) * multiplier,
+        downside: (adjusted ? adjusted.mean - 1.28155 * adjusted.standardDeviation : projection.p10) * multiplier,
+        benchValue: (adjusted?.mean ?? projection.roleAdjustedProjection) * multiplier * 0.1,
         roleConfidence: projection.appearance.overallEvidenceConfidence
       }];
     })) as OptimizationPlayer["horizons"];
@@ -81,7 +86,7 @@ async function main() {
   ]);
   const set = CounterfactualSetSchema.parse(await buildCounterfactualSetMilp(
     request,
-    optimizationPlayers(players, projections, fixtures)
+    optimizationPlayers(players, projections, fixtures, request)
   ));
   const comparison = CounterfactualComparisonSchema.parse(compareCounterfactuals(request.generatedAt, set.candidates));
   const outputDir = argValue("--out") ?? path.join(directory, "counterfactuals", request.requestId);
@@ -95,7 +100,9 @@ async function main() {
   console.log(`Wrote independently optimized counterfactual evidence to ${outputDir}`);
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}

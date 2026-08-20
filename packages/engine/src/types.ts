@@ -112,6 +112,8 @@ export type StructureSimulationFixtureDistribution = {
   homeExpectedGoals: number;
   awayExpectedGoals: number;
   model: "INDEPENDENT_POISSON_FROM_EXPECTED_GOALS";
+  expectedGoalsMethod: "FPL_OVERALL_STRENGTH_HEURISTIC_V1" | "MARKET_IMPLIED_EXPECTED_GOALS";
+  confidence: "low" | "medium" | "high";
   evidenceIds: string[];
 };
 

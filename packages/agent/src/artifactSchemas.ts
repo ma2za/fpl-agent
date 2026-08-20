@@ -1633,6 +1633,18 @@ export const OptimizationRequestSchema = z.object({
   scenarios: z.array(optimizationScenario).min(1),
   objective: z.enum(["role-adjusted-squad-utility", "concentration-penalized-squad-utility"]),
   concentrationPenalty: z.object({ weight: z.number().nonnegative() }).strict().optional(),
+  projectionScenarioAdjustments: z.array(z.object({
+    playerId: z.number().int().positive(),
+    featureId: z.string().min(1),
+    probabilityMethod: z.enum(["EVIDENCE_CONDITIONED_AUTHORED_PRIOR", "EMPIRICALLY_CALIBRATED_SCENARIO_MODEL"]),
+    scenarios: z.array(z.object({
+      scenarioId: z.string().min(1),
+      probability: z.number().min(0).max(1),
+      projectedPoints: z.number(),
+      standardDeviation: z.number().nonnegative(),
+      evidenceIds: stringArray
+    }).strict()).min(2)
+  }).strict()).optional(),
   topCandidateLimit: z.number().int().min(1).max(1000).optional(),
   modelAssumptions: stringArray
 }).strict();

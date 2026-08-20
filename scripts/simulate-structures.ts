@@ -12,8 +12,20 @@ async function main() {
   const inputPath = argValue("--input");
   const outputPath = argValue("--out");
   const marginsOutputPath = argValue("--margins-out");
-  if (!inputPath || !outputPath) throw new Error("Usage: pnpm simulate:structures -- --input <request.json> --out <report.json>");
+  const marginsOnly = process.argv.includes("--margins-only");
+  if (!inputPath || (!outputPath && !marginsOnly)) {
+    throw new Error("Usage: pnpm simulate:structures -- --input <request.json> --out <report.json> [--margins-out <report.json>] [--margins-only]");
+  }
   const request = JSON.parse(await readFile(inputPath, "utf8"));
+  const counterfactualSet = request.counterfactualSetPath
+    ? JSON.parse(await readFile(request.counterfactualSetPath, "utf8"))
+    : null;
+  if (!request.projectionScenarioAdjustments && counterfactualSet?.request?.projectionScenarioAdjustments) {
+    request.projectionScenarioAdjustments = counterfactualSet.request.projectionScenarioAdjustments;
+  }
+  if (!request.fixtureDistributions && request.fixtureDistributionPath) {
+    request.fixtureDistributions = JSON.parse(await readFile(request.fixtureDistributionPath, "utf8"));
+  }
   if ((request.sensitivityPlayerIds?.length ?? 0) > 0 && !marginsOutputPath) {
     throw new Error("Requests with sensitivityPlayerIds require --margins-out <report.json>.");
   }
@@ -65,8 +77,8 @@ async function main() {
   }
   let candidates = request.candidates;
   let searchScope = request.searchScope;
-  if (request.counterfactualSetPath) {
-    const set = JSON.parse(await readFile(request.counterfactualSetPath, "utf8"));
+  if (counterfactualSet) {
+    const set = counterfactualSet;
     const horizon = request.horizon ?? 1;
     const maximumCandidates = request.maximumCandidates ?? 100;
     const unique = new Map<string, any>();
@@ -105,9 +117,11 @@ async function main() {
       candidatesSimulated: candidates.length
     };
   }
-  const report = simulateStructures({ ...request, candidates, playerDistributions, searchScope });
-  await mkdir(path.dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+  const report = marginsOnly ? null : simulateStructures({ ...request, candidates, playerDistributions, searchScope });
+  if (report && outputPath) {
+    await mkdir(path.dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+  }
   if ((request.sensitivityPlayerIds?.length ?? 0) > 0) {
     const marginReport = analyzeDecisionMargins({
       mode: "MAX_EXPECTED_POINTS",
@@ -116,13 +130,14 @@ async function main() {
       fixtureDistributions: request.fixtureDistributions,
       playerIds: request.sensitivityPlayerIds,
       seed: request.seed,
-      sampleCount: request.sampleCount,
+      sampleCount: request.sensitivitySampleCount ?? request.sampleCount,
       perturbationStep: request.perturbationStep
     });
     await mkdir(path.dirname(marginsOutputPath!), { recursive: true });
     await writeFile(marginsOutputPath!, `${JSON.stringify(marginReport, null, 2)}\n`, "utf8");
   }
-  console.log(`Wrote ${outputPath}: ${report.results.length} structures, ${report.sampleCount} shared samples, ${report.mode}.`);
+  if (report) console.log(`Wrote ${outputPath}: ${report.results.length} structures, ${report.sampleCount} shared samples, ${report.mode}.`);
+  else console.log(`Wrote decision margins to ${marginsOutputPath}.`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -125,7 +125,9 @@ export function simulateStructures(input: {
   if (fixtures.size !== (input.fixtureDistributions ?? []).length || (input.fixtureDistributions ?? []).some((fixture) =>
     fixture.homeTeamId === fixture.awayTeamId || fixture.homeExpectedGoals < 0 || fixture.awayExpectedGoals < 0 ||
     !Number.isFinite(fixture.homeExpectedGoals) || !Number.isFinite(fixture.awayExpectedGoals) ||
-    fixture.model !== "INDEPENDENT_POISSON_FROM_EXPECTED_GOALS" || fixture.evidenceIds.length === 0)) {
+    fixture.model !== "INDEPENDENT_POISSON_FROM_EXPECTED_GOALS" || fixture.evidenceIds.length === 0 ||
+    !["FPL_OVERALL_STRENGTH_HEURISTIC_V1", "MARKET_IMPLIED_EXPECTED_GOALS"].includes(fixture.expectedGoalsMethod) ||
+    !["low", "medium", "high"].includes(fixture.confidence))) {
     throw new Error("Fixture distributions must be unique, evidenced Poisson expected-goals inputs.");
   }
   const allCandidates = [...input.candidates, ...(input.fieldCandidates ?? [])];

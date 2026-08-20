@@ -122,6 +122,15 @@ describe("artifact schemas", () => {
       horizons: [1, 3, 6],
       scenarios: [{ id: "baseline", label: "Baseline", constraints: { budget: 100 } }],
       objective: "role-adjusted-squad-utility",
+      projectionScenarioAdjustments: [{
+        playerId: 1,
+        featureId: "transfer-availability",
+        probabilityMethod: "EVIDENCE_CONDITIONED_AUTHORED_PRIOR",
+        scenarios: [
+          { scenarioId: "available", probability: 0.8, projectedPoints: 5, standardDeviation: 2, evidenceIds: ["obs:1"] },
+          { scenarioId: "unavailable", probability: 0.2, projectedPoints: 0, standardDeviation: 0, evidenceIds: ["obs:2"] }
+        ]
+      }],
       modelAssumptions: ["Independent horizon inputs."]
     };
     const candidate = {
@@ -148,6 +157,7 @@ describe("artifact schemas", () => {
     };
 
     expect(OptimizationRequestSchema.parse(request).requestId).toBe("gw1-structures");
+    expect(OptimizationRequestSchema.parse(request).projectionScenarioAdjustments?.[0]?.playerId).toBe(1);
     expect(SquadCandidateSchema.parse(candidate).candidateId).toContain("baseline");
     expect(AgentDecisionArtifactSchema.safeParse(request).success).toBe(false);
     expect(AgentDecisionArtifactSchema.safeParse(candidate).success).toBe(false);

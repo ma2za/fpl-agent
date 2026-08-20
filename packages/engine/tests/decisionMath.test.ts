@@ -174,9 +174,9 @@ describe("decision mathematics", () => {
         { candidateId: "split-defence", playerIds: [3, 4], captainPlayerId: null }
       ],
       fixtureDistributions: [
-        { fixtureId: 1, homeTeamId: 1, awayTeamId: 2, homeExpectedGoals: 1.5, awayExpectedGoals: 1, model: "INDEPENDENT_POISSON_FROM_EXPECTED_GOALS", evidenceIds: ["odds:1"] },
-        { fixtureId: 2, homeTeamId: 3, awayTeamId: 4, homeExpectedGoals: 1.5, awayExpectedGoals: 1, model: "INDEPENDENT_POISSON_FROM_EXPECTED_GOALS", evidenceIds: ["odds:2"] },
-        { fixtureId: 3, homeTeamId: 5, awayTeamId: 6, homeExpectedGoals: 1.5, awayExpectedGoals: 1, model: "INDEPENDENT_POISSON_FROM_EXPECTED_GOALS", evidenceIds: ["odds:3"] }
+        { fixtureId: 1, homeTeamId: 1, awayTeamId: 2, homeExpectedGoals: 1.5, awayExpectedGoals: 1, model: "INDEPENDENT_POISSON_FROM_EXPECTED_GOALS", expectedGoalsMethod: "MARKET_IMPLIED_EXPECTED_GOALS", confidence: "high", evidenceIds: ["odds:1"] },
+        { fixtureId: 2, homeTeamId: 3, awayTeamId: 4, homeExpectedGoals: 1.5, awayExpectedGoals: 1, model: "INDEPENDENT_POISSON_FROM_EXPECTED_GOALS", expectedGoalsMethod: "MARKET_IMPLIED_EXPECTED_GOALS", confidence: "high", evidenceIds: ["odds:2"] },
+        { fixtureId: 3, homeTeamId: 5, awayTeamId: 6, homeExpectedGoals: 1.5, awayExpectedGoals: 1, model: "INDEPENDENT_POISSON_FROM_EXPECTED_GOALS", expectedGoalsMethod: "MARKET_IMPLIED_EXPECTED_GOALS", confidence: "high", evidenceIds: ["odds:3"] }
       ],
       playerDistributions: [1, 2, 3, 4].map((playerId) => ({
         playerId,
