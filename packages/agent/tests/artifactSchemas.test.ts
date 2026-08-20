@@ -18,6 +18,7 @@ import {
   ScenarioComparisonSchema,
   SharedAssumptionGraphSchema,
   SquadCandidateSchema,
+  StructureSimulationReportSchema,
   ToolEvidenceArtifactSchema,
   WeeklyStrategySchema,
   canonicalArtifactJson,
@@ -246,11 +247,30 @@ describe("artifact schemas", () => {
       "sharedAssumptionGraph",
       "squadCandidate",
       "strategyEvidence",
+      "structureSimulationReport",
       "teamNewsReport",
       "toolEvidence",
       "variantComparison",
       "weeklyStrategy"
     ]);
+  });
+
+  it("validates neutral structure simulation reports", () => {
+    const report = {
+      schemaVersion: 1,
+      model: "shared-player-monte-carlo",
+      modelVersion: "0.0.17",
+      mode: "MAX_EXPECTED_POINTS",
+      seed: 17,
+      sampleCount: 1_000,
+      results: [
+        { candidateId: "a", expectedPoints: 60, p10: 45, p50: 60, p90: 75, expectedRankUtility: null, objectiveScore: 60 },
+        { candidateId: "b", expectedPoints: 59, p10: 44, p50: 59, p90: 74, expectedRankUtility: null, objectiveScore: 59 }
+      ],
+      assumptions: ["Ownership is excluded from the objective."],
+      decisionPolicy: "No candidate is selected."
+    } as const;
+    expect(StructureSimulationReportSchema.parse(report)).toEqual(report);
   });
 });
 

@@ -401,6 +401,27 @@ const materialRiskPolicy = looseObject({
   }))
 });
 
+const optimizationPolicy = looseObject({
+  mode: z.enum(["MAX_EXPECTED_POINTS", "MAX_EXPECTED_RANK", "MINI_LEAGUE_DEFEND", "MINI_LEAGUE_CHASE"]),
+  horizon: z.enum(["GW1", "GW1-3", "GW1-5", "GW1-6", "season"]),
+  ownershipTreatment: z.enum(["excluded", "simulated_field_distribution"]),
+  structureSimulationReportPath: z.string().min(1),
+  rankSimulationReportPath: z.string().nullable(),
+  projectionAdjustments: z.array(looseObject({
+    playerId: z.number(),
+    baseProjection: z.number(),
+    adjustedProjection: z.number(),
+    features: z.array(looseObject({
+      featureId: z.string().min(1),
+      sourceKind: z.enum(["current_role", "set_piece", "preseason_lineup", "preseason_output", "lower_league_output", "manual_model_input"]),
+      pointsDelta: z.number(),
+      standardDeviation: z.number().nonnegative(),
+      evidenceIds: stringArray,
+      translationModel: z.string().nullable()
+    }))
+  }))
+});
+
 const recommendationFields = {
   schemaVersion,
   gameweek: z.number(),
@@ -413,6 +434,7 @@ const recommendationFields = {
   canonicalState: canonicalDecisionState.optional(),
   factualClaims: z.array(factualClaim).optional(),
   materialRiskPolicy: materialRiskPolicy.optional(),
+  optimizationPolicy: optimizationPolicy.optional(),
   squadBefore: looseObject({
     players: z.array(playerForRules),
     bank: z.number(),
@@ -1212,6 +1234,11 @@ const appearanceStateForecast = z.object({
   availabilityConfidence: z.number().min(0).max(1),
   overallEvidenceConfidence: z.number().min(0).max(1),
   evidenceUncertainty: z.number().min(0).max(1),
+  startProbabilityUncertainty: z.number().min(0).max(1).optional(),
+  startProbabilityInterval: z.object({
+    lower: z.number().min(0).max(1),
+    upper: z.number().min(0).max(1)
+  }).strict().optional(),
   source: z.enum(["current_role", "historical_role", "cohort_fallback"]),
   reasonCodes: stringArray
 }).strict().superRefine((forecast, context) => {
@@ -1249,6 +1276,11 @@ const probabilisticProjection = z.object({
   projectionStandardDeviation: z.number().nonnegative(),
   footballOutcomeVariance: z.number().nonnegative(),
   evidenceUncertainty: z.number().min(0).max(1),
+  featureInputs: z.array(z.object({
+    featureId: z.string().min(1),
+    value: z.union([z.number(), z.string(), z.boolean()]),
+    evidenceIds: stringArray
+  }).strict()).optional(),
   model: z.literal("appearance-state-mixture"),
   modelVersion: z.literal("0.0.12"),
   inputs: z.object({
@@ -1282,6 +1314,26 @@ export const ProjectionUncertaintyReportSchema = z.object({
   sampleCount: z.number().int().positive(),
   items: ProbabilisticProjectionArraySchema,
   warnings: stringArray
+}).strict();
+
+export const StructureSimulationReportSchema = z.object({
+  schemaVersion: z.literal(1),
+  model: z.literal("shared-player-monte-carlo"),
+  modelVersion: z.literal("0.0.17"),
+  mode: z.enum(["MAX_EXPECTED_POINTS", "MAX_EXPECTED_RANK", "MINI_LEAGUE_DEFEND", "MINI_LEAGUE_CHASE"]),
+  seed: z.number().int().nonnegative(),
+  sampleCount: z.number().int().positive(),
+  results: z.array(z.object({
+    candidateId: z.string().min(1),
+    expectedPoints: z.number(),
+    p10: z.number(),
+    p50: z.number(),
+    p90: z.number(),
+    expectedRankUtility: z.number().nullable(),
+    objectiveScore: z.number()
+  }).strict()).min(2),
+  assumptions: stringArray,
+  decisionPolicy: z.string().min(1)
 }).strict();
 
 const squadUtilityVector = z.object({
@@ -1684,6 +1736,7 @@ export const ArtifactSchemas = {
   setPieceReport: SetPieceReportSchema,
   sharedAssumptionGraph: SharedAssumptionGraphSchema,
   squadCandidate: SquadCandidateSchema,
+  structureSimulationReport: StructureSimulationReportSchema,
   strategyEvidence: StrategyEvidenceSchema,
   teamNewsReport: TeamNewsReportSchema,
   toolEvidence: ToolEvidenceArtifactSchema,

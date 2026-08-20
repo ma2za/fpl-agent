@@ -50,6 +50,8 @@ describe("probabilistic projections", () => {
       appearance.startProbability + appearance.subAppearanceProbability,
       3
     );
+    expect(appearance.startProbabilityInterval!.lower).toBeLessThan(appearance.startProbability);
+    expect(appearance.startProbabilityInterval!.upper).toBeGreaterThan(appearance.startProbability);
   });
 
   it("is deterministic for identical evidence and seed", () => {

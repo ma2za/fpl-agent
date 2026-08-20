@@ -266,7 +266,7 @@ The coding agent must read the evidence files, reason from current public inform
 - Confirm whether official 2026/27 FPL data is live.
 - Confirm player prices, positions, clubs, availability, and GW1 fixtures from current sources.
 - Run player:dossier for every player considered for the selected 15 and inspect stored official history, news, role evidence, coverage, disagreements, and unresolved gaps before selecting them.
-- Treat missing or non-READY selected-player dossiers as visible 0.0.16 warnings and use the provisional decision workspace when present.
+- Treat missing selected-player research coverage as blocking and use the provisional decision workspace when present; keep other non-READY dossier reasons visible.
 - Use at least four distinct public publishers, including at least two official primary sources, before treating the recommendation as final.
 - Open the current public pages and use specific claims from them; configured or captured pages that do not inform a decision do not count.
 - Tie direct public URLs and retrieval times to squad structure, availability or expected minutes, captaincy, and deadline-dependent changes.
@@ -282,6 +282,10 @@ The coding agent must read the evidence files, reason from current public inform
 - Build one immutable evidenceSnapshot and reference its snapshotId from every observation, forecast, DecisionEvaluation, canonical state, and factual claim.
 - Add canonical DecisionEvaluation records for squad, structure, starting XI, bench order, captaincy, transfers, and chip selection.
 - Select the highest eligible objectiveScore. Discretionary overrides are invalid, including when prose preferences contradict raw expected points.
+- Declare optimizationPolicy explicitly. MAX_EXPECTED_POINTS excludes ownership; rank-aware modes require a cited simulated field distribution.
+- Quantify every model adjustment as a feature-level points delta with uncertainty and evidence IDs. Never apply a feature already present in the base projection.
+- Never use club "coverage" to select or omit a player. Compare independently optimized with-player and without-player squads.
+- Never use ownership, effective ownership, or rank protection unless optimizationPolicy is rank-aware and cites the rank simulation.
 - Include multiple meaningful legal candidates for every optimized squad, structure, starting-XI, and captaincy evaluation.
 - Persist material structural counterfactual compositions and comparable metrics directly in the structure candidateScores.
 - Decompose every non-raw objectiveScore into evidenced scoreComponents that sum to the score.

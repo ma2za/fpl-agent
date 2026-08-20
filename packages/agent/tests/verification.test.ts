@@ -23,6 +23,14 @@ const recommendation: WeeklyRecommendation = {
   deadline: "2026-08-15T10:00:00Z",
   deadlineStatus: "open",
   dataMode: "official",
+  optimizationPolicy: {
+    mode: "MAX_EXPECTED_POINTS",
+    horizon: "GW1",
+    ownershipTreatment: "excluded",
+    structureSimulationReportPath: "structure-simulation.json",
+    rankSimulationReportPath: null,
+    projectionAdjustments: []
+  },
   squadBefore: {
     bank: 11.5,
     freeTransfers: 1,
@@ -106,13 +114,13 @@ const recommendation: WeeklyRecommendation = {
       playerId: index + 1,
       role: "squad",
       whyPicked: [
-        `Player ${index + 1} fits the legal test squad structure.`,
-        `Player ${index + 1} keeps the fixture test recommendation complete.`
+        `Player ${index + 1} projects 0.5 points above the compared option.`,
+        `Player ${index + 1} has a 90% modeled start probability.`
       ],
       comparedAgainst: [
         {
           name: `Alternative ${index + 1}`,
-          whyNot: [`Alternative ${index + 1} is not needed for the fixture test structure.`]
+          whyNot: [`Alternative ${index + 1} projects 0.5 points below the selected player.`]
         }
       ],
       evidence: ["test.md"]

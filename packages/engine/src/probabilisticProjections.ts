@@ -135,6 +135,7 @@ function appearanceForecast(
   const overallEvidenceConfidence = clamp(
     historicalRoleConfidence * 0.35 + currentConfidence * 0.45 + availabilityConfidence * 0.2
   );
+  const startProbabilityUncertainty = clamp(0.02 + (1 - overallEvidenceConfidence) * 0.16, 0.02, 0.18);
   const source = role?.currentEvidencePresent
     ? "current_role" as const
     : (player.minutes ?? 0) > 0
@@ -152,6 +153,11 @@ function appearanceForecast(
     availabilityConfidence: round(availabilityConfidence),
     overallEvidenceConfidence: round(overallEvidenceConfidence),
     evidenceUncertainty: round(1 - overallEvidenceConfidence),
+    startProbabilityUncertainty: round(startProbabilityUncertainty),
+    startProbabilityInterval: {
+      lower: round(clamp(startProbability - startProbabilityUncertainty)),
+      upper: round(clamp(startProbability + startProbabilityUncertainty))
+    },
     source,
     reasonCodes: [
       source,
@@ -243,6 +249,18 @@ export function probabilisticProjection(input: {
     projectionStandardDeviation: round(projectionStandardDeviation, 2),
     footballOutcomeVariance: round(projectionStandardDeviation ** 2, 2),
     evidenceUncertainty: appearance.evidenceUncertainty,
+    featureInputs: [
+      { featureId: "base-points-per-90", value: input.rawProjection.basePointsPer90, evidenceIds: ["model:raw-projection"] },
+      { featureId: "fixture-difficulty", value: input.rawProjection.fixtureDifficultyFactor, evidenceIds: ["model:raw-projection"] },
+      { featureId: "form-factor", value: input.rawProjection.formFactor, evidenceIds: ["model:raw-projection"] },
+      { featureId: "availability", value: input.rawProjection.availabilityFactor, evidenceIds: ["model:appearance-state"] },
+      { featureId: "start-probability", value: appearance.startProbability, evidenceIds: input.roleEvidence?.evidenceIds ?? ["model:appearance-state"] },
+      ...(input.roleEvidence?.currentEvidencePresent ? [{
+        featureId: "current-role-support",
+        value: input.roleEvidence.supportScore,
+        evidenceIds: input.roleEvidence.evidenceIds ?? ["model:current-role"]
+      }] : [])
+    ],
     model: "appearance-state-mixture",
     modelVersion: "0.0.12",
     inputs: {

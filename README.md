@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.16`
+Version: `0.0.17`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -82,8 +82,7 @@ pnpm refresh -- --gw auto
 pnpm player-store:status
 pnpm evidence:worklist -- --gw auto
 pnpm evidence:discover -- --gw 1 --min-appearance 0.8
-pnpm evidence:discovery-batch -- --gw 1
-pnpm evidence:ingest -- --gw 1 --input path/to/evidence-batch.json
+pnpm evidence:review-zero -- --gw 1
 pnpm player:dossier -- --player 1 --gw 1
 pnpm fetch:data
 pnpm fetch:pl-fixtures -- --gw 1 --horizon 6
@@ -97,6 +96,7 @@ pnpm public-evidence -- --gw 1
 pnpm fixtures -- --gw 1 --horizon 6
 pnpm recommend -- --gw auto
 pnpm squad:utility -- --gw 1 --thresholds 40,50,60
+pnpm simulate:structures -- --input path/to/simulation-request.json --out path/to/report.json
 pnpm counterfactuals -- --request path/to/optimization-request.json
 pnpm concentration -- --graph path/to/graph.json --scenarios path/to/scenarios.json --counterfactuals path/to/counterfactual-set.json --players path/to/players.json --out path/to/output
 pnpm compare:squads -- --a path/to/a.json --b path/to/b.json
@@ -113,11 +113,11 @@ pnpm postmortem -- --gw 1
 
 `pnpm player-store:status` validates the ignored local SQLite store and reports its schema, latest official run, and observation counts.
 
-`pnpm evidence:worklist -- --gw {n|auto}` materializes the current all-player research worklist. After the coding agent searches public sources, `pnpm evidence:ingest -- --gw {n} --input {file}` transactionally ingests a schema-validated partial batch, including completed zero-result or blocked searches. No full article body is stored.
+`pnpm evidence:worklist -- --gw {n|auto}` materializes the current all-player research worklist for inspection. The authoritative worklist remains in SQLite.
 
-`pnpm evidence:discover -- --gw {n} --min-appearance {0..1}` scans the maintained UK football-news seed with a declared per-site fetch, Playwright, or fetch-then-Playwright strategy. It respects robots rules, uses configured public feeds where available, records blocked sources, and writes exact per-player query receipts and candidate URLs without treating a headline match as evidence. Use `--source {id}` to test selected adapters, `--max-pages-per-source {n}` to bound each crawl, and `--output {path}` to preserve a diagnostic run.
+`pnpm evidence:discover -- --gw {n}` scans the maintained UK football-news seed and searches matching worklist players through the `google-news-api` package using Google News RSS over the preceding 14 days. The default includes every player; repeat `--player {id}` for a bounded review set or use `--min-appearance {0..1}` to select players at or above an appearance-probability threshold. Search runs, receipts, and candidate articles are written directly to the player-intelligence SQLite database. The maintained-source crawl uses a declared per-site fetch, Playwright, or fetch-then-Playwright strategy, respects robots rules, uses configured public feeds where available, and records blocked sources. Run `uv sync` once to install the Python news dependency. Use `--source {id}` to test selected crawl adapters and `--max-pages-per-source {n}` to bound each crawl.
 
-`pnpm evidence:discovery-batch -- --gw {n} [--input {path}] [--output {path}] [--reviewed-zero-player {id}]` converts players with no candidate URLs into a draft zero-result ingestion batch. Repeat `--reviewed-zero-player` only after opening that player's candidate URLs and confirming none contains a new relevant update. Other candidate matches remain pending until the coding agent validates publication time and relevance and authors observations. Evidence ingestion rejects generic club searches, receipt-less zero-result claims, relevant URLs absent from results, and observations whose canonical source URL is absent from that player's receipts.
+`pnpm evidence:review-zero -- --gw {n} [--reviewed-zero-player {id}]` writes reviewed zero-result or blocked coverage directly to SQLite from the latest stored discovery. Reviewed source documents and observations use the same direct database path. The news-update workflow creates no JSON handoff files.
 
 `pnpm player:dossier -- --player {id|name} --gw {n} [--at {timestamp}]` writes deterministic JSON and Markdown dossiers from the stored official snapshots, fixtures, performance, source documents, news, role observations, coverage, disagreements, revisions, and gaps.
 
@@ -147,6 +147,8 @@ For rendered-page capture, install the browser once with `corepack pnpm exec pla
 
 `pnpm squad:utility -- --gw {n}` writes role-adjusted squad utility, downside, bench-cost, formation-coverage, and exact expected automatic-substitution metrics for an authored recommendation. Use `--previous path/to/recommendation.json` to write the immediately preceding draft delta.
 
+`pnpm simulate:structures -- --input {file} --out {file}` compares complete candidate squads under shared player draws. Every result exposes expected points, p10, p50, p90, and the declared objective score. Expected-points mode excludes ownership entirely; rank-aware modes use field weights only through simulated competing scores. The report never selects a structure.
+
 `pnpm counterfactuals -- --request {file}` independently optimizes every requested scenario for its GW1, GW1-GW3, and GW1-GW6 horizons. Requests support player inclusion and exclusion, budget, availability, club exposure, premium, premium-defence, bench-depth, and formation constraints. Outputs are neutral candidate, proof, Pareto, and comparison evidence and never select a final structure.
 
 See `docs/counterfactual-optimization.md` for the request format.
@@ -159,7 +161,7 @@ See `docs/concentration-analysis.md` for the input format.
 
 `pnpm variant:list`, `pnpm variant:verify`, and `pnpm variant:compare` manage authored alternatives under `gw-{n}/variants/{slug}/`. Variant verification reuses shared gameweek evidence and the same legality, quality, strategy, freshness, and risk checks as the primary recommendation. Comparison reports remain neutral, expose unavailable evidence explicitly, and never select a variant.
 
-`pnpm verify -- --gw {n}` re-validates an agent-authored recommendation and weekly strategy, rewrites the legality report, brief, checklist, and risk report, and exits non-zero when the recommendation is missing, illegal, missing required rationale, missing pick-versus-alternative analysis, or lacks completed current research coverage for a selected player. Publication requires five distinct relevant public-news articles across the selected squad, published within the preceding 14 days. Other non-READY dossier reasons remain warnings in 0.0.16.
+`pnpm verify -- --gw {n}` re-validates an agent-authored recommendation and weekly strategy, rewrites the legality report, brief, checklist, and risk report, and exits non-zero when the recommendation is missing, illegal, lacks an explicit optimization objective, uses club coverage as a player-pick reason, uses ownership outside a cited rank simulation, claims an unquantified model override, lacks required rationale or pick-versus-alternative analysis, or lacks completed current research coverage for a selected player. Publication requires five distinct relevant public-news articles across the selected squad, published within the preceding 14 days.
 
 Postmortem commands are placeholders until later milestones implement those workflows.
 

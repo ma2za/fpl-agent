@@ -7,6 +7,14 @@ const recommendation: WeeklyRecommendation = {
   deadline: "2026-08-15T10:00:00Z",
   deadlineStatus: "open",
   dataMode: "official",
+  optimizationPolicy: {
+    mode: "MAX_EXPECTED_POINTS",
+    horizon: "GW1",
+    ownershipTreatment: "excluded",
+    structureSimulationReportPath: "structure-simulation.json",
+    rankSimulationReportPath: null,
+    projectionAdjustments: []
+  },
   squadBefore: {
     bank: 1,
     freeTransfers: 1,
@@ -90,13 +98,13 @@ const recommendation: WeeklyRecommendation = {
       playerId: index + 1,
       role: "squad",
       whyPicked: [
-        `Player ${index + 1} fits the legal test squad structure.`,
-        `Player ${index + 1} keeps the fixture test recommendation complete.`
+        `Player ${index + 1} projects 0.5 points above the compared option.`,
+        `Player ${index + 1} has a 90% modeled start probability.`
       ],
       comparedAgainst: [
         {
           name: `Alternative ${index + 1}`,
-          whyNot: [`Alternative ${index + 1} is not needed for the fixture test structure.`]
+          whyNot: [`Alternative ${index + 1} projects 0.5 points below the selected player.`]
         }
       ],
       evidence: ["test.md"]
@@ -319,6 +327,119 @@ describe("evaluateRecommendationQuality", () => {
 
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain("Decision analysis is required for every recommendation.");
+  });
+
+  it("rejects generic player-pick justification", () => {
+    const result = evaluateRecommendationQuality({
+      ...recommendation,
+      decisionAnalysis: {
+        ...recommendation.decisionAnalysis!,
+        playerDecisions: recommendation.decisionAnalysis!.playerDecisions.map((decision, index) =>
+          index === 0
+            ? { ...decision, whyPicked: ["Fits the selected starting structure.", "Included in the current official Scout squad."] }
+            : decision
+        )
+      }
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain(
+      "Decision analysis for Goalkeeper 1 must use specific, evidence-bearing why-picked reasons instead of generic squad-fit claims."
+    );
+  });
+
+  it("rejects catch-all alternative justification", () => {
+    const result = evaluateRecommendationQuality({
+      ...recommendation,
+      decisionAnalysis: {
+        ...recommendation.decisionAnalysis!,
+        playerDecisions: recommendation.decisionAnalysis!.playerDecisions.map((decision, index) =>
+          index === 0
+            ? {
+                ...decision,
+                comparedAgainst: [{
+                  name: "Named Alternative",
+                  whyNot: ["Lost the role, price, fixture or structural trade-off in the selected £100.0m build."]
+                }]
+              }
+            : decision
+        )
+      }
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain(
+      "Decision analysis for Goalkeeper 1 versus Named Alternative must state the specific deciding trade-off."
+    );
+  });
+
+  it("rejects club-coverage selection reasoning", () => {
+    const result = evaluateRecommendationQuality({
+      ...recommendation,
+      decisionAnalysis: {
+        ...recommendation.decisionAnalysis!,
+        keyOmissions: recommendation.decisionAnalysis!.keyOmissions.map((omission, index) =>
+          index === 0 ? { ...omission, whyOmitted: ["Other players provide Arsenal coverage."] } : omission
+        )
+      }
+    });
+    expect(result.errors).toContain('Player selection and omission rationale must not use "coverage" as a decision reason.');
+  });
+
+  it("rejects ownership reasoning under expected-points mode", () => {
+    const result = evaluateRecommendationQuality({
+      ...recommendation,
+      decisionAnalysis: {
+        ...recommendation.decisionAnalysis!,
+        structureComparisons: recommendation.decisionAnalysis!.structureComparisons.map((comparison, index) =>
+          index === 0 ? { ...comparison, whySelected: ["Ownership provides rank protection."] } : comparison
+        )
+      }
+    });
+    expect(result.errors).toContain("Ownership reasoning requires a rank-aware objective and cited rank simulation.");
+  });
+
+  it("rejects an unquantified model override", () => {
+    const result = evaluateRecommendationQuality({
+      ...recommendation,
+      decisionAnalysis: {
+        ...recommendation.decisionAnalysis!,
+        playerDecisions: recommendation.decisionAnalysis!.playerDecisions.map((decision, index) =>
+          index === 0 ? {
+            ...decision,
+            whyPicked: ["A current-role model override adds striker minutes.", "The fixture projection remains 4.5 points."]
+          } : decision
+        )
+      }
+    });
+    expect(result.errors).toContain(
+      "Decision analysis for Goalkeeper 1 claims a model override without a quantified projection adjustment."
+    );
+  });
+
+  it("rejects untranslated lower-league projection adjustments", () => {
+    const result = evaluateRecommendationQuality({
+      ...recommendation,
+      optimizationPolicy: {
+        ...recommendation.optimizationPolicy!,
+        projectionAdjustments: [{
+          playerId: recommendation.squadBefore.players[0].id,
+          baseProjection: 4,
+          adjustedProjection: 4.3,
+          features: [{
+            featureId: "lower-league-output",
+            sourceKind: "lower_league_output",
+            pointsDelta: 0.3,
+            standardDeviation: 0.4,
+            evidenceIds: ["observation:lower-league-output"],
+            translationModel: null
+          }]
+        }]
+      }
+    });
+    expect(result.errors).toContain(
+      `Projection adjustment for player ${recommendation.squadBefore.players[0].id} must be quantified, feature-unique, and evidence-backed.`
+    );
   });
 
   it("fails when structure comparisons are missing", () => {

@@ -294,17 +294,15 @@ export async function acquireRefreshData(input: {
   const players = normalizePlayers(bootstrap);
   const summaryRetryDelays = input.summaryRetryDelaysMs ?? [250, 1_000];
   const summaryCacheDir = input.offline ? rawDir : temporaryDir!;
-  const summaries = await mapWithConcurrency(
+  const summaries = (await mapWithConcurrency(
     bootstrap.elements,
     input.playerConcurrency ?? 6,
     async (player): Promise<PlayerSummaryResult> => {
       const cachePath = playerSummaryCachePath(player.id, summaryCacheDir);
       if (input.offline) {
         try {
-          const [summary, file] = await Promise.all([
-            readValidatedJsonCache(cachePath, PlayerSummarySchema),
-            stat(cachePath)
-          ]);
+          const summary = await readValidatedJsonCache(cachePath, PlayerSummarySchema);
+          const file = await stat(cachePath);
           const ageHours = Math.max(0, (input.now.getTime() - file.mtime.getTime()) / 3_600_000);
           return {
             playerId: player.id,
@@ -357,7 +355,7 @@ export async function acquireRefreshData(input: {
         error: lastError instanceof Error ? lastError.message : String(lastError)
       };
     }
-  );
+  )).sort((a, b) => a.playerId - b.playerId);
   const mode = input.offline ? "offline" as const : "live" as const;
   const inputs = await Promise.all([
     fileInput({ id: "bootstrap", filePath: sourceBootstrapPath, sourceMode: mode, maxAgeHours: 24, now: input.now }),

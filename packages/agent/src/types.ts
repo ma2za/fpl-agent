@@ -175,6 +175,27 @@ export type MaterialRiskPolicy = {
   }>;
 };
 
+export type OptimizationPolicy = {
+  mode: "MAX_EXPECTED_POINTS" | "MAX_EXPECTED_RANK" | "MINI_LEAGUE_DEFEND" | "MINI_LEAGUE_CHASE";
+  horizon: "GW1" | "GW1-3" | "GW1-5" | "GW1-6" | "season";
+  ownershipTreatment: "excluded" | "simulated_field_distribution";
+  structureSimulationReportPath: string;
+  rankSimulationReportPath: string | null;
+  projectionAdjustments: Array<{
+    playerId: number;
+    baseProjection: number;
+    adjustedProjection: number;
+    features: Array<{
+      featureId: string;
+      sourceKind: "current_role" | "set_piece" | "preseason_lineup" | "preseason_output" | "lower_league_output" | "manual_model_input";
+      pointsDelta: number;
+      standardDeviation: number;
+      evidenceIds: string[];
+      translationModel: string | null;
+    }>;
+  }>;
+};
+
 export type ComparedAlternative = {
   playerId?: number;
   name: string;
@@ -239,6 +260,7 @@ export type WeeklyRecommendation = {
   canonicalState?: CanonicalDecisionState;
   factualClaims?: DeterministicFactualClaim[];
   materialRiskPolicy?: MaterialRiskPolicy;
+  optimizationPolicy?: OptimizationPolicy;
   gameweek: number;
   createdAt: string;
   deadline: string;

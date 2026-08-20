@@ -252,6 +252,14 @@ export function variantRecommendation(gameweek = 1, replacedPlayerId?: number): 
     deadline: "2026-08-15T10:00:00.000Z",
     deadlineStatus: "open",
     dataMode: "official",
+    optimizationPolicy: {
+      mode: "MAX_EXPECTED_POINTS",
+      horizon: "GW1",
+      ownershipTreatment: "excluded",
+      structureSimulationReportPath: "structure-simulation.json",
+      rankSimulationReportPath: null,
+      projectionAdjustments: []
+    },
     squadBefore: {
       players,
       bank: 1,
@@ -315,8 +323,8 @@ export function variantRecommendation(gameweek = 1, replacedPlayerId?: number): 
       playerDecisions: players.map((player) => ({
         playerId: player.id,
         role: startingXI.includes(player.id) ? "starter" : "bench",
-        whyPicked: ["Fits the authored structure.", "Has an explicit role in the squad."],
-        comparedAgainst: [{ name: `Alternative to ${player.name}`, whyNot: ["Does not fit this authored structure."] }],
+        whyPicked: ["Projects 0.5 points above the compared option.", "Carries a 90% modeled start probability."],
+        comparedAgainst: [{ name: `Alternative to ${player.name}`, whyNot: ["Projects 0.5 points below the selected player."] }],
         evidence: ["evidence-report.json"]
       })),
       captaincy: {

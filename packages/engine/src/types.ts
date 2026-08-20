@@ -43,8 +43,69 @@ export type AppearanceStateForecast = {
   availabilityConfidence: number;
   overallEvidenceConfidence: number;
   evidenceUncertainty: number;
+  startProbabilityUncertainty?: number;
+  startProbabilityInterval?: { lower: number; upper: number };
   source: "current_role" | "historical_role" | "cohort_fallback";
   reasonCodes: string[];
+};
+
+export type OptimizationMode = "MAX_EXPECTED_POINTS" | "MAX_EXPECTED_RANK" | "MINI_LEAGUE_DEFEND" | "MINI_LEAGUE_CHASE";
+
+export type ProjectionFeatureAdjustment = {
+  featureId: string;
+  sourceKind: "current_role" | "set_piece" | "preseason_lineup" | "preseason_output" | "lower_league_output" | "manual_model_input";
+  pointsDelta: number;
+  standardDeviation: number;
+  evidenceIds: string[];
+  translationModel: string | null;
+};
+
+export type AdjustedProjection = {
+  baseProjection: number;
+  adjustedProjection: number;
+  baseStandardDeviation: number;
+  adjustedStandardDeviation: number;
+  adjustments: ProjectionFeatureAdjustment[];
+};
+
+export type StructureSimulationCandidate = {
+  candidateId: string;
+  playerIds: number[];
+  benchOrder?: number[];
+  captainPlayerId: number | null;
+  viceCaptainPlayerId?: number | null;
+};
+
+export type StructureSimulationPlayerDistribution = {
+  playerId: number;
+  mean: number;
+  standardDeviation: number;
+  appearanceProbability?: number;
+  position?: PlayerForEngine["position"];
+  teamId?: number;
+  price?: number;
+};
+
+export type StructureSimulationFieldCandidate = StructureSimulationCandidate & { weight: number };
+
+export type StructureSimulationReport = {
+  schemaVersion: 1;
+  model: "shared-player-monte-carlo";
+  modelVersion: "0.0.17";
+  mode: OptimizationMode;
+  seed: number;
+  sampleCount: number;
+  results: Array<{
+    candidateId: string;
+    expectedPoints: number;
+    p10: number;
+    p50: number;
+    p90: number;
+    expectedRankUtility: number | null;
+    objectiveScore: number;
+  }>;
+  assumptions: string[];
+  decisionPolicy: string;
 };
 
 export type MinutesDistribution = {
@@ -72,6 +133,7 @@ export type RoleEvidenceForProjection = {
   currentEvidencePresent: boolean;
   manualOverride: "supports_start" | "opposes_start" | null;
   disagreement: boolean;
+  evidenceIds?: string[];
 };
 
 export type ProjectionModelInputs = {
@@ -105,6 +167,11 @@ export type ProbabilisticProjection = {
   projectionStandardDeviation: number;
   footballOutcomeVariance: number;
   evidenceUncertainty: number;
+  featureInputs?: Array<{
+    featureId: string;
+    value: number | string | boolean;
+    evidenceIds: string[];
+  }>;
   model: "appearance-state-mixture";
   modelVersion: "0.0.12";
   inputs: ProjectionModelInputs;

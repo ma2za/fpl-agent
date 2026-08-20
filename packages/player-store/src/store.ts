@@ -24,11 +24,12 @@ import {
   type TriggerEvaluation
 } from "./types";
 
-export const PLAYER_STORE_SCHEMA_VERSION = 2;
+export const PLAYER_STORE_SCHEMA_VERSION = 3;
 export const DEFAULT_PLAYER_STORE_PATH = path.join("data", "player-intelligence", "player-intelligence.sqlite");
 const PLAYER_STORE_MIGRATIONS = [
   { version: 1, name: "initial" },
-  { version: 2, name: "coverage-search-receipts" }
+  { version: 2, name: "coverage-search-receipts" },
+  { version: 3, name: "news-discovery" }
 ] as const;
 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
@@ -354,6 +355,122 @@ export function latestResearchWorklist(db: Database.Database, gameweek: number) 
   const row = db.prepare(`SELECT raw_json FROM evidence_worklists WHERE gameweek = ?
     ORDER BY generated_at DESC, rowid DESC LIMIT 1`).get(gameweek) as { raw_json: string } | undefined;
   return row ? EvidenceResearchWorklistSchema.parse(JSON.parse(row.raw_json)) : null;
+}
+
+export type NewsDiscoveryInput = {
+  worklistId: string;
+  gameweek: number;
+  generatedAt: string;
+  minimumAppearanceProbability: number;
+  players: Array<{
+    playerId: number;
+    searches: Array<{
+      query: string;
+      provider: string;
+      searchedAt: string;
+      status: "completed" | "blocked";
+      error?: string | null;
+      candidates: Array<{
+        url: string;
+        title: string;
+        publisher?: string | null;
+        publishedAt?: string | null;
+      }>;
+    }>;
+  }>;
+};
+
+export function recordNewsDiscovery(db: Database.Database, input: NewsDiscoveryInput) {
+  const worklist = db.prepare("SELECT gameweek, raw_json FROM evidence_worklists WHERE worklist_id = ?")
+    .get(input.worklistId) as { gameweek: number; raw_json: string } | undefined;
+  if (!worklist) throw new Error(`Unknown evidence worklist ${input.worklistId}.`);
+  if (worklist.gameweek !== input.gameweek) throw new Error(`News discovery GW${input.gameweek} does not match its GW${worklist.gameweek} worklist.`);
+  const worklistPlayers = new Set(EvidenceResearchWorklistSchema.parse(JSON.parse(worklist.raw_json)).players.map((player) => player.playerId));
+  for (const player of input.players) {
+    if (!worklistPlayers.has(player.playerId)) throw new Error(`Player ${player.playerId} does not belong to worklist ${input.worklistId}.`);
+    for (const search of player.searches) {
+      if (!search.query.trim() || !search.provider.trim()) throw new Error(`Player ${player.playerId} has an incomplete discovery search.`);
+      if (search.status === "blocked" && search.candidates.length > 0) throw new Error(`Player ${player.playerId} has candidates attached to a blocked search.`);
+      for (const candidate of search.candidates) new URL(candidate.url);
+    }
+  }
+  const discoveryId = stableId("discovery", input);
+  const discoveryHash = contentHash(input);
+  const existing = db.prepare("SELECT content_hash FROM news_discovery_runs WHERE discovery_id = ?").get(discoveryId) as { content_hash: string } | undefined;
+  if (existing && existing.content_hash !== discoveryHash) throw new Error(`News discovery ${discoveryId} was replayed with different content.`);
+  if (existing) return { discoveryId, inserted: false, players: input.players.length };
+  const insertSearch = db.prepare(`INSERT INTO news_discovery_searches(
+    search_id, discovery_id, player_id, query, provider, searched_at, status, error
+  ) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`);
+  const insertCandidate = db.prepare(`INSERT INTO news_discovery_candidates(
+    candidate_id, search_id, player_id, url, title, publisher, published_at
+  ) VALUES(?, ?, ?, ?, ?, ?, ?)`);
+  const transaction = db.transaction(() => {
+    db.prepare(`INSERT INTO news_discovery_runs(
+      discovery_id, worklist_id, gameweek, generated_at, minimum_appearance_probability, content_hash
+    ) VALUES(?, ?, ?, ?, ?, ?)`)
+      .run(discoveryId, input.worklistId, input.gameweek, input.generatedAt, input.minimumAppearanceProbability, discoveryHash);
+    for (const player of input.players) {
+      for (const search of player.searches) {
+        const searchId = stableId("search", { discoveryId, playerId: player.playerId, query: search.query, provider: search.provider });
+        insertSearch.run(searchId, discoveryId, player.playerId, search.query, search.provider, search.searchedAt, search.status, search.error ?? null);
+        for (const candidate of search.candidates) {
+          insertCandidate.run(stableId("candidate", { searchId, url: candidate.url }), searchId, player.playerId,
+            candidate.url, candidate.title, candidate.publisher ?? null, candidate.publishedAt ?? null);
+        }
+      }
+    }
+  });
+  transaction.immediate();
+  return { discoveryId, inserted: true, players: input.players.length };
+}
+
+export function latestNewsDiscovery(db: Database.Database, gameweek: number) {
+  const run = db.prepare(`SELECT * FROM news_discovery_runs WHERE gameweek = ?
+    ORDER BY generated_at DESC, rowid DESC LIMIT 1`).get(gameweek) as Record<string, unknown> | undefined;
+  if (!run) return null;
+  const searches = db.prepare(`SELECT * FROM news_discovery_searches WHERE discovery_id = ?
+    ORDER BY player_id, rowid`).all(run.discovery_id) as Array<Record<string, unknown>>;
+  const candidates = db.prepare(`SELECT c.* FROM news_discovery_candidates c
+    JOIN news_discovery_searches s ON s.search_id = c.search_id WHERE s.discovery_id = ?
+    ORDER BY c.player_id, c.rowid`).all(run.discovery_id) as Array<Record<string, unknown>>;
+  const candidatesBySearch = new Map<string, Array<Record<string, unknown>>>();
+  for (const candidate of candidates) {
+    const searchCandidates = candidatesBySearch.get(String(candidate.search_id)) ?? [];
+    searchCandidates.push(candidate);
+    candidatesBySearch.set(String(candidate.search_id), searchCandidates);
+  }
+  const playerIds = [...new Set(searches.map((search) => Number(search.player_id)))];
+  return {
+    discoveryId: String(run.discovery_id),
+    worklistId: String(run.worklist_id),
+    gameweek: Number(run.gameweek),
+    generatedAt: String(run.generated_at),
+    minimumAppearanceProbability: Number(run.minimum_appearance_probability),
+    players: playerIds.map((playerId) => {
+      const playerSearches = searches.filter((search) => Number(search.player_id) === playerId).map((search) => ({
+        query: String(search.query),
+        provider: String(search.provider),
+        searchedAt: String(search.searched_at),
+        status: search.status as "completed" | "blocked",
+        error: search.error === null ? null : String(search.error),
+        resultUrls: (candidatesBySearch.get(String(search.search_id)) ?? []).map((candidate) => String(candidate.url)),
+        relevantUrls: [] as string[]
+      }));
+      const playerCandidates = candidates.filter((candidate) => Number(candidate.player_id) === playerId);
+      return {
+        playerId,
+        searches: playerSearches,
+        candidates: playerCandidates.map((candidate) => ({
+          url: String(candidate.url),
+          title: String(candidate.title),
+          publisher: candidate.publisher === null ? null : String(candidate.publisher),
+          publishedAt: candidate.published_at === null ? null : String(candidate.published_at)
+        })),
+        candidateUrls: [...new Set(playerCandidates.map((candidate) => String(candidate.url)))]
+      };
+    })
+  };
 }
 
 export function ingestEvidenceBatch(db: Database.Database, value: unknown, now = new Date()) {

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
+import { buildReviewedNewsUpdate } from "../../../scripts/build-reviewed-news-update";
 import {
   PLAYER_STORE_SCHEMA_VERSION,
   buildPlayerDossier,
@@ -11,9 +12,11 @@ import {
   contentHash,
   ingestEvidenceBatch,
   ingestOfficialRun,
+  latestNewsDiscovery,
   migratePlayerStore,
   openPlayerStore,
   playerStoreStatus,
+  recordNewsDiscovery,
   stableId,
   updatePlayerStoreTransactionally,
   validatePlayerStore
@@ -80,7 +83,7 @@ describe("player intelligence store", () => {
     const newerPath = await storePath();
     const newer = new Database(newerPath);
     newer.exec("CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)");
-    newer.prepare("INSERT INTO schema_migrations VALUES(3, 'future', ?)").run(firstAt);
+    newer.prepare("INSERT INTO schema_migrations VALUES(4, 'future', ?)").run(firstAt);
     expect(() => migratePlayerStore(newer, firstAt)).toThrow("newer than supported");
     newer.close();
 
@@ -92,9 +95,101 @@ describe("player intelligence store", () => {
     expect((legacy.prepare("PRAGMA table_info(discovery_coverage)").all() as Array<{ name: string }>).map((column) => column.name)).toContain("searches_json");
     expect(legacy.prepare("SELECT version, name FROM schema_migrations ORDER BY version").all()).toEqual([
       { version: 1, name: "initial" },
-      { version: 2, name: "coverage-search-receipts" }
+      { version: 2, name: "coverage-search-receipts" },
+      { version: 3, name: "news-discovery" }
     ]);
     legacy.close();
+  });
+
+  it("stores news discovery receipts and candidates without filesystem handoffs", async () => {
+    const filePath = await storePath();
+    const db = openPlayerStore(filePath);
+    migratePlayerStore(db, firstAt);
+    ingestOfficialRun(db, officialInput());
+    const worklist = buildResearchWorklist(db, { runId: "run-1", gameweek: 1, generatedAt: firstAt });
+    const discovery = {
+      worklistId: worklist.worklistId,
+      gameweek: 1,
+      generatedAt: secondAt,
+      minimumAppearanceProbability: 0.8,
+      players: [{
+        playerId: 1,
+        searches: [{
+          query: "Ada Player Example FC team news",
+          provider: "test-search",
+          searchedAt: secondAt,
+          status: "completed" as const,
+          candidates: [{
+            url: "https://example.com/ada-update",
+            title: "Ada update",
+            publisher: "Example News",
+            publishedAt: firstAt
+          }]
+        }]
+      }]
+    };
+    expect(recordNewsDiscovery(db, discovery).inserted).toBe(true);
+    expect(recordNewsDiscovery(db, discovery).inserted).toBe(false);
+    expect(latestNewsDiscovery(db, 1)).toMatchObject({
+      worklistId: worklist.worklistId,
+      players: [{
+        playerId: 1,
+        candidateUrls: ["https://example.com/ada-update"],
+        searches: [{ resultUrls: ["https://example.com/ada-update"] }]
+      }]
+    });
+    db.close();
+  });
+
+  it("writes reviewed news directly from stored discovery into the database", async () => {
+    const filePath = await storePath();
+    const db = openPlayerStore(filePath);
+    migratePlayerStore(db, firstAt);
+    ingestOfficialRun(db, officialInput());
+    const worklist = buildResearchWorklist(db, { runId: "run-1", gameweek: 1, generatedAt: firstAt });
+    recordNewsDiscovery(db, {
+      worklistId: worklist.worklistId,
+      gameweek: 1,
+      generatedAt: secondAt,
+      minimumAppearanceProbability: 0.8,
+      players: [{
+        playerId: 1,
+        searches: [{
+          query: "Ada Player Example FC team news",
+          provider: "test-search",
+          searchedAt: secondAt,
+          status: "completed",
+          candidates: [{ url: "https://example.com/ada-update", title: "Ada update", publisher: "Example News", publishedAt: firstAt }]
+        }]
+      }]
+    });
+    db.close();
+    const result = await buildReviewedNewsUpdate({
+      gameweek: 1,
+      storePath: filePath,
+      authoredAt: secondAt,
+      now: new Date(secondAt),
+      documents: [{
+        canonicalUrl: "https://example.com/ada-update",
+        publisher: "Example News",
+        title: "Ada update",
+        publishedAt: firstAt,
+        excerpt: "Ada trained with the first team.",
+        observations: [{
+          playerId: 1,
+          category: "lineup",
+          credibility: { score: 0.8, rationale: "Named reporter." },
+          relevance: { score: 0.9, rationale: "Direct lineup evidence." },
+          note: "Supports a start."
+        }]
+      }]
+    });
+    expect(result.inserted).toBe(true);
+    const stored = openPlayerStore(filePath, { readonly: true });
+    const dossier = buildPlayerDossier(stored, { playerId: 1, generatedAt: secondAt, asOf: secondAt });
+    expect(dossier.news).toHaveLength(1);
+    expect(dossier.coverage?.status).toBe("searched_with_results");
+    stored.close();
   });
 
   it("deduplicates identical refreshes and appends superseding snapshot and performance revisions", async () => {

@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present through `0.0.16` and the dependency-ordered plan from `0.0.17` through `0.0.18`.
+This document records the capabilities present through `0.0.17` and the dependency-ordered plan through `0.0.18`.
 
 ## Permanent Decision Boundary
 
@@ -12,7 +12,7 @@ This document records the capabilities present through `0.0.16` and the dependen
 - Tool-produced evidence and candidate artifacts must remain structurally separate from agent-authored decision artifacts.
 - Verification may reject illegal or unsupported decisions, but it must never replace them or choose an alternative.
 
-## Current State: 0.0.16
+## Current State: 0.0.17
 
 ### Workspace
 
@@ -65,7 +65,7 @@ The exact covered and uncovered rule behavior is listed in `docs/rules-coverage.
 - Full active-player bootstrap snapshots, element-summary fixtures and performance, explicit history coverage, and an all-player research worklist.
 - Schema-validated partial coding-agent web-evidence ingestion with provenance, zero-result and blocked coverage, and transactional rollback.
 - Deterministic player dossiers, all-player dossier index, readiness reports, authored decision-status validation, executable trigger evaluation, and provisional workspaces.
-- Selected-player research coverage is blocking; other dossier-readiness gaps remain warning-only in 0.0.16.
+- Selected-player research coverage is blocking; other dossier-readiness gaps remain visible.
 - Role-adjusted squad utility vectors, deterministic downside distributions, and configurable point thresholds.
 - Exact independent-appearance automatic-substitution value with separate goalkeeper and first-, second-, and third-substitute contributions.
 - Bench cost, formation coverage, unresolved-role counts, and explicit previous-draft metric deltas.
@@ -77,6 +77,12 @@ The exact covered and uncovered rule behavior is listed in `docs/rules-coverage.
 - Neutral maximum-two and triple-club comparisons over independently optimized candidates.
 - Immutable evidence snapshots, canonical decision evaluations, numerical invariants, and factual-claim publication gates.
 - Final recommendations require completed current research coverage for every selected player and five distinct relevant public-news articles across the selected squad.
+- Every final recommendation declares an expected-points or rank-aware objective.
+- Expected-points decisions exclude ownership; rank-aware ownership enters only through simulated field outcomes.
+- Projection overrides are numerical, feature-unique, uncertainty-bearing, evidence-backed, and protected from baseline double counting.
+- Start-probability intervals expose estimation uncertainty separately from the probability estimate.
+- Shared-player simulations compare complete structures with EV, p10, p50, p90, and optional rank utility.
+- Quality gates reject club-coverage pick logic, unsupported ownership logic, and unquantified model overrides.
 
 ### Evidence Sources
 
@@ -110,7 +116,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Operational State
 
-- The local release suite contains 46 test files and 336 tests. The final full-suite run passed 335 tests and hit the existing timeout in one counterfactual optimization test; the isolated five-test counterfactual file passed immediately afterward.
+- The local release suite contains 47 test files and 359 tests, all passing.
 - Type-check, production build, cached offline refresh, store validation, worklist generation, and dossier generation pass.
 - The accepted 600-player store baseline is 156.779 ms initial ingestion, 78.167 ms idempotent re-ingestion, 1150.416 ms dossier-index generation, and 2.302 ms individual dossier query on Node 24.14.1, Windows x64.
 - A bounded live adapter smoke completed 48 of 50 configured UK football-news sources. The Times and talkSPORT were retained as explicit robots-blocked results; no blocked source was bypassed or counted as completed coverage.
@@ -499,43 +505,37 @@ Release gate:
 
 ## Planned Releases
 
-### 0.0.17: Evidence-Enforced Decision Workspace, Liquidity, and Captaincy
+### 0.0.17: Decision Mathematics and Rationale Enforcement
 
-Require current stored evidence for selected players and replace vague flexibility and captaincy language with reachable alternatives and sensitivity evidence.
+Make the optimization target explicit and prevent prose from overruling the declared objective without quantified, traceable model changes.
 
 Scope:
 
-- Build one-transfer and two-transfer reachability using selling price, bank, positions, club limits, availability gates, and complete squad legality.
-- Distinguish preseason budget reachability from post-deadline selling-price reachability.
-- Report credible same-tier targets, required bank, required paired moves, structural replacement cost, and replacement liquidity.
-- Add transfer-path evidence to every counterfactual without treating higher liquidity as automatically better.
-- Calculate captaincy expected doubled value, probability of being highest scorer, pairwise win probability, regret, and sensitivity to minutes, penalties, fixtures, and role assumptions.
-- Mark a captaincy evidence edge `clear` only when the leader has at least a 60 percent probability of being best and remains first across configured sensitivity scenarios.
-- Otherwise report the edge as `marginal` or `unresolved`.
-- Build an agent decision workspace containing optimized counterfactuals, utility vectors, concentration scenarios, readiness, triggers, liquidity, captaincy sensitivity, unresolved assumptions, and dependency prompts.
-- Require the coding agent to query and inspect a current dossier for every player in the selected 15 before authoring the final recommendation.
-- Add per-selection references to the evidence-store snapshot, dossier, performance observations, news observations, and query time used by the agent.
-- Block final verification when a selected player lacks a current official snapshot, completed current-refresh discovery coverage, or evidence satisfying existing freshness and publication rules.
-- Emit a provisional workspace rather than a final recommendation when selected-player dossier gates fail; named alternatives retain visible warnings but are not hard-gated.
-- Expose history, source disagreement, changes since the prior refresh, and unresolved evidence gaps without letting tools rank or select the final squad.
-- Require the agent to author squad, transfers, XI, bench, captaincy, chip, statuses, trigger responses, and rationale.
+- Require one of `MAX_EXPECTED_POINTS`, `MAX_EXPECTED_RANK`, `MINI_LEAGUE_DEFEND`, or `MINI_LEAGUE_CHASE` on every authored recommendation.
+- Exclude ownership from expected-points decisions and permit it in rank-aware decisions only through a cited simulated field distribution.
+- Reject club coverage as a player-selection or omission reason.
+- Require every model override to identify a unique feature, numerical points delta, added uncertainty, evidence dependencies, and any competition translation model.
+- Track baseline feature inputs so the same fact cannot enter both the base projection and an override.
+- Expose start-probability uncertainty intervals separately from the probability point estimate.
+- Compare full structures with shared player draws and expose expected points, p10, p50, p90, rank utility when applicable, and the declared objective score.
+- Retain exact expected starters, automatic-substitution value, and bench-slot marginal value in squad evaluation.
+- Keep every generated comparison neutral: tools expose scores and distributions but never select the final structure.
 
 Artifacts:
 
-- `TransferGraph`
-- `ReplacementLiquidityReport`
-- `CaptaincySensitivity`
-- `AgentDecisionWorkspace`
-- `SelectionEvidenceReference`
+- `OptimizationPolicy`
+- `ProjectionFeatureAdjustment`
+- `AdjustedProjection`
+- `StructureSimulationReport`
 
 Release gate:
 
-- Test reachability across bank, selling price, position changes, club limits, paired moves, and preseason phase semantics.
-- Verify that an unreachable target cannot contribute to replacement liquidity.
-- Test captaincy ties, marginal edges, sensitivity reversals, and missing-distribution behavior.
-- Test missing, stale, mismatched, and exact selected-player dossier references, including the warning-to-blocking migration from `0.0.16`.
-- Verify that incomplete alternative dossiers warn without failing an otherwise supported selected 15.
-- Verify that workspace generation never writes final player choices.
+- Test duplicate-feature and baseline-feature rejection for projection adjustments.
+- Test explicit translation-model requirements for preseason and lower-league evidence.
+- Test that a higher-EV structure is not penalized for ownership in expected-points mode.
+- Test that rank-aware modes fail without a simulated field distribution.
+- Test rationale rejection for club coverage, unsupported ownership, and unquantified model overrides.
+- Verify that structure simulation never writes a selected candidate or recommendation.
 
 ### 0.0.18: Performance Outcomes, Calibration, and Postmortems
 
@@ -573,7 +573,7 @@ Release gate:
 | `0.0.14` | squad utility | Preserve authored variants; mark unoptimized variants ineligible for structural-comparison evidence | Independently optimized legal candidate sets |
 | `0.0.15` | counterfactual sets | Treat independent-player totals as baseline-only and disclose missing covariance | Concentration scenarios and shared-assumption risk |
 | `0.0.16` | probabilities, scenarios, candidate requests, and public all-player inputs | Create the SQLite store additively; keep existing JSON readable; convert prose conditions to draft triggers; warn on dossier gaps | Longitudinal player dossiers, evaluated readiness, and trigger states |
-| `0.0.17` | optimized candidates, trigger scopes, and current dossiers | Keep existing transfer evidence readable; add phase-specific reachability and migrate selected-player dossier warnings to blocking gates | Evidence-enforced workspace, liquidity, and captaincy sensitivity |
+| `0.0.17` | probabilistic projections, squad utility, counterfactuals, and typed evidence | Keep existing artifacts readable; require explicit objectives only on newly verified decisions | Quantified projection adjustments and probabilistic structure comparisons |
 | `0.0.18` | frozen outputs and longitudinal performance from all prior releases | Archive schema and model versions with every decision state; append corrections as revisions | Calibration and attributable postmortems |
 
 Implementation order is strict where the downstream calculation would otherwise manufacture precision. In particular:

@@ -14,6 +14,26 @@ function hasText(value: string | undefined | null) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+const genericDecisionReasonPatterns = [
+  /\bfits? (?:the |this )?(?:legal |selected |authored )?(?:squad )?structure\b/i,
+  /\bkeeps? (?:the )?(?:fixture test )?recommendation complete\b/i,
+  /\bhas an explicit role in the squad\b/i,
+  /\bincluded in (?:the )?(?:current )?(?:official )?(?:scout )?squad\b/i,
+  /\bsupported by current specialist .* analysis\b/i,
+  /\bfills? the required squad slot\b/i,
+  /\bis not needed for (?:the )?.*structure\b/i,
+  /\bdoes not fit (?:the |this )?.*structure\b/i,
+  /\blost the role, price, fixture or structural trade-off\b/i
+];
+
+const decisionSignalPattern = /(?:£\s*\d|\d+(?:\.\d+)?\s*(?:%|points?|minutes?|goals?|assists?|starts?)|\b(?:penalt(?:y|ies)|set[ -]?pieces?|corners?|free[ -]?kicks?|start(?:ing|er)?|minutes?|project(?:ed|ion)|ownership|fixture|opponent|home|away|backup|enabler|captaincy|defensive contributions?|clean sheets?|goals?|assists?|price|cost|budget|bank|role|injur(?:y|ed)|availability|bench order)\b)/i;
+
+function isSpecificDecisionReason(reason: string) {
+  return hasText(reason) &&
+    !genericDecisionReasonPatterns.some((pattern) => pattern.test(reason)) &&
+    decisionSignalPattern.test(reason);
+}
+
 function countByPosition(recommendation: WeeklyRecommendation) {
   return recommendation.squadBefore.players.reduce<Record<string, number>>((counts, player) => {
     counts[player.position] = (counts[player.position] ?? 0) + 1;
@@ -114,9 +134,55 @@ function evidenceReferenceErrors(recommendation: WeeklyRecommendation) {
 function decisionAnalysisErrors(recommendation: WeeklyRecommendation) {
   const errors: string[] = [];
   const analysis = recommendation.decisionAnalysis;
+  const policy = recommendation.optimizationPolicy;
+
+  if (!policy) {
+    errors.push("An explicit optimization objective is required.");
+  } else {
+    const rankMode = policy.mode !== "MAX_EXPECTED_POINTS";
+    if (rankMode && (policy.ownershipTreatment !== "simulated_field_distribution" || !hasText(policy.rankSimulationReportPath))) {
+      errors.push(`${policy.mode} requires a cited simulated field-rank distribution.`);
+    }
+    if (!rankMode && (policy.ownershipTreatment !== "excluded" || policy.rankSimulationReportPath !== null)) {
+      errors.push("MAX_EXPECTED_POINTS must exclude ownership and rank effects.");
+    }
+    for (const adjustment of policy.projectionAdjustments) {
+      const featureIds = adjustment.features.map((feature) => feature.featureId);
+      const expected = adjustment.baseProjection + adjustment.features.reduce((sum, feature) => sum + feature.pointsDelta, 0);
+      if (new Set(featureIds).size !== featureIds.length || Math.abs(expected - adjustment.adjustedProjection) > 0.001 ||
+        adjustment.features.some((feature) => feature.evidenceIds.length === 0) ||
+        adjustment.features.some((feature) => ["preseason_output", "lower_league_output"].includes(feature.sourceKind) && !hasText(feature.translationModel))) {
+        errors.push(`Projection adjustment for player ${adjustment.playerId} must be quantified, feature-unique, and evidence-backed.`);
+      }
+    }
+  }
 
   if (!analysis) {
-    return ["Decision analysis is required for every recommendation."];
+    errors.push("Decision analysis is required for every recommendation.");
+    return errors;
+  }
+
+  const playerSelectionReasons = [
+    ...analysis.playerDecisions.flatMap((decision) => [
+      ...decision.whyPicked,
+      ...decision.comparedAgainst.flatMap((alternative) => alternative.whyNot)
+    ]),
+    ...analysis.keyOmissions.flatMap((omission) => omission.whyOmitted)
+  ];
+  const allDecisionReasons = [
+    analysis.summary,
+    ...analysis.squadStructure,
+    ...analysis.structureComparisons.flatMap((comparison) => [...comparison.whySelected, ...comparison.whyRejected]),
+    ...playerSelectionReasons,
+    ...analysis.captaincy.whyCaptain,
+    ...analysis.captaincy.comparedAgainst.flatMap((alternative) => alternative.whyNot)
+  ];
+  if (playerSelectionReasons.some((reason) => /\bcoverage\b/i.test(reason))) {
+    errors.push('Player selection and omission rationale must not use "coverage" as a decision reason.');
+  }
+  if (allDecisionReasons.some((reason) => /\b(?:effective ownership|ownership|rank protection|rank risk)\b/i.test(reason)) &&
+    (!policy || policy.mode === "MAX_EXPECTED_POINTS" || !policy.rankSimulationReportPath)) {
+    errors.push("Ownership reasoning requires a rank-aware objective and cited rank simulation.");
   }
 
   if (!hasText(analysis.summary)) {
@@ -162,6 +228,13 @@ function decisionAnalysisErrors(recommendation: WeeklyRecommendation) {
 
     if (decision.whyPicked.length < 2 || decision.whyPicked.some((reason) => !hasText(reason))) {
       errors.push(`Decision analysis for ${player.name} must include at least two why-picked reasons.`);
+    } else if (decision.whyPicked.some((reason) => !isSpecificDecisionReason(reason))) {
+      errors.push(`Decision analysis for ${player.name} must use specific, evidence-bearing why-picked reasons instead of generic squad-fit claims.`);
+    }
+
+    if (decision.whyPicked.some((reason) => /\b(?:model )?override\b/i.test(reason)) &&
+      !policy?.projectionAdjustments.some((adjustment) => adjustment.playerId === player.id)) {
+      errors.push(`Decision analysis for ${player.name} claims a model override without a quantified projection adjustment.`);
     }
 
     if (decision.comparedAgainst.length === 0) {
@@ -170,6 +243,12 @@ function decisionAnalysisErrors(recommendation: WeeklyRecommendation) {
 
     if (decision.comparedAgainst.some((alternative) => !hasText(alternative.name) || alternative.whyNot.length === 0 || alternative.whyNot.some((reason) => !hasText(reason)))) {
       errors.push(`Decision analysis for ${player.name} has an incomplete alternative comparison.`);
+    }
+
+    for (const alternative of decision.comparedAgainst) {
+      if (alternative.whyNot.some((reason) => !isSpecificDecisionReason(reason))) {
+        errors.push(`Decision analysis for ${player.name} versus ${alternative.name} must state the specific deciding trade-off.`);
+      }
     }
 
     if (decision.evidence.length === 0 || decision.evidence.some((item) => !hasText(item))) {

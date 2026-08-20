@@ -185,6 +185,12 @@ Implemented:
 - Authored variant listing, independent verification, and neutral comparison against shared gameweek evidence.
 - Full-squad structure comparison requirements in recommendation quality gates.
 - Warnings for overfunded benches, fixture-exposure gaps, projection-scope ambiguity, and confidence overstatement.
+- Explicit expected-points and rank-aware optimization modes on every final recommendation.
+- Ownership exclusion from expected-points decisions and field-simulation-only ownership use in rank-aware decisions.
+- Quantified, evidence-backed, feature-unique projection adjustments with explicit preseason and lower-league translation models.
+- Start-probability uncertainty intervals separate from point estimates.
+- Shared-player structure simulations exposing EV, p10, p50, p90, and rank utility without selecting a candidate.
+- Quality failures for club-coverage selection reasons, unsupported ownership rationale, and unquantified model overrides.
 
 Current limitations:
 
