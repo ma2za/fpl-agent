@@ -26,7 +26,7 @@ describe("compatibility inventory", () => {
       recommend: "tsx scripts/generate-recommendation.ts",
       "compare:squads": "tsx scripts/compare-squads.ts",
       verify: "tsx scripts/verify-recommendation.ts",
-      postmortem: "node scripts/not-implemented.mjs postmortem",
+      postmortem: "tsx scripts/postmortem.ts",
     });
   });
 

@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "artifactKind": "gameweek_postmortem",
+  "gameweek": 1,
+  "source": "https://fantasy.premierleague.com/en/entry/7407631/event/1",
+  "manager": {
+    "entryId": 7407631,
+    "teamName": "five points",
+    "totalPoints": 47,
+    "overallPoints": 47,
+    "gameweekAverage": 50,
+    "gameweekHighest": 131,
+    "gameweekRank": 5282781,
+    "overallRank": 5282775,
+    "totalPlayers": 9773919,
+    "teamValue": 99.7,
+    "bank": 0.5,
+    "transfers": 0
+  },
+  "aiSelection": {
+    "candidateId": "balanced-opening-squad",
+    "projectedPoints": 55.128,
+    "actualPointsCounterfactual": 45,
+    "sourcePath": "data/cache/gw1-final-2026-08-21/selection.json"
+  },
+  "submittedSelection": {
+    "formation": "3-4-3",
+    "captainPlayerId": 411,
+    "viceCaptainPlayerId": 165,
+    "picks": [
+      { "playerId": 82, "name": "Kelleher", "position": "GKP", "role": "starter", "rawPoints": 7, "multiplier": 1, "countedPoints": 7 },
+      { "playerId": 4, "name": "Gabriel", "position": "DEF", "role": "starter", "rawPoints": 5, "multiplier": 1, "countedPoints": 5 },
+      { "playerId": 418, "name": "Maguire", "position": "DEF", "role": "starter", "rawPoints": 1, "multiplier": 1, "countedPoints": 1 },
+      { "playerId": 8, "name": "Calafiori", "position": "DEF", "role": "starter", "rawPoints": 9, "multiplier": 1, "countedPoints": 9 },
+      { "playerId": 397, "name": "Semenyo", "position": "MID", "role": "starter", "rawPoints": 2, "multiplier": 1, "countedPoints": 2 },
+      { "playerId": 427, "name": "Mbeumo", "position": "MID", "role": "starter", "rawPoints": 2, "multiplier": 1, "countedPoints": 2 },
+      { "playerId": 542, "name": "E. Le Fée", "position": "MID", "role": "starter", "rawPoints": 2, "multiplier": 1, "countedPoints": 2 },
+      { "playerId": 260, "name": "Wilson", "position": "MID", "role": "starter", "rawPoints": 3, "multiplier": 1, "countedPoints": 3 },
+      { "playerId": 346, "name": "Calvert-Lewin", "position": "FWD", "role": "starter", "rawPoints": 1, "multiplier": 1, "countedPoints": 1 },
+      { "playerId": 165, "name": "João Pedro", "position": "FWD", "role": "starter", "rawPoints": 11, "multiplier": 1, "countedPoints": 11 },
+      { "playerId": 411, "name": "Haaland", "position": "FWD", "role": "starter", "rawPoints": 2, "multiplier": 2, "countedPoints": 4 },
+      { "playerId": 109, "name": "Verbruggen", "position": "GKP", "role": "bench", "rawPoints": 6, "multiplier": 0, "countedPoints": 0 },
+      { "playerId": 32, "name": "Cash", "position": "DEF", "role": "bench", "rawPoints": -1, "multiplier": 0, "countedPoints": 0 },
+      { "playerId": 204, "name": "Mitchell", "position": "DEF", "role": "bench", "rawPoints": 1, "multiplier": 0, "countedPoints": 0 },
+      { "playerId": 212, "name": "Hughes", "position": "MID", "role": "bench", "rawPoints": 0, "multiplier": 0, "countedPoints": 0 }
+    ]
+  },
+  "managerOverrides": [
+    { "outPlayerId": 533, "outName": "Mukiele", "outPoints": 0, "inPlayerId": 418, "inName": "Maguire", "inPoints": 1, "pointsDelta": 1 },
+    { "outPlayerId": 428, "outName": "Cunha", "outPoints": 2, "inPlayerId": 427, "inName": "Mbeumo", "inPoints": 2, "pointsDelta": 0 },
+    { "outPlayerId": 336, "outName": "Okafor", "outPoints": 1, "inPlayerId": 542, "inName": "E. Le Fée", "inPoints": 2, "pointsDelta": 1 }
+  ],
+  "counterfactuals": {
+    "managerOverrideDelta": 2,
+    "viceCaptainAsCaptainPoints": 56,
+    "captaincyDelta": 9,
+    "unusedBenchPoints": 6
+  },
+  "lessons": [
+    "The three manager overrides added two points against the frozen AI selection.",
+    "The starting XI was sound after the overrides; every starter played and no bench points were eligible to enter.",
+    "Haaland captaincy underperformed João Pedro by nine points in the post-hoc captain swap, but this is an outcome comparison rather than evidence that the pre-deadline captain decision was unsound.",
+    "The submitted team scored three points below the gameweek average."
+  ]
+}

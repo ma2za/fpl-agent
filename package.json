@@ -50,7 +50,7 @@
     "variant:verify": "tsx scripts/variant-verify.ts",
     "variant:compare": "tsx scripts/variant-compare.ts",
     "verify": "tsx scripts/verify-recommendation.ts",
-    "postmortem": "node scripts/not-implemented.mjs postmortem"
+    "postmortem": "tsx scripts/postmortem.ts"
   },
   "devDependencies": {
     "@types/node": "26.1.0",

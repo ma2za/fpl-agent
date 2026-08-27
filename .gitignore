@@ -250,6 +250,7 @@ packages/content/strategy/season-plan.md
 packages/content/strategy/weekly/*
 !packages/content/context/.gitkeep
 !packages/content/postmortems/.gitkeep
+!packages/content/postmortems/gw-*.json
 !packages/content/recommendations/.gitkeep
 !packages/content/strategy/.gitkeep
 !packages/content/strategy/weekly/.gitkeep
