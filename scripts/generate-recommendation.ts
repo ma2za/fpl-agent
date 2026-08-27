@@ -507,11 +507,14 @@ export async function generateRecommendationEvidence(input: {
     ];
   const requiredDecisionPlayerIds = new Set([
     ...CURRENT_SQUAD.players,
-    ...Object.values(PLAYER_DECISION_INPUTS).map((decision) => decision.alternativePlayerId)
+    ...Object.values(PLAYER_DECISION_INPUTS).flatMap((decision) => [
+      decision.alternativePlayerId,
+      ...(decision.additionalAlternativePlayerIds ?? [])
+    ])
   ]);
   const availablePlayerIds = new Set(players.map((player) => player.id));
   const projectedPlayerIds = new Set(projectionUncertainty.items.map((projection) => projection.playerId));
-  const decisionInputsAvailable = [...requiredDecisionPlayerIds].every((playerId) =>
+  const decisionInputsAvailable = CURRENT_SQUAD.sourceGameweek === gameweek && [...requiredDecisionPlayerIds].every((playerId) =>
     availablePlayerIds.has(playerId) && projectedPlayerIds.has(playerId));
   const squadDecisionRecord = decisionInputsAvailable ? buildSquadDecisionRecord({
     gameweek,

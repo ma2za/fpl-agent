@@ -17,6 +17,7 @@ const selection = selectionJson as typeof selectionJson & {
 };
 
 export const CURRENT_SQUAD = {
+  sourceGameweek: selection.gameweek,
   bank: selection.squad.bank,
   freeTransfers: 1,
   chipsAvailable: ["wildcard", "free_hit", "bench_boost", "triple_captain"],

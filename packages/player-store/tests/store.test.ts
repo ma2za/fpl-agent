@@ -9,6 +9,7 @@ import {
   PLAYER_STORE_SCHEMA_VERSION,
   buildPlayerDossier,
   buildResearchWorklist,
+  completedNewsDiscoveryPlayerIds,
   contentHash,
   ingestEvidenceBatch,
   ingestOfficialRun,
@@ -116,7 +117,7 @@ describe("player intelligence store", () => {
         playerId: 1,
         searches: [{
           query: "Ada Player Example FC team news",
-          provider: "test-search",
+          provider: "google-news-api:test",
           searchedAt: secondAt,
           status: "completed" as const,
           candidates: [{
@@ -130,12 +131,30 @@ describe("player intelligence store", () => {
     };
     expect(recordNewsDiscovery(db, discovery).inserted).toBe(true);
     expect(recordNewsDiscovery(db, discovery).inserted).toBe(false);
+    expect([...completedNewsDiscoveryPlayerIds(db, worklist.worklistId)]).toEqual([1]);
+    recordNewsDiscovery(db, {
+      ...discovery,
+      generatedAt: "2026-08-02T13:00:00.000Z",
+      players: [{
+        playerId: 1,
+        searches: [{
+          query: "Ada Player maintained source",
+          provider: "seed-crawl:test:fetch",
+          searchedAt: "2026-08-02T13:00:00.000Z",
+          status: "completed",
+          candidates: [{ url: "https://example.com/ada-lineup", title: "Ada starts", publisher: "Example News", publishedAt: secondAt }]
+        }]
+      }]
+    });
     expect(latestNewsDiscovery(db, 1)).toMatchObject({
       worklistId: worklist.worklistId,
       players: [{
         playerId: 1,
-        candidateUrls: ["https://example.com/ada-update"],
-        searches: [{ resultUrls: ["https://example.com/ada-update"] }]
+        candidateUrls: ["https://example.com/ada-update", "https://example.com/ada-lineup"],
+        searches: [
+          { resultUrls: ["https://example.com/ada-update"] },
+          { resultUrls: ["https://example.com/ada-lineup"] }
+        ]
       }]
     });
     db.close();

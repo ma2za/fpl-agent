@@ -1,5 +1,6 @@
 import json
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 from google_news_api import GoogleNewsClient
@@ -16,6 +17,32 @@ def query_for(player):
     return f"({quoted}) Premier League football"
 
 
+def search_player(player, when, max_results):
+    query = query_for(player)
+    try:
+        with GoogleNewsClient(language="en", country="GB") as client:
+            articles = client.search(query, when=when, max_results=max_results)
+            for article in articles:
+                google_url = article["link"]
+                article["googleLink"] = google_url
+                article["link"] = client.decode_url(google_url)
+        return {
+            "playerId": player["playerId"],
+            "query": query,
+            "status": "completed",
+            "error": None,
+            "articles": articles,
+        }
+    except Exception as error:
+        return {
+            "playerId": player["playerId"],
+            "query": query,
+            "status": "blocked",
+            "error": str(error),
+            "articles": [],
+        }
+
+
 def main():
     request = json.load(sys.stdin)
     if "extractUrls" in request:
@@ -23,7 +50,7 @@ def main():
         with httpx.Client(follow_redirects=True, timeout=30) as client:
             for url in request["extractUrls"]:
                 try:
-                    response = client.get(url, headers={"User-Agent": "fpl-agent-player-intelligence/0.0.17"})
+                    response = client.get(url, headers={"User-Agent": "fpl-agent-player-intelligence/0.0.19"})
                     response.raise_for_status()
                     parser = HTMLParser(response.text)
                     for node in parser.css("script, style, nav, footer, header"):
@@ -53,39 +80,13 @@ def main():
                     decoded.append({"googleUrl": url, "url": None, "error": str(error)})
         json.dump({"decoded": decoded}, sys.stdout)
         return
-    results = []
-    with GoogleNewsClient(language="en", country="GB") as client:
-        for player in request["players"]:
-            query = query_for(player)
-            try:
-                articles = client.search(
-                    query,
-                    when=request["when"],
-                    max_results=request["maxResults"],
-                )
-                for article in articles:
-                    google_url = article["link"]
-                    article["googleLink"] = google_url
-                    article["link"] = client.decode_url(google_url)
-                results.append(
-                    {
-                        "playerId": player["playerId"],
-                        "query": query,
-                        "status": "completed",
-                        "error": None,
-                        "articles": articles,
-                    }
-                )
-            except Exception as error:
-                results.append(
-                    {
-                        "playerId": player["playerId"],
-                        "query": query,
-                        "status": "blocked",
-                        "error": str(error),
-                        "articles": [],
-                    }
-                )
+    players = request["players"]
+    workers = max(1, min(int(request.get("workers", 8)), 16))
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        results = list(executor.map(
+            lambda player: search_player(player, request["when"], request["maxResults"]),
+            players,
+        ))
     json.dump({"provider": "google-news-api:0.0.17", "results": results}, sys.stdout)
 
 

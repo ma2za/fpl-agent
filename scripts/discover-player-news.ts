@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { PLAYER_NEWS_SOURCES, type PlayerNewsSource } from "../config/player-news-sources";
 import {
+  completedNewsDiscoveryPlayerIds,
   latestResearchWorklist,
   openPlayerStore,
   recordNewsDiscovery,
@@ -25,7 +26,7 @@ type BrowserClient = {
 };
 let browserTail = Promise.resolve();
 
-export function searchGoogleNews(players: WorklistPlayer[], when = "14d", maxResults = 10) {
+export function searchGoogleNews(players: WorklistPlayer[], when = "14d", maxResults = 10, workers = 8) {
   return new Promise<{ provider: string; results: GoogleNewsResult[] }>((resolve, reject) => {
     const child = spawn("uv", ["run", "python", path.join("scripts", "google-news-player-search.py")], {
       cwd: process.cwd(),
@@ -44,7 +45,7 @@ export function searchGoogleNews(players: WorklistPlayer[], when = "14d", maxRes
         reject(new Error("google-news-api returned invalid JSON."));
       }
     });
-    child.stdin.end(JSON.stringify({ players, when, maxResults }));
+    child.stdin.end(JSON.stringify({ players, when, maxResults, workers }));
   });
 }
 
@@ -132,7 +133,7 @@ export function robotsAllows(text: string, pathname: string) {
 
 async function fetchText(url: string, fetchImpl: typeof fetch) {
   const response = await fetchImpl(url, {
-    headers: { accept: "text/html,text/plain;q=0.9,*/*;q=0.1", "accept-language": "en-GB,en;q=0.9", "user-agent": "fpl-agent-player-intelligence/0.0.17" },
+    headers: { accept: "text/html,text/plain;q=0.9,*/*;q=0.1", "accept-language": "en-GB,en;q=0.9", "user-agent": "fpl-agent-player-intelligence/0.0.19" },
     signal: AbortSignal.timeout(20_000)
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -142,7 +143,7 @@ async function fetchText(url: string, fetchImpl: typeof fetch) {
 async function loadBrowser(): Promise<BrowserClient> {
   const { chromium } = await import("playwright");
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ userAgent: "fpl-agent-player-intelligence/0.0.17", locale: "en-GB" });
+  const context = await browser.newContext({ userAgent: "fpl-agent-player-intelligence/0.0.19", locale: "en-GB" });
   return {
     html: async (url, waitForNetworkIdle) => {
       const page = await context.newPage();
@@ -257,6 +258,10 @@ export async function discoverPlayerNews(input: {
   minimumAppearanceProbability?: number;
   maxPagesPerSource?: number;
   concurrency?: number;
+  googleNewsConcurrency?: number;
+  batchSize?: number;
+  maxPlayers?: number;
+  resume?: boolean;
   sources?: PlayerNewsSource[];
   sourceIds?: string[];
   playerIds?: number[];
@@ -268,18 +273,36 @@ export async function discoverPlayerNews(input: {
   const storePath = input.storePath ?? path.join("data", "player-intelligence", "player-intelligence.sqlite");
   const db = openPlayerStore(storePath, { readonly: true });
   const worklist = latestResearchWorklist(db, input.gameweek);
+  const completedPlayerIds = worklist && input.resume !== false
+    ? completedNewsDiscoveryPlayerIds(db, worklist.worklistId)
+    : new Set<number>();
   db.close();
   if (!worklist) throw new Error(`No evidence research worklist exists for GW${input.gameweek}; run pnpm refresh first.`);
   const projections = JSON.parse(await readFile(path.join(root, "probabilistic-projections.json"), "utf8")) as Array<{ playerId: number; appearance: { appearanceProbability: number } }>;
   const probability = new Map(projections.map((item) => [item.playerId, item.appearance.appearanceProbability]));
   const minimumAppearanceProbability = input.minimumAppearanceProbability ?? 0;
   const requestedPlayerIds = input.playerIds ? new Set(input.playerIds) : null;
-  const players = worklist.players.filter((player) =>
+  const eligiblePlayers = worklist.players.filter((player) =>
     (probability.get(player.playerId) ?? 0) >= minimumAppearanceProbability &&
     (!requestedPlayerIds || requestedPlayerIds.has(player.playerId))
   );
+  const skippedPlayers = eligiblePlayers.filter((player) => completedPlayerIds.has(player.playerId)).length;
+  const remainingPlayers = eligiblePlayers.filter((player) => !completedPlayerIds.has(player.playerId));
+  const players = input.maxPlayers === undefined ? remainingPlayers : remainingPlayers.slice(0, input.maxPlayers);
   const configuredSources = input.sources ?? PLAYER_NEWS_SOURCES;
   const sources = input.sourceIds?.length ? configuredSources.filter((source) => input.sourceIds!.includes(source.id)) : configuredSources;
+  if (players.length === 0) {
+    return {
+      discoveryId: null,
+      discoveryIds: [],
+      inserted: false,
+      players: 0,
+      skippedPlayers,
+      sourceCount: sources.length,
+      completedSources: 0,
+      candidateCount: 0
+    };
+  }
   const crawls = new Array<Awaited<ReturnType<typeof crawlSource>>>();
   let next = 0;
   await Promise.all(Array.from({ length: input.concurrency ?? 6 }, async () => {
@@ -290,60 +313,71 @@ export async function discoverPlayerNews(input: {
   }));
   const sourceOrder = new Map(sources.map((source, index) => [source.id, index]));
   crawls.sort((a, b) => sourceOrder.get(a.source.id)! - sourceOrder.get(b.source.id)!);
-  const googleNews = await (input.googleNewsSearch ?? searchGoogleNews)(players);
-  const googleByPlayer = new Map(googleNews.results.map((result) => [result.playerId, result]));
-  const generatedAt = new Date().toISOString();
-  const results = players.map((player) => {
-    const google = googleByPlayer.get(player.playerId);
-    return {
-      playerId: player.playerId,
-      name: player.name,
-      searches: [...crawls.map((crawl) => {
-        const pages = crawl.pages.filter((page) => pageMatchesPlayer(page, player.aliases));
-        return {
-          query: `${player.name} source crawl ${crawl.source.url}`,
-          provider: `seed-crawl:${crawl.source.id}:${crawl.acquisitionUsed ?? crawl.source.strategy.acquisition}`,
+  const discoveryIds: string[] = [];
+  let candidateCount = 0;
+  let inserted = false;
+  const batchSize = input.batchSize ?? 25;
+  for (let offset = 0; offset < players.length; offset += batchSize) {
+    const batch = players.slice(offset, offset + batchSize);
+    const googleNews = await (input.googleNewsSearch ?? searchGoogleNews)(batch, "14d", 10, input.googleNewsConcurrency ?? 8);
+    const googleByPlayer = new Map(googleNews.results.map((result) => [result.playerId, result]));
+    const generatedAt = new Date().toISOString();
+    const results = batch.map((player) => {
+      const google = googleByPlayer.get(player.playerId);
+      return {
+        playerId: player.playerId,
+        searches: [...crawls.map((crawl) => {
+          const pages = crawl.pages.filter((page) => pageMatchesPlayer(page, player.aliases));
+          return {
+            query: `${player.name} source crawl ${crawl.source.url}`,
+            provider: `seed-crawl:${crawl.source.id}:${crawl.acquisitionUsed ?? crawl.source.strategy.acquisition}`,
+            searchedAt: generatedAt,
+            status: crawl.status,
+            error: crawl.error,
+            candidates: pages.map((page) => ({ url: page.url, title: page.headline, publisher: crawl.source.id, publishedAt: null }))
+          };
+        }), {
+          query: google?.query ?? `${player.name} Premier League football`,
+          provider: googleNews.provider,
           searchedAt: generatedAt,
-          status: crawl.status,
-          error: crawl.error,
-          candidates: pages.map((page) => ({ url: page.url, title: page.headline, publisher: crawl.source.id, publishedAt: null }))
-        };
-      }), {
-        query: google?.query ?? `${player.name} Premier League football`,
-        provider: googleNews.provider,
-        searchedAt: generatedAt,
-        status: google?.status ?? "blocked",
-        error: google?.error ?? "Google News did not return a player result.",
-        candidates: (google?.articles ?? []).map((article) => ({
-          url: article.link,
-          title: article.title,
-          publisher: article.source,
-          publishedAt: article.published
-        }))
-      }],
-      googleNewsArticles: google?.articles ?? [],
-      candidateUrls: [...new Set([
-        ...crawls.flatMap((crawl) => crawl.pages.filter((page) => pageMatchesPlayer(page, player.aliases)).map((page) => page.url)),
-        ...(google?.articles.map((article) => article.link) ?? [])
-      ])]
-    };
-  });
-  const discovery = {
-    worklistId: worklist.worklistId,
-    gameweek: input.gameweek,
-    generatedAt,
-    minimumAppearanceProbability,
-    players: results.map((player) => ({ playerId: player.playerId, searches: player.searches }))
-  };
-  const stored = await updatePlayerStoreTransactionally(storePath, {
-    appliedAt: generatedAt,
-    update: (staged) => recordNewsDiscovery(staged, discovery)
-  });
+          status: google?.status ?? "blocked",
+          error: google?.error ?? "Google News did not return a player result.",
+          candidates: (google?.articles ?? []).map((article) => ({
+            url: article.link,
+            title: article.title,
+            publisher: article.source,
+            publishedAt: article.published
+          }))
+        }],
+        candidateUrls: [...new Set([
+          ...crawls.flatMap((crawl) => crawl.pages.filter((page) => pageMatchesPlayer(page, player.aliases)).map((page) => page.url)),
+          ...(google?.articles.map((article) => article.link) ?? [])
+        ])]
+      };
+    });
+    const stored = await updatePlayerStoreTransactionally(storePath, {
+      appliedAt: generatedAt,
+      update: (staged) => recordNewsDiscovery(staged, {
+        worklistId: worklist.worklistId,
+        gameweek: input.gameweek,
+        generatedAt,
+        minimumAppearanceProbability,
+        players: results.map((player) => ({ playerId: player.playerId, searches: player.searches }))
+      })
+    });
+    discoveryIds.push(stored.discoveryId);
+    candidateCount += results.reduce((sum, player) => sum + player.candidateUrls.length, 0);
+    inserted ||= stored.inserted;
+  }
   return {
-    ...stored,
+    discoveryId: discoveryIds.at(-1) ?? null,
+    discoveryIds,
+    inserted,
+    players: players.length,
+    skippedPlayers,
     sourceCount: sources.length,
     completedSources: crawls.filter((crawl) => crawl.status === "completed").length,
-    candidateCount: results.reduce((sum, player) => sum + player.candidateUrls.length, 0)
+    candidateCount
   };
 }
 
@@ -351,14 +385,23 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const gameweek = Number(argValue("--gw"));
   const minimumAppearanceProbability = Number(argValue("--min-appearance") ?? "0");
   const maxPagesPerSource = Number(argValue("--max-pages-per-source") ?? "30");
+  const googleNewsConcurrency = Number(argValue("--news-concurrency") ?? "8");
+  const batchSize = Number(argValue("--batch-size") ?? "25");
+  const maxPlayersValue = argValue("--max-players");
+  const maxPlayers = maxPlayersValue === null ? undefined : Number(maxPlayersValue);
   const sourceIds = process.argv.flatMap((arg, index) => arg === "--source" && process.argv[index + 1] ? [process.argv[index + 1]] : []);
   const playerIds = process.argv.flatMap((arg, index) => arg === "--player" && process.argv[index + 1] ? [Number(process.argv[index + 1])] : []);
-  if (!Number.isInteger(gameweek) || gameweek < 1 || minimumAppearanceProbability < 0 || minimumAppearanceProbability > 1 || playerIds.some((id) => !Number.isInteger(id) || id < 1)) {
-    console.error("Usage: pnpm evidence:discover -- --gw <n> [--player <id>] [--min-appearance <0..1>] [--max-pages-per-source <n>]");
+  if (!Number.isInteger(gameweek) || gameweek < 1 || minimumAppearanceProbability < 0 || minimumAppearanceProbability > 1 ||
+    !Number.isInteger(googleNewsConcurrency) || googleNewsConcurrency < 1 || googleNewsConcurrency > 16 ||
+    !Number.isInteger(batchSize) || batchSize < 1 || batchSize > 100 ||
+    (maxPlayers !== undefined && (!Number.isInteger(maxPlayers) || maxPlayers < 1)) ||
+    playerIds.some((id) => !Number.isInteger(id) || id < 1)) {
+    console.error("Usage: pnpm evidence:discover -- --gw <n> [--player <id>] [--min-appearance <0..1>] [--max-pages-per-source <n>] [--news-concurrency <1..16>] [--batch-size <1..100>] [--max-players <n>] [--no-resume]");
     process.exitCode = 1;
   } else {
-    discoverPlayerNews({ gameweek, minimumAppearanceProbability, maxPagesPerSource, sourceIds, playerIds: playerIds.length ? playerIds : undefined }).then((result) => {
-      console.log(`Stored discovery ${result.discoveryId}: ${result.players} players, ${result.completedSources}/${result.sourceCount} sources, ${result.candidateCount} candidate matches.`);
+    discoverPlayerNews({ gameweek, minimumAppearanceProbability, maxPagesPerSource, googleNewsConcurrency, batchSize, maxPlayers,
+      resume: !process.argv.includes("--no-resume"), sourceIds, playerIds: playerIds.length ? playerIds : undefined }).then((result) => {
+      console.log(`Stored ${result.discoveryIds.length} discovery checkpoint(s): ${result.players} players searched, ${result.skippedPlayers} already complete, ${result.completedSources}/${result.sourceCount} sources, ${result.candidateCount} candidate matches.`);
     }).catch((error) => {
       console.error(error instanceof Error ? error.message : error);
       process.exitCode = 1;

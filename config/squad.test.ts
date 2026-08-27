@@ -10,8 +10,16 @@ import {
 } from "../packages/agent/src/squadDecisionRecord";
 import { CURRENT_SQUAD, PLAYER_DECISION_INPUTS, SQUAD_STRATEGY } from "./squad";
 
-const players = playersJson as Parameters<typeof validateSquadDecisionRecord>[1];
 const record = decisionRecordJson as unknown as SquadDecisionRecord;
+const frozenPrices = new Map(record.playerDecisions.flatMap((decision) => [
+  [decision.playerId, decision.metrics.price] as const,
+  [decision.alternative.playerId, decision.alternative.price] as const,
+  ...(decision.alternatives ?? []).map((alternative) => [alternative.playerId, alternative.price] as const)
+]));
+const players = (playersJson as Parameters<typeof validateSquadDecisionRecord>[1]).map((player) => ({
+  ...player,
+  price: frozenPrices.get(player.id) ?? player.price
+}));
 
 describe("configured squad decision record", () => {
   it("passes legality, consistency, strategy, evidence, and tolerance validation", () => {

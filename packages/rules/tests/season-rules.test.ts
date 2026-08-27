@@ -38,7 +38,7 @@ describe("2026/27 season rules", () => {
     });
   });
 
-  it.each([1, 18, 19, 20, 38])("accepts an available chip in GW%i", (gameweek) => {
+  it.each([2, 18, 19, 20, 38])("accepts an available chip in GW%i", (gameweek) => {
     expect(validateSeasonChip({
       season: "2026-27",
       gameweek,
@@ -79,7 +79,7 @@ describe("2026/27 season rules", () => {
     expect(secondHalf.secondHalf.wildcard).toBe(false);
   });
 
-  it("enforces one chip, the GW1 Free Hit restriction, and consecutive Free Hits", () => {
+  it("enforces one chip, the GW1 transfer-chip restrictions, and consecutive Free Hits", () => {
     const inventory = createSeasonChipInventory();
 
     expect(validateSeasonChip({
@@ -88,6 +88,12 @@ describe("2026/27 season rules", () => {
       chips: ["free_hit"],
       inventory
     }).errors).toContain("Free Hit cannot be played in Gameweek 1.");
+    expect(validateSeasonChip({
+      season: "2026-27",
+      gameweek: 1,
+      chips: ["wildcard"],
+      inventory
+    }).errors).toContain("Wildcard cannot be played in Gameweek 1.");
     expect(validateSeasonChip({
       season: "2026-27",
       gameweek: 19,

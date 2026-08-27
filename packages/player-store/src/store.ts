@@ -425,15 +425,25 @@ export function recordNewsDiscovery(db: Database.Database, input: NewsDiscoveryI
   return { discoveryId, inserted: true, players: input.players.length };
 }
 
+export function completedNewsDiscoveryPlayerIds(db: Database.Database, worklistId: string) {
+  return new Set((db.prepare(`SELECT DISTINCT s.player_id FROM news_discovery_searches s
+    JOIN news_discovery_runs r ON r.discovery_id = s.discovery_id
+    WHERE r.worklist_id = ? AND s.status = 'completed' AND s.provider LIKE 'google-news-api:%'
+    ORDER BY s.player_id`).all(worklistId) as Array<{ player_id: number }>).map((row) => row.player_id));
+}
+
 export function latestNewsDiscovery(db: Database.Database, gameweek: number) {
-  const run = db.prepare(`SELECT * FROM news_discovery_runs WHERE gameweek = ?
-    ORDER BY generated_at DESC, rowid DESC LIMIT 1`).get(gameweek) as Record<string, unknown> | undefined;
+  const run = db.prepare(`SELECT r.* FROM news_discovery_runs r WHERE r.worklist_id =
+    (SELECT worklist_id FROM evidence_worklists WHERE gameweek = ? ORDER BY generated_at DESC, rowid DESC LIMIT 1)
+    ORDER BY r.generated_at DESC, r.rowid DESC LIMIT 1`).get(gameweek) as Record<string, unknown> | undefined;
   if (!run) return null;
-  const searches = db.prepare(`SELECT * FROM news_discovery_searches WHERE discovery_id = ?
-    ORDER BY player_id, rowid`).all(run.discovery_id) as Array<Record<string, unknown>>;
+  const searches = db.prepare(`SELECT s.* FROM news_discovery_searches s
+    JOIN news_discovery_runs r ON r.discovery_id = s.discovery_id WHERE r.worklist_id = ?
+    ORDER BY s.player_id, s.searched_at, s.rowid`).all(run.worklist_id) as Array<Record<string, unknown>>;
   const candidates = db.prepare(`SELECT c.* FROM news_discovery_candidates c
-    JOIN news_discovery_searches s ON s.search_id = c.search_id WHERE s.discovery_id = ?
-    ORDER BY c.player_id, c.rowid`).all(run.discovery_id) as Array<Record<string, unknown>>;
+    JOIN news_discovery_searches s ON s.search_id = c.search_id
+    JOIN news_discovery_runs r ON r.discovery_id = s.discovery_id WHERE r.worklist_id = ?
+    ORDER BY c.player_id, c.rowid`).all(run.worklist_id) as Array<Record<string, unknown>>;
   const candidatesBySearch = new Map<string, Array<Record<string, unknown>>>();
   for (const candidate of candidates) {
     const searchCandidates = candidatesBySearch.get(String(candidate.search_id)) ?? [];
@@ -766,6 +776,9 @@ export function playerStoreStatus(db: Database.Database) {
       fixtures: count("player_fixture_observations"),
       documents: count("source_documents"),
       news: count("news_observations"),
+      discoveryRuns: count("news_discovery_runs"),
+      discoverySearches: count("news_discovery_searches"),
+      discoveryCandidates: count("news_discovery_candidates"),
       coverage: count("discovery_coverage")
     }
   };

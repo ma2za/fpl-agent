@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { FixtureHorizonReport } from "../packages/agent/src";
+import { CURRENT_SQUAD } from "../config/squad";
 import { fixtureProjectionContext } from "./generate-recommendation";
 
 describe("recommendation projection context", () => {
+  it("identifies the frozen source gameweek for configured decisions", () => {
+    expect(CURRENT_SQUAD.sourceGameweek).toBe(1);
+  });
+
   it("maps GW1 attack and defence fixture difficulty without using longer horizons", () => {
     const report = {
       teams: [{

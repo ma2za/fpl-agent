@@ -162,8 +162,8 @@ export function validateSeasonChip(input: SeasonChipValidationInput): Validation
     addError(result, `Chip ${chip} is not available in this half of the season.`);
   }
 
-  if (chip === "free_hit" && input.gameweek === 1) {
-    addError(result, "Free Hit cannot be played in Gameweek 1.");
+  if ((chip === "wildcard" || chip === "free_hit") && input.gameweek === 1) {
+    addError(result, `${chip === "wildcard" ? "Wildcard" : "Free Hit"} cannot be played in Gameweek 1.`);
   }
 
   if (chip === "free_hit" && input.previousGameweekChip === "free_hit") {

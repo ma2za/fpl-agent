@@ -17,7 +17,7 @@ The rules package models the 2026/27 FPL rules needed to validate and score an a
 - Phase-valid action vocabularies for preseason, live gameweeks, transfer windows, final lockdown, and season completion.
 - Rejection of transfer-window actions such as `roll` during preseason draft construction.
 - Two chip sets across the season and first-half chip expiry.
-- Free Hit not available in GW1 and not playable in consecutive gameweeks.
+- Wildcard and Free Hit not available in GW1; Free Hit is not playable in consecutive gameweeks.
 - Roll up to five free transfers.
 - Full scoring rules, including goals, assists, clean sheets, saves, cards, bonus, defensive contributions, and own goals.
 - 2026/27 defensive contribution rules.
@@ -34,7 +34,7 @@ Score lifecycle callers supply the published lockdown timestamp. Results remain 
 ## Sources
 
 - FPL squad structure and budget: https://www.premierleague.com/en/news/2174419/fpl-basics-how-to-pick-a-squad
-- FPL 2026/27 launch and rule-change summary: https://www.premierleague.com/en/news/4680722/fpl-is-live-pick-your-202627-squad-now/
+- FPL 2026/27 launch and rule-change summary: https://www.premierleague.com/en/news/4679873
 - FPL 2026/27 chip structure: https://www.premierleague.com/en/news/4679879/whats-happening-with-fpl-chips-in-202627
 - FPL scoring rules: https://www.premierleague.com/en/news/2174909/fpl-basics-scoring
 - FPL transfer and sell-value rules: https://www.premierleague.com/en/news/2174907/fpl-basics-making-transfers

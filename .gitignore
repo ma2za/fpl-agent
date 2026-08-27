@@ -238,6 +238,7 @@ data/raw/**/*.json
 data/raw/**/*.csv
 data/processed/**/*.json
 data/cache/**/*.json
+data/cache/refresh-inputs/
 data/player-intelligence/
 
 # Local season workspace
@@ -246,6 +247,7 @@ packages/content/context/*.md
 packages/content/context/*.json
 packages/content/postmortems/*
 packages/content/recommendations/gw-*/
+packages/content/recommendations/.refresh-gw-*/
 packages/content/strategy/season-plan.md
 packages/content/strategy/weekly/*
 !packages/content/context/.gitkeep
