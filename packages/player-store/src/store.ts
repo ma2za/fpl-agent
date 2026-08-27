@@ -8,6 +8,8 @@ import {
   EvidenceResearchWorklistSchema,
   EvidenceStoreManifestSchema,
   NewsObservationSchema,
+  NewsReviewDecisionSchema,
+  NewsReviewQueueSchema,
   PlayerDossierSchema,
   PlayerEvidenceSnapshotSchema,
   PlayerPerformanceObservationSchema,
@@ -18,18 +20,20 @@ import {
   type EvidenceResearchWorklist,
   type EvidenceStoreManifest,
   type NewsObservation,
+  type NewsReviewDecision,
   type PlayerDossier,
   type PlayerEvidenceSnapshot,
   type PlayerPerformanceObservation,
   type TriggerEvaluation
 } from "./types";
 
-export const PLAYER_STORE_SCHEMA_VERSION = 3;
+export const PLAYER_STORE_SCHEMA_VERSION = 4;
 export const DEFAULT_PLAYER_STORE_PATH = path.join("data", "player-intelligence", "player-intelligence.sqlite");
 const PLAYER_STORE_MIGRATIONS = [
   { version: 1, name: "initial" },
   { version: 2, name: "coverage-search-receipts" },
-  { version: 3, name: "news-discovery" }
+  { version: 3, name: "news-discovery" },
+  { version: 4, name: "news-review-queue" }
 ] as const;
 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
@@ -483,6 +487,117 @@ export function latestNewsDiscovery(db: Database.Database, gameweek: number) {
   };
 }
 
+export function recordNewsCandidateReviews(db: Database.Database, input: {
+  worklistId: string;
+  decisions: NewsReviewDecision[];
+}) {
+  const decisions = input.decisions.map((decision) => NewsReviewDecisionSchema.parse(decision));
+  const candidate = db.prepare(`SELECT c.candidate_id FROM news_discovery_candidates c
+    JOIN news_discovery_searches s ON s.search_id = c.search_id
+    JOIN news_discovery_runs r ON r.discovery_id = s.discovery_id
+    WHERE r.worklist_id = ? AND c.player_id = ? AND c.url = ? ORDER BY c.rowid LIMIT 1`);
+  const insert = db.prepare(`INSERT OR IGNORE INTO news_candidate_reviews(
+    review_id, worklist_id, representative_candidate_id, player_id, candidate_url,
+    outcome, reviewed_at, agent, note, content_hash
+  ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  let inserted = 0;
+  const transaction = db.transaction(() => {
+    for (const decision of decisions) {
+      const match = candidate.get(input.worklistId, decision.playerId, decision.url) as { candidate_id: string } | undefined;
+      if (!match) throw new Error(`Review target ${decision.url} is not a discovered candidate for player ${decision.playerId}.`);
+      const core = { worklistId: input.worklistId, ...decision };
+      const result = insert.run(
+        stableId("review", core), input.worklistId, match.candidate_id, decision.playerId,
+        decision.url, decision.outcome, decision.reviewedAt, decision.agent, decision.note, contentHash(core)
+      );
+      inserted += result.changes;
+    }
+  });
+  transaction.immediate();
+  return { inserted, reviewed: decisions.length };
+}
+
+export function buildNewsReviewQueue(db: Database.Database, input: {
+  gameweek: number;
+  generatedAt: string;
+  selectedPlayerIds?: number[];
+  namedAlternativePlayerIds?: number[];
+  transferTargetPlayerIds?: number[];
+  appearancePlayerIds?: number[];
+  includeReviewed?: boolean;
+  limit?: number;
+}) {
+  const worklist = db.prepare(`SELECT worklist_id, raw_json FROM evidence_worklists WHERE gameweek = ?
+    ORDER BY generated_at DESC, rowid DESC LIMIT 1`).get(input.gameweek) as { worklist_id: string; raw_json: string } | undefined;
+  if (!worklist) throw new Error(`No evidence research worklist exists for GW${input.gameweek}.`);
+  const playerNames = new Map(EvidenceResearchWorklistSchema.parse(JSON.parse(worklist.raw_json)).players
+    .map((player) => [player.playerId, player.name]));
+  const candidates = db.prepare(`SELECT c.candidate_id, c.player_id, c.url, c.title, c.publisher, c.published_at
+    FROM news_discovery_candidates c
+    JOIN news_discovery_searches s ON s.search_id = c.search_id
+    JOIN news_discovery_runs r ON r.discovery_id = s.discovery_id
+    WHERE r.worklist_id = ? ORDER BY c.player_id, c.rowid`).all(worklist.worklist_id) as Array<{
+      candidate_id: string; player_id: number; url: string; title: string;
+      publisher: string | null; published_at: string | null;
+    }>;
+  const reviews = db.prepare(`SELECT player_id, candidate_url, outcome, reviewed_at, note FROM news_candidate_reviews
+    WHERE worklist_id = ? ORDER BY reviewed_at, rowid`).all(worklist.worklist_id) as Array<{
+      player_id: number; candidate_url: string; outcome: string; reviewed_at: string; note: string;
+    }>;
+  const latestReview = new Map(reviews.map((review) => [`${review.player_id}:${review.candidate_url}`, review]));
+  const unique = new Map<string, typeof candidates[number]>();
+  for (const candidate of candidates) unique.set(`${candidate.player_id}:${candidate.url}`, unique.get(`${candidate.player_id}:${candidate.url}`) ?? candidate);
+  const selected = new Set(input.selectedPlayerIds ?? []);
+  const alternatives = new Set(input.namedAlternativePlayerIds ?? []);
+  const transfers = new Set(input.transferTargetPlayerIds ?? []);
+  const appearance = new Set(input.appearancePlayerIds ?? []);
+  const allItems = [...unique.values()].map((candidate) => {
+    const review = latestReview.get(`${candidate.player_id}:${candidate.url}`);
+    const priorityReason = selected.has(candidate.player_id) ? "selected_squad" as const
+      : alternatives.has(candidate.player_id) ? "named_alternative" as const
+      : transfers.has(candidate.player_id) ? "transfer_target" as const
+      : appearance.has(candidate.player_id) ? "appearance" as const
+      : "worklist" as const;
+    const priority = { selected_squad: 0, named_alternative: 1, transfer_target: 2, appearance: 3, worklist: 4 }[priorityReason];
+    return {
+      candidateId: candidate.candidate_id,
+      playerId: candidate.player_id,
+      playerName: playerNames.get(candidate.player_id) ?? String(candidate.player_id),
+      url: candidate.url,
+      title: candidate.title,
+      publisher: candidate.publisher,
+      publishedAt: candidate.published_at && Number.isFinite(Date.parse(candidate.published_at))
+        ? new Date(candidate.published_at).toISOString()
+        : null,
+      priority,
+      priorityReason,
+      outcome: review?.outcome ?? null,
+      reviewedAt: review?.reviewed_at ?? null,
+      note: review?.note ?? null
+    };
+  }).sort((a, b) =>
+    a.priority - b.priority ||
+    Number(a.outcome !== null && a.outcome !== "deferred") - Number(b.outcome !== null && b.outcome !== "deferred") ||
+    (b.publishedAt ?? "").localeCompare(a.publishedAt ?? "") ||
+    a.playerId - b.playerId || a.url.localeCompare(b.url)
+  );
+  const eligible = input.includeReviewed ? allItems : allItems.filter((item) => item.outcome === null || item.outcome === "deferred");
+  const visible = input.limit === undefined ? eligible : eligible.slice(0, input.limit);
+  return NewsReviewQueueSchema.parse({
+    schemaVersion: 1,
+    generatedAt: input.generatedAt,
+    gameweek: input.gameweek,
+    worklistId: worklist.worklist_id,
+    summary: {
+      candidates: allItems.length,
+      pending: allItems.filter((item) => item.outcome === null).length,
+      deferred: allItems.filter((item) => item.outcome === "deferred").length,
+      reviewed: allItems.filter((item) => item.outcome !== null && item.outcome !== "deferred").length
+    },
+    items: visible
+  });
+}
+
 export function ingestEvidenceBatch(db: Database.Database, value: unknown, now = new Date()) {
   const batch = EvidenceIngestionBatchSchema.parse(value);
   const authoredAt = Date.parse(batch.authorship.authoredAt);
@@ -765,9 +880,39 @@ export function playerStoreStatus(db: Database.Database) {
     WHERE mode IN ('live', 'offline') ORDER BY observed_at DESC, rowid DESC LIMIT 1`).get() as {
       run_id: string; gameweek: number; mode: string; observed_at: string;
     } | undefined;
+  const worklist = db.prepare(`SELECT worklist_id, raw_json FROM evidence_worklists
+    ORDER BY generated_at DESC, rowid DESC LIMIT 1`).get() as { worklist_id: string; raw_json: string } | undefined;
+  const progress = worklist ? (() => {
+    const totalPlayers = EvidenceResearchWorklistSchema.parse(JSON.parse(worklist.raw_json)).players.length;
+    const completedPlayers = Number((db.prepare(`SELECT COUNT(DISTINCT s.player_id) AS count
+      FROM news_discovery_searches s JOIN news_discovery_runs r ON r.discovery_id = s.discovery_id
+      WHERE r.worklist_id = ? AND s.status = 'completed'`).get(worklist.worklist_id) as { count: number }).count);
+    const candidates = Number((db.prepare(`SELECT COUNT(*) AS count FROM (
+      SELECT DISTINCT c.player_id, c.url FROM news_discovery_candidates c
+      JOIN news_discovery_searches s ON s.search_id = c.search_id
+      JOIN news_discovery_runs r ON r.discovery_id = s.discovery_id WHERE r.worklist_id = ?
+    )`).get(worklist.worklist_id) as { count: number }).count);
+    const reviewed = Number((db.prepare(`SELECT COUNT(*) AS count FROM news_candidate_reviews r
+      WHERE r.worklist_id = ? AND r.outcome != 'deferred' AND r.rowid = (
+        SELECT latest.rowid FROM news_candidate_reviews latest
+        WHERE latest.worklist_id = r.worklist_id AND latest.player_id = r.player_id
+          AND latest.candidate_url = r.candidate_url
+        ORDER BY latest.reviewed_at DESC, latest.rowid DESC LIMIT 1
+      )`).get(worklist.worklist_id) as { count: number }).count);
+    return {
+      worklistId: worklist.worklist_id,
+      totalPlayers,
+      completedPlayers,
+      remainingPlayers: Math.max(0, totalPlayers - completedPlayers),
+      candidates,
+      reviewed,
+      pendingReview: Math.max(0, candidates - reviewed)
+    };
+  })() : null;
   return {
     schemaVersion: Number((db.prepare("SELECT COALESCE(MAX(version), 0) AS version FROM schema_migrations").get() as { version: number }).version),
     latestRun: latest ? { runId: latest.run_id, gameweek: latest.gameweek, mode: latest.mode, observedAt: latest.observed_at } : null,
+    activeWorklist: progress,
     counts: {
       runs: count("ingestion_runs"),
       players: count("players"),
@@ -779,6 +924,7 @@ export function playerStoreStatus(db: Database.Database) {
       discoveryRuns: count("news_discovery_runs"),
       discoverySearches: count("news_discovery_searches"),
       discoveryCandidates: count("news_discovery_candidates"),
+      reviewDecisions: count("news_candidate_reviews"),
       coverage: count("discovery_coverage")
     }
   };

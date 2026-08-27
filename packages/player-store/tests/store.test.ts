@@ -8,6 +8,7 @@ import { buildReviewedNewsUpdate } from "../../../scripts/build-reviewed-news-up
 import {
   PLAYER_STORE_SCHEMA_VERSION,
   buildPlayerDossier,
+  buildNewsReviewQueue,
   buildResearchWorklist,
   completedNewsDiscoveryPlayerIds,
   contentHash,
@@ -18,6 +19,7 @@ import {
   openPlayerStore,
   playerStoreStatus,
   recordNewsDiscovery,
+  recordNewsCandidateReviews,
   stableId,
   updatePlayerStoreTransactionally,
   validatePlayerStore
@@ -84,7 +86,7 @@ describe("player intelligence store", () => {
     const newerPath = await storePath();
     const newer = new Database(newerPath);
     newer.exec("CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)");
-    newer.prepare("INSERT INTO schema_migrations VALUES(4, 'future', ?)").run(firstAt);
+    newer.prepare("INSERT INTO schema_migrations VALUES(5, 'future', ?)").run(firstAt);
     expect(() => migratePlayerStore(newer, firstAt)).toThrow("newer than supported");
     newer.close();
 
@@ -97,7 +99,8 @@ describe("player intelligence store", () => {
     expect(legacy.prepare("SELECT version, name FROM schema_migrations ORDER BY version").all()).toEqual([
       { version: 1, name: "initial" },
       { version: 2, name: "coverage-search-receipts" },
-      { version: 3, name: "news-discovery" }
+      { version: 3, name: "news-discovery" },
+      { version: 4, name: "news-review-queue" }
     ]);
     legacy.close();
   });
@@ -157,6 +160,39 @@ describe("player intelligence store", () => {
         ]
       }]
     });
+    const queue = buildNewsReviewQueue(db, {
+      gameweek: 1,
+      generatedAt: secondAt,
+      selectedPlayerIds: [1]
+    });
+    expect(queue.summary).toEqual({ candidates: 2, pending: 2, deferred: 0, reviewed: 0 });
+    expect(queue.items[0]).toMatchObject({ playerId: 1, priority: 0, priorityReason: "selected_squad" });
+    const review = {
+      worklistId: worklist.worklistId,
+      decisions: [{
+        playerId: 1,
+        url: "https://example.com/ada-update",
+        outcome: "irrelevant",
+        reviewedAt: secondAt,
+        agent: "test-agent",
+        note: "The article does not contain a current team-news claim."
+      }]
+    };
+    expect(recordNewsCandidateReviews(db, review)).toEqual({ inserted: 1, reviewed: 1 });
+    expect(recordNewsCandidateReviews(db, review)).toEqual({ inserted: 0, reviewed: 1 });
+    expect(buildNewsReviewQueue(db, { gameweek: 1, generatedAt: secondAt }).summary)
+      .toEqual({ candidates: 2, pending: 1, deferred: 0, reviewed: 1 });
+    expect(() => recordNewsCandidateReviews(db, {
+      worklistId: worklist.worklistId,
+      decisions: [{
+        playerId: 1,
+        url: "https://example.com/wrong-player",
+        outcome: "accepted",
+        reviewedAt: secondAt,
+        agent: "test-agent",
+        note: "Invalid target."
+      }]
+    })).toThrow("is not a discovered candidate for player 1");
     db.close();
   });
 
@@ -208,7 +244,69 @@ describe("player intelligence store", () => {
     const dossier = buildPlayerDossier(stored, { playerId: 1, generatedAt: secondAt, asOf: secondAt });
     expect(dossier.news).toHaveLength(1);
     expect(dossier.coverage?.status).toBe("searched_with_results");
+    expect(buildNewsReviewQueue(stored, { gameweek: 1, generatedAt: secondAt }).summary)
+      .toEqual({ candidates: 1, pending: 0, deferred: 0, reviewed: 1 });
+    expect(playerStoreStatus(stored).activeWorklist).toMatchObject({
+      totalPlayers: 1,
+      completedPlayers: 1,
+      remainingPlayers: 0,
+      candidates: 1,
+      reviewed: 1,
+      pendingReview: 0
+    });
     stored.close();
+
+    await expect(buildReviewedNewsUpdate({
+      gameweek: 1,
+      storePath: filePath,
+      authoredAt: secondAt,
+      documents: [{
+        canonicalUrl: "https://example.com/not-discovered",
+        publisher: "Example News",
+        title: "Unreviewed update",
+        publishedAt: firstAt,
+        excerpt: "An unsupported update.",
+        observations: [{
+          playerId: 1,
+          category: "lineup",
+          credibility: { score: 0.8, rationale: "Named reporter." },
+          relevance: { score: 0.9, rationale: "Direct lineup evidence." },
+          note: "Unsupported candidate."
+        }]
+      }]
+    })).rejects.toThrow("was not discovered for player 1");
+    await expect(buildReviewedNewsUpdate({
+      gameweek: 1,
+      storePath: filePath,
+      authoredAt: secondAt,
+      documents: [{
+        canonicalUrl: "https://example.com/ada-update",
+        publisher: "Example News",
+        title: "Stale update",
+        publishedAt: "2026-07-01T12:00:00.000Z",
+        excerpt: "An old update.",
+        observations: [{
+          playerId: 1,
+          category: "lineup",
+          credibility: { score: 0.8, rationale: "Named reporter." },
+          relevance: { score: 0.9, rationale: "Direct lineup evidence." },
+          note: "Stale candidate."
+        }]
+      }]
+    })).rejects.toThrow("outside the 14-day evidence window");
+    await expect(buildReviewedNewsUpdate({
+      gameweek: 1,
+      storePath: filePath,
+      authoredAt: secondAt,
+      documents: [{
+        canonicalUrl: "https://example.com/ada-update",
+        publisher: "Example News",
+        title: "Empty update",
+        publishedAt: firstAt,
+        excerpt: "No player claim.",
+        observations: []
+      }]
+    })).rejects.toThrow("has no player observation");
   });
 
   it("deduplicates identical refreshes and appends superseding snapshot and performance revisions", async () => {

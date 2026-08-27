@@ -4,6 +4,7 @@ import {
   EvidenceIngestionBatchSchema,
   ingestEvidenceBatch,
   latestNewsDiscovery,
+  recordNewsCandidateReviews,
   stableId,
   updatePlayerStoreTransactionally
 } from "../packages/player-store/src";
@@ -38,13 +39,28 @@ export async function buildReviewedNewsUpdate(input: {
     update: (db) => {
       const discovery = latestNewsDiscovery(db, input.gameweek);
       if (!discovery) throw new Error(`No stored news discovery exists for GW${input.gameweek}.`);
+      if (new Set(input.documents.map((document) => document.canonicalUrl)).size !== input.documents.length) {
+        throw new Error("Reviewed news documents must have unique canonical URLs.");
+      }
       const relevantUrls = new Map<number, string[]>();
       for (const document of input.documents) {
+        if (document.observations.length === 0) {
+          throw new Error(`Reviewed news document ${document.canonicalUrl} has no player observation.`);
+        }
+        const publishedAt = Date.parse(document.publishedAt);
+        const reviewedAt = Date.parse(authoredAt);
+        if (!Number.isFinite(publishedAt) || publishedAt > reviewedAt || reviewedAt - publishedAt > 14 * 24 * 60 * 60 * 1000) {
+          throw new Error(`Reviewed news document ${document.canonicalUrl} is outside the 14-day evidence window.`);
+        }
         for (const observation of document.observations) {
+          const player = discovery.players.find((item) => item.playerId === observation.playerId);
+          if (!player?.candidateUrls.includes(document.canonicalUrl)) {
+            throw new Error(`Reviewed news document ${document.canonicalUrl} was not discovered for player ${observation.playerId}.`);
+          }
           relevantUrls.set(observation.playerId, [...(relevantUrls.get(observation.playerId) ?? []), document.canonicalUrl]);
         }
       }
-      const coverage = discovery.players.map((player) => {
+      const coverage = discovery.players.filter((player) => relevantUrls.has(player.playerId)).map((player) => {
         const relevant = [...new Set(relevantUrls.get(player.playerId) ?? [])];
         const searches = player.searches.map((search) => ({
           query: search.query,
@@ -83,8 +99,19 @@ export async function buildReviewedNewsUpdate(input: {
           publishedAt: document.publishedAt,
           excerpt: document.excerpt
         }),
-        adapterVersion: "google-news-api-root-review/0.0.17"
+        adapterVersion: "google-news-api-root-review/0.0.20"
       })));
+      recordNewsCandidateReviews(db, {
+        worklistId: discovery.worklistId,
+        decisions: [...relevantUrls].flatMap(([playerId, urls]) => urls.map((url) => ({
+          playerId,
+          url,
+          outcome: "accepted" as const,
+          reviewedAt: authoredAt,
+          agent: input.agent ?? "Codex Google News root-source review",
+          note: "Accepted as a current, player-matched root-source observation."
+        })))
+      });
       const batchCore = { discoveryId: discovery.discoveryId, authoredAt, coverage, documents, observations };
       const batch = EvidenceIngestionBatchSchema.parse({
         schemaVersion: 1,

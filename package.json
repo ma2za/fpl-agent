@@ -1,6 +1,6 @@
 {
   "name": "fpl-agent",
-  "version": "0.0.19",
+  "version": "0.0.20",
   "private": true,
   "license": "Apache-2.0",
   "engines": {
@@ -30,6 +30,8 @@
     "player-store:status": "tsx scripts/player-store-status.ts",
     "evidence:worklist": "tsx scripts/generate-evidence-worklist.ts",
     "evidence:discover": "tsx scripts/discover-player-news.ts",
+    "evidence:review-queue": "tsx scripts/generate-news-review-queue.ts",
+    "evidence:review": "tsx scripts/review-news-candidates.ts",
     "evidence:review-zero": "tsx scripts/build-discovery-coverage-batch.ts",
     "evidence:ingest": "tsx scripts/ingest-player-evidence.ts",
     "player:dossier": "tsx scripts/generate-player-dossier.ts",

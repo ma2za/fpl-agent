@@ -8,7 +8,7 @@ import {
   validateSquadDecisionRecord,
   type SquadDecisionRecord
 } from "../packages/agent/src/squadDecisionRecord";
-import { CURRENT_SQUAD, PLAYER_DECISION_INPUTS, SQUAD_STRATEGY } from "./squad";
+import { CURRENT_SQUAD, FROZEN_AI_SQUAD, PLAYER_DECISION_INPUTS, SQUAD_STRATEGY } from "./squad";
 
 const record = decisionRecordJson as unknown as SquadDecisionRecord;
 const frozenPrices = new Map(record.playerDecisions.flatMap((decision) => [
@@ -36,7 +36,7 @@ describe("configured squad decision record", () => {
     const current = buildSquadDecisionRecord({
       gameweek: record.gameweek,
       generatedAt: record.generatedAt,
-      squad: CURRENT_SQUAD,
+      squad: FROZEN_AI_SQUAD,
       strategy: SQUAD_STRATEGY,
       players,
       projections: projectionsJson,
@@ -57,6 +57,17 @@ describe("configured squad decision record", () => {
     expect(validateSquadDecisionRecord(current, players).errors).toContain(
       `Uncertainty threshold is stale for player ${current.playerDecisions[0].playerId}.`
     );
+  });
+
+  it("uses the submitted GW1 team as the current squad without changing the frozen AI draft", () => {
+    expect(CURRENT_SQUAD.players).toContain(418);
+    expect(CURRENT_SQUAD.players).toContain(427);
+    expect(CURRENT_SQUAD.players).toContain(542);
+    expect(CURRENT_SQUAD.players).not.toContain(533);
+    expect(CURRENT_SQUAD.players).not.toContain(428);
+    expect(CURRENT_SQUAD.players).not.toContain(336);
+    expect(FROZEN_AI_SQUAD.players).toEqual(record.squad.playerIds);
+    expect(CURRENT_SQUAD.bank).toBe(0.5);
   });
 
   it("rejects stale numerical comparisons", () => {

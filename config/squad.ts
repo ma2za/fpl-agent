@@ -1,4 +1,5 @@
 import selectionJson from "../data/cache/gw1-final-2026-08-21/selection.json";
+import postmortemJson from "../packages/content/postmortems/gw-1.json";
 
 type DecisionInput = {
   selectionCase: string;
@@ -16,7 +17,7 @@ const selection = selectionJson as typeof selectionJson & {
   squad: typeof selectionJson.squad & { formation: "3-4-3" };
 };
 
-export const CURRENT_SQUAD = {
+export const FROZEN_AI_SQUAD = {
   sourceGameweek: selection.gameweek,
   bank: selection.squad.bank,
   freeTransfers: 1,
@@ -26,6 +27,20 @@ export const CURRENT_SQUAD = {
   viceCaptainPlayerId: selection.squad.viceCaptainPlayerId,
   benchOrder: [...selection.squad.benchOrder],
   formation: selection.squad.formation
+};
+
+const submitted = postmortemJson.submittedSelection;
+
+export const CURRENT_SQUAD = {
+  sourceGameweek: postmortemJson.gameweek,
+  bank: postmortemJson.manager.bank,
+  freeTransfers: 1,
+  chipsAvailable: ["wildcard", "free_hit", "bench_boost", "triple_captain"],
+  players: submitted.picks.map((pick) => pick.playerId),
+  captainPlayerId: submitted.captainPlayerId,
+  viceCaptainPlayerId: submitted.viceCaptainPlayerId,
+  benchOrder: submitted.picks.filter((pick) => pick.role === "bench").map((pick) => pick.playerId),
+  formation: submitted.formation
 };
 
 export const SQUAD_STRATEGY = {

@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.19`
+Version: `0.0.20`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -82,6 +82,8 @@ pnpm refresh -- --gw auto
 pnpm player-store:status
 pnpm evidence:worklist -- --gw auto
 pnpm evidence:discover -- --gw 1 --min-appearance 0.8
+pnpm evidence:review-queue -- --gw 1 --limit 100
+pnpm evidence:review -- --gw 1 --input path/to/review.json
 pnpm evidence:review-zero -- --gw 1
 pnpm player:dossier -- --player 1 --gw 1
 pnpm fetch:data
@@ -111,13 +113,17 @@ pnpm postmortem -- --gw 1
 
 `pnpm refresh -- --gw {n|auto}` fetches shared public FPL inputs once, fetches every active player's public element summary with six workers and bounded retries, appends official evidence to the staged SQLite store, builds evidence in an isolated staging directory, and atomically promotes the gameweek and database together. Add `--offline` to prohibit network access and reuse validated summary caches. Required failures restore both prior targets; exhausted player-summary requests become explicit coverage gaps rather than aborting the refresh.
 
-`pnpm player-store:status` validates the ignored local SQLite store and reports its schema, latest official run, and observation counts.
+`pnpm player-store:status` validates the ignored local SQLite store and reports its schema, latest official run, discovery progress, pending candidate reviews, and observation counts.
 
 `pnpm evidence:worklist -- --gw {n|auto}` materializes the current all-player research worklist for inspection. The authoritative worklist remains in SQLite.
 
 `pnpm evidence:discover -- --gw {n}` scans the maintained UK football-news seed and searches matching worklist players through the `google-news-api` package using Google News RSS over the preceding 14 days. The default runs eight bounded Google News workers and commits every 25 players; completed searches are skipped on the next run so interrupted discovery resumes from SQLite. Use `--news-concurrency {1..16}`, `--batch-size {1..100}`, or `--max-players {n}` to bound a pass, and `--no-resume` only to deliberately repeat completed searches. Repeat `--player {id}` for a focused review set or use `--min-appearance {0..1}` to select players at or above an appearance-probability threshold. Search runs, receipts, and candidate articles are written directly to the player-intelligence SQLite database. The maintained-source crawl uses a declared per-site fetch, Playwright, or fetch-then-Playwright strategy, respects robots rules, uses configured public feeds where available, and records blocked sources. Run `uv sync` once to install the Python news dependency. Use `--source {id}` to test selected crawl adapters and `--max-pages-per-source {n}` to bound each crawl.
 
-`pnpm evidence:review-zero -- --gw {n} [--reviewed-zero-player {id}]` writes reviewed zero-result or blocked coverage directly to SQLite from the latest stored discovery. Reviewed source documents and observations use the same direct database path. The news-update workflow creates no JSON handoff files.
+`pnpm evidence:review-queue -- --gw {n} [--limit {n}]` writes a resumable JSON and Markdown queue from every discovery checkpoint in the active worklist. The configured submitted squad is first, followed by named alternatives, transfer targets, high-appearance players, and the remaining worklist. Add repeated `--selected`, `--alternative`, `--transfer-target`, or `--appearance` player IDs to override those priority sets.
+
+`pnpm evidence:review -- --gw {n} --input {review.json}` persists explicit rejected, duplicate, irrelevant, or deferred candidate outcomes. Accepted articles must be supplied as root-source documents with player observations; stale, undiscovered, player-mismatched, duplicate, or observation-free documents are rejected. Each batch rebuilds affected dossiers plus the shared dossier index and readiness report without creating a new official-data worklist.
+
+`pnpm evidence:review-zero -- --gw {n} [--reviewed-zero-player {id}]` writes reviewed zero-result or blocked coverage directly to SQLite from the latest stored discovery. Unreviewed candidates remain separate from trusted source documents and observations.
 
 `pnpm player:dossier -- --player {id|name} --gw {n} [--at {timestamp}]` writes deterministic JSON and Markdown dossiers from the stored official snapshots, fixtures, performance, source documents, news, role observations, coverage, disagreements, revisions, and gaps.
 
@@ -147,7 +153,7 @@ For rendered-page capture, install the browser once with `corepack pnpm exec pla
 
 `pnpm squad:utility -- --gw {n}` writes role-adjusted squad utility, downside, bench-cost, formation-coverage, and exact expected automatic-substitution metrics for an authored recommendation. Use `--previous path/to/recommendation.json` to write the immediately preceding draft delta.
 
-`pnpm simulate:frontier -- --input {file} --out {file}` simulates every persisted deterministic candidate without deduplication or truncation. It models shared Poisson match goals, team attack states, shared clean sheets, appearance states, formation-safe automatic substitutions, captain doubling, and vice-captain fallback. Version `0.0.19` reports retain every manager and field candidate definition, every player and fixture input, and every per-sample candidate score so the run is fully replayable from its seed. Add `sensitivityPlayerIds` to the request and `--margins-out {file}` to calculate the player-mean break-even points that flip the leading decision; the margin artifact retains the base simulation and every perturbation simulation. Expected-points mode excludes ownership entirely; rank-aware modes use field weights only through simulated competing scores. The report never selects a structure, and recommendation verification rejects discarded or unsimulated candidates and incomplete MILP optimality proofs.
+`pnpm simulate:frontier -- --input {file} --out {file}` simulates every persisted deterministic candidate without deduplication or truncation. It models shared Poisson match goals, team attack states, shared clean sheets, appearance states, formation-safe automatic substitutions, captain doubling, and vice-captain fallback. Version `0.0.20` reports retain every manager and field candidate definition, every player and fixture input, and every per-sample candidate score so the run is fully replayable from its seed. Add `sensitivityPlayerIds` to the request and `--margins-out {file}` to calculate the player-mean break-even points that flip the leading decision; the margin artifact retains the base simulation and every perturbation simulation. Expected-points mode excludes ownership entirely; rank-aware modes use field weights only through simulated competing scores. The report never selects a structure, and recommendation verification rejects discarded or unsimulated candidates and incomplete MILP optimality proofs.
 
 `pnpm counterfactuals -- --request {file}` uses the local HiGHS mixed-integer solver to prove the exact k-best legal frontier for each requested scenario and GW1, GW1-GW3, or GW1-GW6 horizon. `topCandidateLimit` controls how many of the best 1 to 1,000 deterministic candidates are generated; every generated candidate is persisted for probabilistic reranking. Requests support player inclusion and exclusion, budget, availability, club exposure, premium, premium-defence, bench-depth, and formation constraints. Outputs are neutral candidate, proof, Pareto, and comparison evidence and never select a final structure.
 

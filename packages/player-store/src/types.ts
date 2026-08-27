@@ -83,6 +83,44 @@ export const EvidenceResearchWorklistSchema = z.object({
   }))
 });
 
+export const NewsReviewOutcomeSchema = z.enum(["accepted", "rejected", "duplicate", "irrelevant", "deferred"]);
+
+export const NewsReviewDecisionSchema = z.object({
+  playerId: z.number().int().positive(),
+  url: z.string().url(),
+  outcome: NewsReviewOutcomeSchema,
+  reviewedAt: isoDate,
+  agent: z.string().min(1),
+  note: z.string().min(1)
+});
+
+export const NewsReviewQueueSchema = z.object({
+  schemaVersion: z.literal(1),
+  generatedAt: isoDate,
+  gameweek: z.number().int().positive(),
+  worklistId: stableId,
+  summary: z.object({
+    candidates: z.number().int().nonnegative(),
+    pending: z.number().int().nonnegative(),
+    deferred: z.number().int().nonnegative(),
+    reviewed: z.number().int().nonnegative()
+  }),
+  items: z.array(z.object({
+    candidateId: stableId,
+    playerId: z.number().int().positive(),
+    playerName: z.string().min(1),
+    url: z.string().url(),
+    title: z.string().min(1),
+    publisher: z.string().nullable(),
+    publishedAt: isoDate.nullable(),
+    priority: z.number().int().nonnegative(),
+    priorityReason: z.enum(["selected_squad", "named_alternative", "transfer_target", "appearance", "worklist"]),
+    outcome: NewsReviewOutcomeSchema.nullable(),
+    reviewedAt: isoDate.nullable(),
+    note: z.string().nullable()
+  }))
+});
+
 const ingestionDocument = z.object({
   canonicalUrl: z.string().url(),
   publisher: z.string().min(1),
@@ -289,6 +327,9 @@ export type NewsObservation = z.infer<typeof NewsObservationSchema>;
 export type SourceDocument = z.infer<typeof SourceDocumentSchema>;
 export type DiscoveryCoverage = z.infer<typeof DiscoveryCoverageSchema>;
 export type EvidenceResearchWorklist = z.infer<typeof EvidenceResearchWorklistSchema>;
+export type NewsReviewOutcome = z.infer<typeof NewsReviewOutcomeSchema>;
+export type NewsReviewDecision = z.infer<typeof NewsReviewDecisionSchema>;
+export type NewsReviewQueue = z.infer<typeof NewsReviewQueueSchema>;
 export type EvidenceIngestionBatch = z.infer<typeof EvidenceIngestionBatchSchema>;
 export type PlayerDossier = z.infer<typeof PlayerDossierSchema>;
 export type EvidenceStoreManifest = z.infer<typeof EvidenceStoreManifestSchema>;
