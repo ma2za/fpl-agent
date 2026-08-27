@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present through `0.0.19` and the dependency-ordered history that produced them.
+This document records the capabilities present through `0.0.19` and the dependency-ordered plan through `0.0.23`.
 
 ## Permanent Decision Boundary
 
@@ -503,7 +503,7 @@ Release gate:
 - Verify that a fired trigger identifies affected decisions and counterfactual requests without choosing a squad action.
 - Prove that phase changes expire or rewrite invalid trigger conditions.
 
-## Planned Releases
+## Release History and Forward Plan
 
 ### 0.0.17: Decision Mathematics and Rationale Enforcement
 
@@ -572,6 +572,90 @@ Release gate:
 - Test fixture-report projection wiring, complete captain retention, alternative retention, and stale uncertainty thresholds.
 - Run the full test, typecheck, and production build suites.
 
+### 0.0.20: Incremental News Review and Evidence Readiness
+
+Turn resumable discovery checkpoints into a bounded review workflow that produces decision-ready evidence without searching the entire player pool on every run.
+
+Scope:
+
+- Prioritize the configured squad, named alternatives, transfer targets, and high-appearance players before the rest of the worklist.
+- Persist bounded discovery batches independently and resume from completed player searches after interruption.
+- Aggregate every checkpoint for the active worklist while retaining the originating search receipt for each candidate URL.
+- Add a review queue with explicit accept, reject, duplicate, irrelevant, and deferred outcomes.
+- Link every accepted article through source document, observation, player, claim category, publisher, publication time, and retrieval time.
+- Rebuild dossiers and readiness reports incrementally after accepted or rejected reviews without creating a new official-data worklist.
+- Expose discovery-run, search, candidate, reviewed-document, observation, and remaining-player counts in store status.
+- Keep unreviewed discovery candidates separate from trusted news observations and final recommendation evidence.
+
+Release gate:
+
+- Interrupt and resume a multi-batch crawl without losing committed searches or repeating completed players.
+- Prove repeated batches are idempotent and aggregate under the same worklist.
+- Reject unreviewed, stale, duplicate, or player-mismatched articles as decision evidence.
+- Verify selected-squad review can complete without crawling every active FPL player.
+- Test dossier and readiness updates after each review decision.
+
+### 0.0.21: Immutable Gameweek Archive and Forecast Calibration
+
+Create a reproducible historical dataset that compares frozen pre-deadline forecasts with finalized official outcomes.
+
+Scope:
+
+- Freeze observations, assumptions, projections, scenarios, candidates, triggers, and the agent-authored decision at each deadline.
+- Append finalized fixture and gameweek performance without mutating the pre-deadline snapshot.
+- Store late official corrections as linked revisions with effective timestamps and supersession lineage.
+- Measure projected-points and expected-minutes error, start and appearance Brier scores, interval coverage, and calibration by probability band.
+- Segment calibration by position, role-evidence state, source coverage, adapter version, and model version.
+- Require at least 100 eligible player-gameweek observations before reporting a parameter-change proposal.
+- Keep calibration reports descriptive; model parameters remain versioned, agent-reviewed, and unchanged by default.
+
+Release gate:
+
+- Prove post-deadline observations cannot enter frozen forecasts or candidate scores.
+- Test idempotent final-outcome ingestion, missing fixtures, blanks, doubles, postponements, and late score corrections.
+- Reproduce every calibration aggregate from archived row-level inputs.
+- Reject parameter recommendations below the minimum sample threshold.
+
+### 0.0.22: Attributable Decision Regret and Governed Model Changes
+
+Separate bad outcomes from bad forecasts, incomplete evidence, optimization gaps, and agent decision errors.
+
+Scope:
+
+- Calculate squad, transfer, captaincy, bench, chip, concentration, and substitution regret only against legal alternatives frozen before the deadline.
+- Compare the submitted manager team, the agent-authored recommendation, and retained simulated candidates without introducing hindsight-only players.
+- Attribute misses to source, transformation, assumption, forecast, candidate generation, simulation, evidence gap, agent decision, manager override, or normal outcome variance.
+- Audit fired, missed, stale, and contradictory triggers against evidence arrival times.
+- Produce versioned model-change proposals with expected benefit, affected cohorts, rollback criteria, and backtest evidence.
+- Require explicit agent approval for parameter adoption and preserve the previous model for replay and rollback.
+
+Release gate:
+
+- Reject regret calculations that use post-deadline candidates or unavailable funds, transfers, chips, or players.
+- Reconcile additive regret components to the recorded points delta without double counting.
+- Test manager overrides and agent decisions as separate causal steps.
+- Replay accepted and rolled-back model versions against the same archive.
+
+### 0.0.23: Multi-Gameweek Decision Workspace
+
+Replace hard-coded GW1 views with a current and historical workspace for repeated weekly operation.
+
+Scope:
+
+- Resolve current, upcoming, live, and finalized gameweeks from competition state rather than fixed content imports.
+- Add gameweek-indexed recommendation, squad, evidence-readiness, trigger, simulation, and postmortem views.
+- Add archive navigation and compact comparisons across forecast, submitted team, outcome, and regret.
+- Surface calibration cohorts, evidence gaps, source freshness, and model-version changes without turning dashboards into decision makers.
+- Keep incomplete or provisional gameweeks visibly separate from finalized archives.
+- Preserve the read-only boundary: no authenticated FPL session, management-page automation, or action submission.
+
+Release gate:
+
+- Render missing, provisional, live, and finalized gameweeks without hard-coded GW1 paths.
+- Test direct navigation, archive ordering, mobile layouts, and empty calibration cohorts.
+- Verify every displayed decision and metric resolves to its archived evidence and model version.
+- Run Playwright checks across current and historical gameweeks without any authenticated FPL access.
+
 ## Delivery Dependencies and Migration
 
 | Release | Depends on | Migration rule | Exit artifact used by next release |
@@ -585,7 +669,11 @@ Release gate:
 | `0.0.16` | probabilities, scenarios, candidate requests, and public all-player inputs | Create the SQLite store additively; keep existing JSON readable; convert prose conditions to draft triggers; warn on dossier gaps | Longitudinal player dossiers, evaluated readiness, and trigger states |
 | `0.0.17` | probabilistic projections, squad utility, counterfactuals, and typed evidence | Keep existing artifacts readable; require explicit objectives only on newly verified decisions | Quantified projection adjustments and probabilistic structure comparisons |
 | `0.0.18` | explicit objectives and probabilistic structure comparisons | Preserve `0.0.17` simulation reports; require bounded-search language on newly verified decisions | Top-N frontier, correlated outcomes, EV decomposition, and decision margins |
-| `0.0.19` | frozen outputs and longitudinal performance from all prior releases | Archive schema and model versions with every decision state; append corrections as revisions | Calibration and attributable postmortems |
+| `0.0.19` | exact frontiers, retained simulations, and the first structured outcome review | Preserve every simulation input and sample; keep postmortems separate from forecasts | Attributable postmortem schema and resumable evidence foundation |
+| `0.0.20` | resumable discovery and the player-intelligence store | Preserve discovery candidates as untrusted until reviewed; aggregate checkpoints by worklist | Reviewed, source-linked news evidence and incremental readiness |
+| `0.0.21` | reviewed evidence, frozen decisions, and official outcomes | Append outcomes and corrections; never mutate deadline snapshots | Reproducible calibration cohorts and versioned reports |
+| `0.0.22` | archived candidates, calibration, and submitted outcomes | Compare only pre-deadline legal alternatives; require agent approval for model changes | Attributable regret and reversible model proposals |
+| `0.0.23` | versioned gameweek archives and competition state | Replace fixed imports incrementally; preserve provisional and legacy artifacts | Current and historical read-only decision workspace |
 
 Implementation order is strict where the downstream calculation would otherwise manufacture precision. In particular:
 
@@ -604,9 +692,9 @@ Review-derived regression fixtures remain pinned through the migration:
 - A `PRESEASON_DRAFT` recommendation cannot warn about pre-deadline price changes.
 - Kinsky role confirmation, Osula start probability, a secure £4.0m defender, and Slater role loss are represented as typed trigger evaluations rather than prose alone.
 
-## Planned Interfaces and Enforcement
+## Versioned Interfaces and Enforcement
 
-Planned releases add versioned contracts for:
+The release sequence uses or extends versioned contracts for:
 
 - `DecisionContext`
 - `EpistemicClaim`
