@@ -86,7 +86,7 @@ describe("player intelligence store", () => {
     const newerPath = await storePath();
     const newer = new Database(newerPath);
     newer.exec("CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)");
-    newer.prepare("INSERT INTO schema_migrations VALUES(6, 'future', ?)").run(firstAt);
+    newer.prepare("INSERT INTO schema_migrations VALUES(7, 'future', ?)").run(firstAt);
     expect(() => migratePlayerStore(newer, firstAt)).toThrow("newer than supported");
     newer.close();
 
@@ -101,7 +101,8 @@ describe("player intelligence store", () => {
       { version: 2, name: "coverage-search-receipts" },
       { version: 3, name: "news-discovery" },
       { version: 4, name: "news-review-queue" },
-      { version: 5, name: "gameweek-archive" }
+      { version: 5, name: "gameweek-archive" },
+      { version: 6, name: "decision-regret-governance" }
     ]);
     legacy.close();
   });

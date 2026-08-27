@@ -27,14 +27,15 @@ import {
   type TriggerEvaluation
 } from "./types";
 
-export const PLAYER_STORE_SCHEMA_VERSION = 5;
+export const PLAYER_STORE_SCHEMA_VERSION = 6;
 export const DEFAULT_PLAYER_STORE_PATH = path.join("data", "player-intelligence", "player-intelligence.sqlite");
 const PLAYER_STORE_MIGRATIONS = [
   { version: 1, name: "initial" },
   { version: 2, name: "coverage-search-receipts" },
   { version: 3, name: "news-discovery" },
   { version: 4, name: "news-review-queue" },
-  { version: 5, name: "gameweek-archive" }
+  { version: 5, name: "gameweek-archive" },
+  { version: 6, name: "decision-regret-governance" }
 ] as const;
 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
@@ -929,6 +930,10 @@ export function playerStoreStatus(db: Database.Database) {
       archives: count("gameweek_archives"),
       archivedForecasts: count("archived_player_forecasts"),
       outcomeRevisions: count("player_gameweek_outcomes"),
+      regretReports: count("gameweek_regret_reports"),
+      modelVersions: count("model_versions"),
+      modelProposals: count("model_change_proposals"),
+      modelEvents: count("model_adoption_events"),
       coverage: count("discovery_coverage")
     }
   };

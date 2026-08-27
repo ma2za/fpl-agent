@@ -34,6 +34,8 @@ human manually applies accepted changes
 postmortem records outcome
 deadline archive freezes every retained artifact and forecast row
 official outcomes append revisions and feed descriptive calibration
+frozen legal candidates replay into additive decision-regret components
+approved model proposals create reversible version-adoption events
 ```
 
 Fixture evidence keeps the validated FPL schedule primary. The legacy ticker remains unchanged, while the additive horizon report separates attack and defence difficulty, records strength fallbacks and confidence, and never silently merges the separate Premier League fixture-release evidence.

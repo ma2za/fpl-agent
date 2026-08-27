@@ -14,7 +14,7 @@ export default function PostmortemsPage() {
         <h1>47 points</h1>
         <p>
           The submitted team finished three points below the gameweek average.
-          Three manager overrides improved the frozen AI selection by two points.
+          Three manager overrides improved the frozen AI selection by three points after automatic substitutions.
         </p>
         <a className="evidence-link" href={postmortem.source} rel="noreferrer" target="_blank">
           Official FPL result

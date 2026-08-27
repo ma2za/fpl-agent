@@ -7,8 +7,8 @@ describe("GW1 postmortem", () => {
     const postmortem = GameweekPostmortemSchema.parse(postmortemJson);
 
     expect(postmortem.manager.totalPoints).toBe(47);
-    expect(postmortem.aiSelection.actualPointsCounterfactual).toBe(45);
-    expect(postmortem.counterfactuals.managerOverrideDelta).toBe(2);
+    expect(postmortem.aiSelection.actualPointsCounterfactual).toBe(44);
+    expect(postmortem.counterfactuals.managerOverrideDelta).toBe(3);
   });
 
   it("records the three manager overrides", () => {

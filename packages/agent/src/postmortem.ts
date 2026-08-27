@@ -48,7 +48,8 @@ export const GameweekPostmortemSchema = z.object({
     inPlayerId: z.number().int().positive(),
     inName: z.string().min(1),
     inPoints: z.number().int(),
-    pointsDelta: z.number().int()
+    pointsDelta: z.number().int(),
+    outcomeNote: z.string().min(1).optional()
   }).strict()),
   counterfactuals: z.object({
     managerOverrideDelta: z.number().int(),

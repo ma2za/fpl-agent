@@ -411,6 +411,121 @@ export const CalibrationReportSchema = z.object({
   parameterChangeProposal: z.object({ eligible: z.boolean(), sampleSize: z.number().int().nonnegative(), note: z.string() })
 });
 
+const DecisionRegretCategorySchema = z.enum([
+  "squad", "transfer", "captaincy", "bench", "chip", "concentration", "substitution"
+]);
+
+const RegretCandidateSchema = z.object({
+  candidateId: z.string().min(1),
+  origin: z.enum(["archived_candidate", "submitted_team"]),
+  sourceRef: z.string().min(1),
+  sourceContentHash: hash.nullable(),
+  frozenAt: isoDate,
+  picks: z.array(z.object({
+    playerId: z.number().int().positive(),
+    position: z.enum(["GKP", "DEF", "MID", "FWD"]),
+    teamId: z.number().int().positive(),
+    price: z.number().nonnegative(),
+    role: z.enum(["starter", "bench"]),
+    benchOrder: z.number().int().min(0).max(3).nullable(),
+    availableAtDeadline: z.boolean()
+  })).length(15),
+  captainPlayerId: z.number().int().positive(),
+  viceCaptainPlayerId: z.number().int().positive(),
+  budgetLimit: z.number().positive(),
+  freeTransfersAvailable: z.number().int().nonnegative(),
+  transfersUsed: z.number().int().nonnegative(),
+  hitPoints: z.number().int().nonnegative(),
+  chip: z.enum(["wildcard", "free_hit", "bench_boost", "triple_captain"]).nullable(),
+  chipsAvailable: z.array(z.enum(["wildcard", "free_hit", "bench_boost", "triple_captain"]))
+});
+
+const TriggerAuditInputSchema = z.object({
+  triggerId: z.string().min(1),
+  expiresAt: isoDate,
+  firedAt: isoDate.nullable(),
+  evidenceArrivals: z.array(z.object({
+    evidenceId: z.string().min(1),
+    arrivedAt: isoDate,
+    thresholdMet: z.boolean()
+  }))
+});
+
+export const DecisionRegretRequestSchema = z.object({
+  schemaVersion: z.literal(1),
+  archiveId: stableId,
+  gameweek: z.number().int().min(1).max(38),
+  generatedAt: isoDate,
+  agentCandidateId: z.string().min(1),
+  submittedCandidateId: z.string().min(1),
+  candidates: z.array(RegretCandidateSchema).min(2),
+  agentRegretPath: z.array(z.object({
+    fromCandidateId: z.string().min(1),
+    toCandidateId: z.string().min(1),
+    category: DecisionRegretCategorySchema
+  })),
+  triggerAudits: z.array(TriggerAuditInputSchema),
+  causalAttributions: z.array(z.object({
+    stage: z.enum(["source", "transformation", "assumption", "forecast", "candidate_generation", "simulation", "evidence_gap", "agent_decision", "manager_override", "normal_outcome_variance"]),
+    status: z.enum(["supported", "unsupported", "not_applicable"]),
+    evidenceIds: z.array(z.string().min(1)),
+    note: z.string().min(1)
+  }))
+});
+
+export const DecisionRegretReportSchema = z.object({
+  schemaVersion: z.literal(1),
+  reportId: stableId,
+  archiveId: stableId,
+  gameweek: z.number().int().positive(),
+  generatedAt: isoDate,
+  comparatorCandidateId: z.string().min(1),
+  agentCandidateId: z.string().min(1),
+  submittedCandidateId: z.string().min(1),
+  candidateResults: z.array(z.object({
+    candidateId: z.string().min(1),
+    origin: z.enum(["archived_candidate", "submitted_team"]),
+    actualPoints: z.number().int(),
+    autosubstitutions: z.array(z.object({ outPlayerId: z.number().int().positive(), inPlayerId: z.number().int().positive() })),
+    captainPlayerId: z.number().int().positive(),
+    countedPlayerIds: z.array(z.number().int().positive())
+  })),
+  components: z.array(z.object({
+    category: z.union([DecisionRegretCategorySchema, z.literal("manager_override")]),
+    fromCandidateId: z.string().min(1),
+    toCandidateId: z.string().min(1),
+    points: z.number().int()
+  })),
+  totals: z.object({ agentDecisionRegret: z.number().int(), managerOverrideRegret: z.number().int(), submittedRegret: z.number().int() }),
+  triggerAudits: z.array(z.object({ triggerId: z.string(), state: z.enum(["fired", "missed", "stale", "contradictory", "not_fired"]), evidenceIds: z.array(z.string()) })),
+  causalAttributions: DecisionRegretRequestSchema.shape.causalAttributions
+});
+
+const ModelParametersSchema = z.record(z.string(), z.union([z.number(), z.string(), z.boolean()]));
+
+export const ModelVersionSchema = z.object({
+  schemaVersion: z.literal(1), modelKey: z.string().min(1), version: z.string().min(1), parentVersion: z.string().min(1).nullable(),
+  createdAt: isoDate, parameters: ModelParametersSchema
+});
+
+export const ModelReplaySchema = z.object({
+  schemaVersion: z.literal(1), modelKey: z.string().min(1), version: z.string().min(1), archiveId: stableId,
+  generatedAt: isoDate, metrics: z.record(z.string(), z.number())
+});
+
+export const ModelChangeProposalSchema = z.object({
+  schemaVersion: z.literal(1), proposalId: stableId, modelKey: z.string().min(1), baseVersion: z.string().min(1), targetVersion: z.string().min(1),
+  proposedAt: isoDate, authorship: z.object({ kind: z.literal("coding_agent"), agent: z.string().min(1), authoredAt: isoDate }),
+  calibrationReportHash: hash, sampleSize: z.number().int().min(100), expectedBenefit: z.string().min(1),
+  affectedCohorts: z.array(z.string().min(1)).min(1), rollbackCriteria: z.array(z.string().min(1)).min(1),
+  backtests: z.array(z.object({ archiveId: stableId, baselineReplayId: stableId, candidateReplayId: stableId })).min(1)
+});
+
+export const ModelChangeReviewSchema = z.object({
+  schemaVersion: z.literal(1), reviewId: stableId, proposalId: stableId, decision: z.enum(["approve", "reject"]),
+  rationale: z.string().min(1), authorship: z.object({ kind: z.literal("coding_agent"), agent: z.string().min(1), authoredAt: isoDate })
+});
+
 export type PlayerEvidenceSnapshot = z.infer<typeof PlayerEvidenceSnapshotSchema>;
 export type PlayerPerformanceObservation = z.infer<typeof PlayerPerformanceObservationSchema>;
 export type NewsObservation = z.infer<typeof NewsObservationSchema>;
@@ -435,3 +550,9 @@ export type GameweekArchiveManifest = z.infer<typeof GameweekArchiveManifestSche
 export type PlayerGameweekOutcome = z.infer<typeof PlayerGameweekOutcomeSchema>;
 export type GameweekOutcomeBatch = z.infer<typeof GameweekOutcomeBatchSchema>;
 export type CalibrationReport = z.infer<typeof CalibrationReportSchema>;
+export type DecisionRegretRequest = z.infer<typeof DecisionRegretRequestSchema>;
+export type DecisionRegretReport = z.infer<typeof DecisionRegretReportSchema>;
+export type ModelVersion = z.infer<typeof ModelVersionSchema>;
+export type ModelReplay = z.infer<typeof ModelReplaySchema>;
+export type ModelChangeProposal = z.infer<typeof ModelChangeProposalSchema>;
+export type ModelChangeReview = z.infer<typeof ModelChangeReviewSchema>;

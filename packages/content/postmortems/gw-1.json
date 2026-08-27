@@ -20,7 +20,7 @@
   "aiSelection": {
     "candidateId": "balanced-opening-squad",
     "projectedPoints": 55.128,
-    "actualPointsCounterfactual": 45,
+    "actualPointsCounterfactual": 44,
     "sourcePath": "data/cache/gw1-final-2026-08-21/selection.json"
   },
   "submittedSelection": {
@@ -46,18 +46,18 @@
     ]
   },
   "managerOverrides": [
-    { "outPlayerId": 533, "outName": "Mukiele", "outPoints": 0, "inPlayerId": 418, "inName": "Maguire", "inPoints": 1, "pointsDelta": 1 },
+    { "outPlayerId": 533, "outName": "Mukiele", "outPoints": -1, "inPlayerId": 418, "inName": "Maguire", "inPoints": 1, "pointsDelta": 2, "outcomeNote": "Mukiele did not appear; Cash's minus-one automatic substitution is the effective outgoing selection score." },
     { "outPlayerId": 428, "outName": "Cunha", "outPoints": 2, "inPlayerId": 427, "inName": "Mbeumo", "inPoints": 2, "pointsDelta": 0 },
     { "outPlayerId": 336, "outName": "Okafor", "outPoints": 1, "inPlayerId": 542, "inName": "E. Le Fée", "inPoints": 2, "pointsDelta": 1 }
   ],
   "counterfactuals": {
-    "managerOverrideDelta": 2,
+    "managerOverrideDelta": 3,
     "viceCaptainAsCaptainPoints": 56,
     "captaincyDelta": 9,
     "unusedBenchPoints": 6
   },
   "lessons": [
-    "The three manager overrides added two points against the frozen AI selection.",
+    "The three manager overrides added three points against the frozen AI selection after Cash's minus-one automatic substitution is applied to Mukiele's no-show.",
     "The starting XI was sound after the overrides; every starter played and no bench points were eligible to enter.",
     "Haaland captaincy underperformed João Pedro by nine points in the post-hoc captain swap, but this is an outcome comparison rather than evidence that the pre-deadline captain decision was unsound.",
     "The submitted team scored three points below the gameweek average."

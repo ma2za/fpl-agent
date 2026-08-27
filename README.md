@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.21`
+Version: `0.0.22`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -88,6 +88,8 @@ pnpm evidence:review-zero -- --gw 1
 pnpm archive:freeze -- --gw 1
 pnpm outcomes:ingest -- --gw 1 --finalized
 pnpm calibration:report
+pnpm regret:report -- --gw 1
+pnpm model:govern -- --action register --input path/to/model.json
 pnpm player:dossier -- --player 1 --gw 1
 pnpm fetch:data
 pnpm fetch:pl-fixtures -- --gw 1 --horizon 6
@@ -134,6 +136,10 @@ pnpm postmortem -- --gw 1
 
 `pnpm calibration:report` derives row-level forecast errors and position, role-evidence, source-coverage, adapter-version, model-version, and probability-band cohorts from frozen forecasts and the latest finalized outcomes. Reports remain descriptive. Parameter-change review is blocked below 100 eligible player-gameweek rows and never changes a model automatically.
 
+`pnpm regret:report -- --gw {n}` scores only the submitted team and legal candidates retained before the deadline. It applies transfer hits, captain fallback, chips, and formation-safe automatic substitutions, then reconciles the frozen-best-to-agent decision path separately from manager overrides. Missing candidate frontiers remain explicit evidence gaps; the command never introduces hindsight-only players.
+
+`pnpm model:govern -- --action register|replay|propose|review|adopt|rollback --input {file}` maintains versioned model parameters and archive replays. Proposals require at least 100 calibrated observations, declared cohorts, expected benefit, rollback criteria, and base/target replays against the same archive. Adoption requires a separately stored coding-agent approval, while rollback preserves the rejected version and also requires shared-archive replay evidence.
+
 `pnpm player:dossier -- --player {id|name} --gw {n} [--at {timestamp}]` writes deterministic JSON and Markdown dossiers from the stored official snapshots, fixtures, performance, source documents, news, role observations, coverage, disagreements, revisions, and gaps.
 
 `pnpm fetch:data` fetches public FPL API data, writes raw cache files, writes timestamped snapshots, and writes normalized player data.
@@ -162,7 +168,7 @@ For rendered-page capture, install the browser once with `corepack pnpm exec pla
 
 `pnpm squad:utility -- --gw {n}` writes role-adjusted squad utility, downside, bench-cost, formation-coverage, and exact expected automatic-substitution metrics for an authored recommendation. Use `--previous path/to/recommendation.json` to write the immediately preceding draft delta.
 
-`pnpm simulate:frontier -- --input {file} --out {file}` simulates every persisted deterministic candidate without deduplication or truncation. It models shared Poisson match goals, team attack states, shared clean sheets, appearance states, formation-safe automatic substitutions, captain doubling, and vice-captain fallback. Version `0.0.21` reports retain every manager and field candidate definition, every player and fixture input, and every per-sample candidate score so the run is fully replayable from its seed. Add `sensitivityPlayerIds` to the request and `--margins-out {file}` to calculate the player-mean break-even points that flip the leading decision; the margin artifact retains the base simulation and every perturbation simulation. Expected-points mode excludes ownership entirely; rank-aware modes use field weights only through simulated competing scores. The report never selects a structure, and recommendation verification rejects discarded or unsimulated candidates and incomplete MILP optimality proofs.
+`pnpm simulate:frontier -- --input {file} --out {file}` simulates every persisted deterministic candidate without deduplication or truncation. It models shared Poisson match goals, team attack states, shared clean sheets, appearance states, formation-safe automatic substitutions, captain doubling, and vice-captain fallback. Version `0.0.22` reports retain every manager and field candidate definition, every player and fixture input, and every per-sample candidate score so the run is fully replayable from its seed. Add `sensitivityPlayerIds` to the request and `--margins-out {file}` to calculate the player-mean break-even points that flip the leading decision; the margin artifact retains the base simulation and every perturbation simulation. Expected-points mode excludes ownership entirely; rank-aware modes use field weights only through simulated competing scores. The report never selects a structure, and recommendation verification rejects discarded or unsimulated candidates and incomplete MILP optimality proofs.
 
 `pnpm counterfactuals -- --request {file}` uses the local HiGHS mixed-integer solver to prove the exact k-best legal frontier for each requested scenario and GW1, GW1-GW3, or GW1-GW6 horizon. `topCandidateLimit` controls how many of the best 1 to 1,000 deterministic candidates are generated; every generated candidate is persisted for probabilistic reranking. Requests support player inclusion and exclusion, budget, availability, club exposure, premium, premium-defence, bench-depth, and formation constraints. Outputs are neutral candidate, proof, Pareto, and comparison evidence and never select a final structure.
 
