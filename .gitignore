@@ -241,6 +241,7 @@ data/cache/**/*.json
 data/cache/refresh-inputs/
 data/player-intelligence/
 data/news-review-*.json
+data/gameweek-archive/
 
 # Local season workspace
 docs/agent-handoff.md

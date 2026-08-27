@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present through `0.0.20` and the dependency-ordered plan through `0.0.23`.
+This document records the capabilities present through `0.0.21` and the dependency-ordered plan through `0.0.23`.
 
 ## Permanent Decision Boundary
 
@@ -12,7 +12,7 @@ This document records the capabilities present through `0.0.20` and the dependen
 - Tool-produced evidence and candidate artifacts must remain structurally separate from agent-authored decision artifacts.
 - Verification may reject illegal or unsupported decisions, but it must never replace them or choose an alternative.
 
-## Current State: 0.0.20
+## Current State: 0.0.21
 
 ### Workspace
 
@@ -80,6 +80,9 @@ The exact covered and uncovered rule behavior is listed in `docs/rules-coverage.
 - Resumable news review queues prioritize the submitted squad and retain explicit accepted, rejected, duplicate, irrelevant, and deferred outcomes.
 - Accepted news evidence must resolve to a discovered player-matched root URL; unreviewed candidates cannot become observations.
 - Review batches incrementally rebuild affected dossiers and shared readiness without replacing the official-data worklist.
+- Deadline archives recursively retain and hash every gameweek artifact while storing frozen row-level forecasts in SQLite.
+- Final official outcomes append as idempotent player revisions; late corrections retain effective time and supersession lineage.
+- Calibration is reproduced from frozen forecasts and latest finalized outcomes, segmented by position, evidence, adapter, model, and probability band.
 - Every final recommendation declares an expected-points or rank-aware objective.
 - Expected-points decisions exclude ownership; rank-aware ownership enters only through simulated field outcomes.
 - Projection overrides are numerical, feature-unique, uncertainty-bearing, evidence-backed, and protected from baseline double counting.
@@ -119,7 +122,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Operational State
 
-- The local release suite contains 53 test files and 390 tests, all passing.
+- The local release suite contains 54 test files and 393 tests, all passing.
 - Type-check, production build, cached offline refresh, store validation, worklist generation, and dossier generation pass.
 - The accepted 600-player store baseline is 156.779 ms initial ingestion, 78.167 ms idempotent re-ingestion, 1150.416 ms dossier-index generation, and 2.302 ms individual dossier query on Node 24.14.1, Windows x64.
 - A bounded live adapter smoke completed 48 of 50 configured UK football-news sources. The Times and talkSPORT were retained as explicit robots-blocked results; no blocked source was bypassed or counted as completed coverage.
@@ -604,7 +607,7 @@ Status: delivered.
 
 Create a reproducible historical dataset that compares frozen pre-deadline forecasts with finalized official outcomes.
 
-Scope:
+Delivered:
 
 - Freeze observations, assumptions, projections, scenarios, candidates, triggers, and the agent-authored decision at each deadline.
 - Append finalized fixture and gameweek performance without mutating the pre-deadline snapshot.
@@ -620,6 +623,8 @@ Release gate:
 - Test idempotent final-outcome ingestion, missing fixtures, blanks, doubles, postponements, and late score corrections.
 - Reproduce every calibration aggregate from archived row-level inputs.
 - Reject parameter recommendations below the minimum sample threshold.
+
+Status: delivered.
 
 ### 0.0.22: Attributable Decision Regret and Governed Model Changes
 
@@ -756,7 +761,7 @@ Enforcement rules:
 - Agent prompts require legal full-squad counterfactuals for major structural choices.
 - Phase-aware validation rejects risks and rationales that are impossible in the current competition state.
 - A local report cannot count as a root source when evaluating source independence.
-- Artifact v1 and v2 remain readable through `0.0.20`; new claim-ledger writes use v3 after `0.0.10`.
+- Artifact v1 and v2 remain readable through `0.0.21`; new claim-ledger writes use v3 after `0.0.10`.
 
 ## Epistemic Contract
 

@@ -1,6 +1,6 @@
 {
   "name": "fpl-agent",
-  "version": "0.0.20",
+  "version": "0.0.21",
   "private": true,
   "license": "Apache-2.0",
   "engines": {
@@ -33,6 +33,9 @@
     "evidence:review-queue": "tsx scripts/generate-news-review-queue.ts",
     "evidence:review": "tsx scripts/review-news-candidates.ts",
     "evidence:review-zero": "tsx scripts/build-discovery-coverage-batch.ts",
+    "archive:freeze": "tsx scripts/freeze-gameweek-archive.ts",
+    "outcomes:ingest": "tsx scripts/ingest-gameweek-outcomes.ts",
+    "calibration:report": "tsx scripts/generate-calibration-report.ts",
     "evidence:ingest": "tsx scripts/ingest-player-evidence.ts",
     "player:dossier": "tsx scripts/generate-player-dossier.ts",
     "fetch:data": "tsx scripts/fetch-fpl-data.ts",

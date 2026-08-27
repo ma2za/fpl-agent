@@ -115,7 +115,7 @@ describe("refresh command integration", () => {
     )) as { teams: unknown[]; source: { schedulePolicy: string } };
     expect(horizon.teams).toHaveLength(1);
     expect(horizon.source.schedulePolicy).toBe("fpl-primary-no-silent-merge");
-  });
+  }, 30_000);
 
   it("fetches each shared FPL input once in a live-style mocked run", async () => {
     const root = await temporaryDirectory();

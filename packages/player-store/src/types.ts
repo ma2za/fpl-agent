@@ -321,6 +321,96 @@ export const ProvisionalDecisionWorkspaceSchema = z.object({
   reasons: z.array(z.string())
 });
 
+export const ArchivedPlayerForecastSchema = z.object({
+  playerId: z.number().int().positive(),
+  position: z.enum(["GKP", "DEF", "MID", "FWD"]),
+  projectedPoints: z.number(),
+  expectedMinutes: z.number().nonnegative(),
+  startProbability: score,
+  appearanceProbability: score,
+  p10: z.number(),
+  p90: z.number(),
+  startProbabilityInterval: z.object({ lower: score, upper: score }).nullable(),
+  roleEvidenceState: z.enum(["current", "historical_only", "conflicting", "missing"]),
+  sourceCoverage: z.enum(["complete", "incomplete"]),
+  adapterVersion: z.string().min(1),
+  modelVersion: z.string().min(1)
+}).superRefine((forecast, context) => {
+  if (forecast.p10 > forecast.p90) context.addIssue({ code: "custom", message: "Forecast p10 cannot exceed p90." });
+  if (forecast.startProbabilityInterval && forecast.startProbabilityInterval.lower > forecast.startProbabilityInterval.upper) {
+    context.addIssue({ code: "custom", message: "Start-probability interval is inverted." });
+  }
+});
+
+export const GameweekArchiveManifestSchema = z.object({
+  schemaVersion: z.literal(1),
+  archiveId: stableId,
+  gameweek: z.number().int().min(1).max(38),
+  deadline: isoDate,
+  frozenAt: isoDate,
+  sourceGeneratedAt: isoDate,
+  artifacts: z.array(z.object({
+    path: z.string().min(1),
+    kind: z.enum(["observation", "assumption", "projection", "scenario", "candidate", "trigger", "decision", "supporting"]),
+    contentHash: hash,
+    sizeBytes: z.number().int().nonnegative()
+  })).min(1),
+  forecasts: z.array(ArchivedPlayerForecastSchema).min(1)
+});
+
+const OutcomeFixtureSchema = z.object({
+  fixtureId: z.number().int().positive(),
+  status: z.enum(["finished", "postponed"]),
+  points: z.number().int(),
+  minutes: z.number().int().nonnegative(),
+  started: z.boolean()
+});
+
+export const PlayerGameweekOutcomeSchema = z.object({
+  playerId: z.number().int().positive(),
+  status: z.enum(["final", "blank", "postponed", "missing"]),
+  fixtures: z.array(OutcomeFixtureSchema)
+}).superRefine((outcome, context) => {
+  const finished = outcome.fixtures.filter((fixture) => fixture.status === "finished");
+  if (new Set(outcome.fixtures.map((fixture) => fixture.fixtureId)).size !== outcome.fixtures.length) context.addIssue({ code: "custom", message: "Outcome contains duplicate fixtures." });
+  if (outcome.status === "final" && (finished.length === 0 || finished.length !== outcome.fixtures.length)) context.addIssue({ code: "custom", message: "Final outcome requires only finished fixtures." });
+  if (outcome.status === "blank" && outcome.fixtures.length > 0) context.addIssue({ code: "custom", message: "Blank outcome cannot contain fixtures." });
+  if (outcome.status === "postponed" && (outcome.fixtures.length === 0 || finished.length > 0)) context.addIssue({ code: "custom", message: "Postponed outcome requires only postponed fixtures." });
+  if (outcome.status === "missing" && finished.length > 0) context.addIssue({ code: "custom", message: "Missing outcome cannot contain a finished fixture." });
+});
+
+export const GameweekOutcomeBatchSchema = z.object({
+  schemaVersion: z.literal(1),
+  gameweek: z.number().int().min(1).max(38),
+  observedAt: isoDate,
+  effectiveAt: isoDate,
+  finalized: z.boolean(),
+  outcomes: z.array(PlayerGameweekOutcomeSchema).min(1)
+});
+
+export const CalibrationReportSchema = z.object({
+  schemaVersion: z.literal(1),
+  generatedAt: isoDate,
+  gameweeks: z.array(z.number().int().positive()),
+  minimumProposalSample: z.literal(100),
+  summary: z.object({ eligible: z.number().int().nonnegative(), excluded: z.number().int().nonnegative() }),
+  rows: z.array(z.object({
+    gameweek: z.number().int().positive(), playerId: z.number().int().positive(), position: z.string(),
+    projectedPoints: z.number(), actualPoints: z.number(), pointsError: z.number(), absolutePointsError: z.number(),
+    expectedMinutes: z.number(), actualMinutes: z.number(), minutesError: z.number(),
+    startProbability: score, started: z.number().int().min(0).max(1), startBrier: z.number().nonnegative(),
+    appearanceProbability: score, appeared: z.number().int().min(0).max(1), appearanceBrier: z.number().nonnegative(),
+    pointsIntervalCovered: z.boolean(), probabilityBand: z.string(), roleEvidenceState: z.string(), sourceCoverage: z.string(),
+    adapterVersion: z.string(), modelVersion: z.string(), outcomeId: stableId
+  })),
+  cohorts: z.array(z.object({
+    dimension: z.enum(["overall", "position", "role_evidence_state", "source_coverage", "adapter_version", "model_version", "probability_band"]),
+    value: z.string(), sampleSize: z.number().int().nonnegative(), meanPointsError: z.number(), meanAbsolutePointsError: z.number(),
+    meanMinutesError: z.number(), startBrier: z.number(), appearanceBrier: z.number(), pointsIntervalCoverage: score
+  })),
+  parameterChangeProposal: z.object({ eligible: z.boolean(), sampleSize: z.number().int().nonnegative(), note: z.string() })
+});
+
 export type PlayerEvidenceSnapshot = z.infer<typeof PlayerEvidenceSnapshotSchema>;
 export type PlayerPerformanceObservation = z.infer<typeof PlayerPerformanceObservationSchema>;
 export type NewsObservation = z.infer<typeof NewsObservationSchema>;
@@ -340,3 +430,8 @@ export type TriggerPlan = z.infer<typeof TriggerPlanSchema>;
 export type TriggerEvaluation = z.infer<typeof TriggerEvaluationSchema>;
 export type TriggerEvaluationReport = z.infer<typeof TriggerEvaluationReportSchema>;
 export type ProvisionalDecisionWorkspace = z.infer<typeof ProvisionalDecisionWorkspaceSchema>;
+export type ArchivedPlayerForecast = z.infer<typeof ArchivedPlayerForecastSchema>;
+export type GameweekArchiveManifest = z.infer<typeof GameweekArchiveManifestSchema>;
+export type PlayerGameweekOutcome = z.infer<typeof PlayerGameweekOutcomeSchema>;
+export type GameweekOutcomeBatch = z.infer<typeof GameweekOutcomeBatchSchema>;
+export type CalibrationReport = z.infer<typeof CalibrationReportSchema>;
