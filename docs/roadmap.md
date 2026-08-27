@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present through `0.0.18` and the dependency-ordered plan through `0.0.19`.
+This document records the capabilities present through `0.0.19` and the dependency-ordered history that produced them.
 
 ## Permanent Decision Boundary
 
@@ -12,7 +12,7 @@ This document records the capabilities present through `0.0.18` and the dependen
 - Tool-produced evidence and candidate artifacts must remain structurally separate from agent-authored decision artifacts.
 - Verification may reject illegal or unsupported decisions, but it must never replace them or choose an alternative.
 
-## Current State: 0.0.18
+## Current State: 0.0.19
 
 ### Workspace
 
@@ -554,28 +554,23 @@ Delivered:
 
 ### 0.0.19: Performance Outcomes, Calibration, and Postmortems
 
-Measure whether evidence, forecasts, candidate generation, and agent decisions improve without learning incorrectly from outcomes.
+Make the first outcome review attributable and prevent the same evidence and optimization failures from recurring.
 
-Scope:
+Delivered:
 
-- Freeze pre-deadline observations, assumptions, forecasts, distributions, candidates, scenarios, triggers, and the agent-authored decision.
-- Append finalized fixture and gameweek performance for every active player to the same evidence store.
-- Measure projected-points error, expected-minutes error, start and appearance Brier scores, interval coverage, calibration by probability band, captaincy regret, transfer regret, substitution value, bench-spend efficiency, concentration regret, and decision regret.
-- Calculate decision regret only against legal optimized alternatives available from frozen pre-deadline evidence.
-- Separate source error, transformation error, forecast error, evidence-gap error, decision error, and normal outcome variance.
-- Compare forecast calibration by evidence dimension, source publisher, adapter version, and model version.
-- Store late official corrections as linked revisions without mutating frozen pre-deadline dossiers or decisions.
-- Audit fired and missed triggers against frozen evidence arrival times.
-- Require at least 100 player-gameweek observations before proposing parameter changes.
-- Keep parameter adoption agent-authored, reviewed, versioned, and reversible; never self-apply changes.
-- Generalize the website from hard-coded GW1 paths to current and historical gameweeks, including uncertainty, counterfactual, trigger, and calibration views.
+- Structured GW1 postmortem validation that reconciles submitted points, manager overrides, captaincy, unused bench points, and the AI counterfactual.
+- A read-only postmortem page showing the selection outcome, override deltas, and recorded lessons.
+- Complete simulation retention for manager and field candidates, fixture and player distributions, per-sample totals, and margin perturbations.
+- Position-specific GW1 fixture difficulty in player projections and a complete captain evidence artifact for every eligible starter.
+- Uncertainty-scaled player comparisons that retain every configured alternative, including the manager's Maguire and Le Fée choices.
+- Publication rejection for discarded or unsimulated candidates, undersized frontiers, and incomplete exact-search optimality proofs.
 
 Release gate:
 
-- Prove that post-deadline information cannot enter frozen forecast or decision-regret calculations.
-- Test calibration sample thresholds, versioning, trigger audits, archive rendering, and missing-outcome handling.
-- Test full-player outcome ingestion, idempotent final-data refreshes, late score corrections, revision lineage, and immutable pre-deadline snapshots.
-- Reconstruct whether a failure originated in source evidence, transformation, assumption, forecast, optimization request, or agent decision.
+- Validate postmortem arithmetic and the three manager overrides against the recorded GW1 outcome.
+- Prove simulation reports retain every input candidate and sample total and reject truncation controls.
+- Test fixture-report projection wiring, complete captain retention, alternative retention, and stale uncertainty thresholds.
+- Run the full test, typecheck, and production build suites.
 
 ## Delivery Dependencies and Migration
 
