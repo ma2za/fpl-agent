@@ -53,7 +53,7 @@
 Constraints support:
 
 - `includedPlayerIds` and `excludedPlayerIds`
-- `minimumAppearanceProbability`
+- `minimumStartProbability`
 - per-club `minimum` and `maximum`
 - premium-player and premium-defender price thresholds with counts
 - bench minimum or maximum cost and minimum role confidence
@@ -64,3 +64,7 @@ The deterministic objective approximates full expected utility as role-adjusted 
 Pass the resulting counterfactual set to `pnpm simulate:frontier` for the second stage. The simulation report distinguishes exhaustive deterministic search from bounded probabilistic reranking, so explanations must say `among the N evaluated candidates` unless every legal candidate was simulated.
 
 The command writes the normalized request, candidate set, optimization proofs, complete-vector comparison, and Markdown comparison. These are tool evidence and candidate artifacts, not final recommendations.
+
+Every optimization scenario must declare both `minimumStartProbability` and
+`bench.maximumCost`. This prevents cameo probability from being mistaken for
+starter security and prevents unused budget from being parked on the bench.

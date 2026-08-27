@@ -14,12 +14,13 @@ export type OptimizationMetric = {
 
 export type OptimizationPlayer = PlayerForEngine & {
   horizons: Record<OptimizationHorizon, OptimizationMetric>;
+  startProbability: number;
   appearanceProbability: number;
 };
 
 export type OptimizationConstraints = {
   budget: number;
-  minimumAppearanceProbability?: number;
+  minimumStartProbability?: number;
   includedPlayerIds?: number[];
   excludedPlayerIds?: number[];
   clubLimits?: Record<number, { minimum?: number; maximum?: number }>;
@@ -137,7 +138,7 @@ function constraintsSatisfied(players: OptimizationPlayer[], constraints: Optimi
   if ((constraints.includedPlayerIds ?? []).some((id) => !ids.has(id))) return false;
   if ((constraints.excludedPlayerIds ?? []).some((id) => ids.has(id))) return false;
   if (players.reduce((sum, player) => sum + player.price, 0) > constraints.budget + 1e-9) return false;
-  if (players.some((player) => player.appearanceProbability < (constraints.minimumAppearanceProbability ?? 0))) return false;
+  if (players.some((player) => player.startProbability < (constraints.minimumStartProbability ?? 0))) return false;
   const clubCounts = new Map<number, number>();
   for (const player of players) clubCounts.set(player.teamId, (clubCounts.get(player.teamId) ?? 0) + 1);
   if ([...clubCounts.values()].some((count) => count > 3)) return false;
@@ -234,7 +235,7 @@ export function optimizeScenario(input: {
   const excluded = new Set(constraints.excludedPlayerIds ?? []);
   const included = new Set(constraints.includedPlayerIds ?? []);
   const eligiblePlayers = [...input.players]
-    .filter((player) => !excluded.has(player.id) && player.appearanceProbability >= (constraints.minimumAppearanceProbability ?? 0))
+    .filter((player) => !excluded.has(player.id) && player.startProbability >= (constraints.minimumStartProbability ?? 0))
     .sort((a, b) => {
       const aPotential = Math.max(a.horizons[input.horizon].roleAdjustedProjection, a.horizons[input.horizon].benchValue);
       const bPotential = Math.max(b.horizons[input.horizon].roleAdjustedProjection, b.horizons[input.horizon].benchValue);
@@ -450,7 +451,7 @@ export async function optimizeScenarioMilp(input: {
   const excluded = new Set(constraints.excludedPlayerIds ?? []);
   const included = new Set(constraints.includedPlayerIds ?? []);
   const players = input.players.filter((player) =>
-    !excluded.has(player.id) && player.appearanceProbability >= (constraints.minimumAppearanceProbability ?? 0));
+    !excluded.has(player.id) && player.startProbability >= (constraints.minimumStartProbability ?? 0));
   const playerIds = new Set(players.map((player) => player.id));
   if ([...included].some((playerId) => !playerIds.has(playerId))) {
     return {

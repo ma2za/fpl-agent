@@ -68,6 +68,7 @@ export function optimizationPlayers(
     })) as OptimizationPlayer["horizons"];
     return [{
       ...player,
+      startProbability: projection.appearance.startProbability,
       appearanceProbability: projection.appearance.appearanceProbability,
       horizons
     } as OptimizationPlayer];

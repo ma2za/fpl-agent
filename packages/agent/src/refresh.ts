@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { cp, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
 import path from "node:path";
 import { z } from "zod";
@@ -76,6 +76,7 @@ export const RefreshManifestSchema = z.object({
   inputs: z.array(RefreshInputSchema),
   stages: z.array(RefreshStageResultSchema),
   artifacts: z.array(z.object({ relativePath: z.string(), sha256: z.string() })),
+  removedArtifacts: z.array(z.string()).optional(),
   sidecars: z.array(z.object({
     id: z.string(),
     targetPath: z.string(),
@@ -99,6 +100,16 @@ async function exists(filePath: string) {
 
 async function hashFile(filePath: string) {
   return createHash("sha256").update(await readFile(filePath)).digest("hex");
+}
+
+function artifactPath(root: string, relativePath: string) {
+  if (path.isAbsolute(relativePath)) throw new Error(`Refresh artifact path must be relative: ${relativePath}.`);
+  const resolvedRoot = path.resolve(root);
+  const resolved = path.resolve(root, relativePath);
+  if (resolved !== resolvedRoot && !resolved.startsWith(`${resolvedRoot}${path.sep}`)) {
+    throw new Error(`Refresh artifact path escapes its output directory: ${relativePath}.`);
+  }
+  return resolved;
 }
 
 async function writeJsonAtomic(filePath: string, value: unknown) {
@@ -172,6 +183,8 @@ export async function runRefresh(input: {
   beforePromote?: () => Promise<void>;
   sidecars?: RefreshSidecar[];
   renameForPromotion?: typeof rename;
+  cleanUnmanaged?: boolean;
+  preserveUnmanagedPaths?: string[];
 }) {
   const concurrency = input.concurrency ?? 3;
 
@@ -203,6 +216,18 @@ export async function runRefresh(input: {
   const startedTimer = timer();
   const stageResults: RefreshManifest["stages"] = [];
   const artifactHashes = new Map<string, string>();
+  let previousArtifactPaths: string[] = [];
+
+  if (await exists(path.join(input.targetDir, "refresh-manifest.json"))) {
+    try {
+      const previous = RefreshManifestSchema.parse(JSON.parse(
+        await readFile(path.join(input.targetDir, "refresh-manifest.json"), "utf8")
+      ));
+      previousArtifactPaths = previous.artifacts.map((artifact) => artifact.relativePath);
+    } catch {
+      previousArtifactPaths = [];
+    }
+  }
 
   await rm(stagingDir, { recursive: true, force: true });
   await rm(backupDir, { recursive: true, force: true });
@@ -227,7 +252,7 @@ export async function runRefresh(input: {
         await stage.run({ outputDir: stagingDir, signal: new AbortController().signal });
 
         for (const artifact of stage.artifacts) {
-          const filePath = path.join(stagingDir, artifact.relativePath);
+          const filePath = artifactPath(stagingDir, artifact.relativePath);
 
           if (!await exists(filePath) && artifact.optional) continue;
 
@@ -250,7 +275,7 @@ export async function runRefresh(input: {
       } catch (error) {
         for (const artifact of stage.artifacts) {
           artifactHashes.delete(artifact.relativePath);
-          await rm(path.join(stagingDir, artifact.relativePath), { force: true });
+          await rm(artifactPath(stagingDir, artifact.relativePath), { recursive: true, force: true });
         }
 
         stageResults.push({
@@ -270,6 +295,25 @@ export async function runRefresh(input: {
     .filter((stage) => stage.status === "failed")
     .map((stage) => `${stage.id}: ${stage.error}`);
   const requiredFailure = orderedStageResults.some((stage) => stage.required && stage.status === "failed");
+  const removedArtifacts = requiredFailure
+    ? []
+    : previousArtifactPaths.filter((relativePath) => !artifactHashes.has(relativePath)).sort();
+  for (const relativePath of removedArtifacts) {
+    await rm(artifactPath(stagingDir, relativePath), { recursive: true, force: true });
+  }
+  if (!requiredFailure && input.cleanUnmanaged) {
+    const retainedTopLevelPaths = new Set([
+      "refresh-manifest.json",
+      ...[...artifactHashes.keys()].map((relativePath) => relativePath.split(/[\\/]/)[0]),
+      ...(input.preserveUnmanagedPaths ?? []).map((relativePath) => relativePath.split(/[\\/]/)[0])
+    ]);
+    for (const entry of await readdir(stagingDir, { withFileTypes: true })) {
+      if (retainedTopLevelPaths.has(entry.name)) continue;
+      await rm(artifactPath(stagingDir, entry.name), { recursive: true, force: true });
+      if (!removedArtifacts.includes(entry.name)) removedArtifacts.push(entry.name);
+    }
+    removedArtifacts.sort();
+  }
   const manifest: RefreshManifest = {
     schemaVersion: 1,
     runId,
@@ -286,6 +330,7 @@ export async function runRefresh(input: {
     artifacts: [...artifactHashes]
       .map(([relativePath, sha256]) => ({ relativePath, sha256 }))
       .sort((a, b) => a.relativePath.localeCompare(b.relativePath)),
+    removedArtifacts,
     errors
   };
 

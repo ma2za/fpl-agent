@@ -271,6 +271,19 @@ describe("verifyRecommendation", () => {
     expect(result.errors).toContain("Material structural counterfactual test:premium:gw1:1 is not persisted in dec:structure.candidateScores.");
   });
 
+  it("rejects a selected structural candidate that does not equal the published squad", () => {
+    const invalid = structuredClone(recommendation);
+    const structure = invalid.decisionEvaluations!.find((item) => item.decisionType === "structure")!;
+    const selected = structure.candidateScores.find((candidate) => candidate.candidateId === structure.selectedCandidateId)!;
+    selected.state!.playerIds = selected.state!.playerIds.map((id) => id === 15 ? 99 : id);
+
+    const result = verifyRecommendation(invalid);
+
+    expect(result.errors).toContain(
+      "Decision dec:structure selected structural candidate structure:balanced, but its player composition does not equal the published squad."
+    );
+  });
+
   it("rejects undecomposed non-raw objective scores", () => {
     const invalid = structuredClone(recommendation);
     const structure = invalid.decisionEvaluations!.find((item) => item.decisionType === "structure")!;

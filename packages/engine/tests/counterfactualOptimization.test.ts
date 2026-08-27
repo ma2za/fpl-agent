@@ -32,6 +32,7 @@ function pool() {
         price: 4 + value * 0.1,
         nowCost: 40 + value,
         status: "a",
+        startProbability: 0.85,
         appearanceProbability: 0.9,
         horizons: { 1: metric, 3: { ...metric, roleAdjustedProjection: value * 2.8 }, 6: { ...metric, roleAdjustedProjection: value * 5.2 } }
       } as OptimizationPlayer;
@@ -139,6 +140,24 @@ describe("exact counterfactual optimization", () => {
     );
     expect(new Set(result.topCandidates.map((candidate) => candidate.playerIds.join(","))).size).toBe(25);
   }, 30_000);
+
+  it("uses start probability rather than cameo-inclusive appearance probability for eligibility", () => {
+    const players = pool();
+    players[0].startProbability = 0.4;
+    players[0].appearanceProbability = 0.95;
+    const result = optimizeScenario({
+      requestId: "starts-only",
+      scenario: {
+        id: "starts-only",
+        label: "Start-secure players",
+        constraints: { budget: 100, minimumStartProbability: 0.8, includedPlayerIds: [players[0].id] }
+      },
+      horizon: 1,
+      players
+    });
+
+    expect(result.best).toBeNull();
+  });
 
   it("uses MILP to prove an exact k-best legal frontier", async () => {
     const players = smallPool();

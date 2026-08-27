@@ -52,6 +52,7 @@ type Recommendation = {
     squadStructure: string[];
     playerDecisions: Array<{
       playerId: number;
+      playerName?: string;
       role: string;
       whyPicked: string[];
       comparedAgainst: Array<{
@@ -59,6 +60,8 @@ type Recommendation = {
         whyNot: string[];
       }>;
       evidence: string[];
+      materialRisk?: string;
+      riskResponse?: string;
     }>;
     captaincy: {
       captainPlayerId: number;
@@ -274,9 +277,39 @@ export default function RecommendationsPage() {
           </article>
           <article className="card">
             <h2>Missing Decision</h2>
-            <p>No squad, captaincy, bench, or chip is currently authored.</p>
+            <p>The configured squad and complete player reasoning are present. Formal publication remains incomplete.</p>
           </article>
         </section>
+
+        {recommendation.decisionAnalysis?.playerDecisions.length ? (
+          <section className="section">
+            <h2>Configured squad reasoning</h2>
+            <div className="grid reasoning-grid">
+              {recommendation.decisionAnalysis.playerDecisions.map((decision) => (
+                <article className="card reasoning-card" key={decision.playerId}>
+                  <h3>{decision.playerName ?? `Player ${decision.playerId}`}</h3>
+                  <p className="fine">{decision.role}</p>
+                  <h4>Why selected</h4>
+                  <ul className="list compact">
+                    {decision.whyPicked.map((reason) => <li key={reason}>{reason}</li>)}
+                  </ul>
+                  <h4>Why not the alternative</h4>
+                  <ul className="list compact">
+                    {decision.comparedAgainst.map((alternative) => (
+                      <li key={alternative.name}>{alternative.name}: {alternative.whyNot.join(" ")}</li>
+                    ))}
+                  </ul>
+                  {decision.materialRisk ? <><h4>Material risk</h4><p>{decision.materialRisk}</p></> : null}
+                  {decision.riskResponse ? <><h4>Risk response</h4><p>{decision.riskResponse}</p></> : null}
+                  <h4>Evidence</h4>
+                  <ul className="list compact evidence-list">
+                    {decision.evidence.map((reference) => <li key={reference}><code>{reference}</code></li>)}
+                  </ul>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </>
     );
   }

@@ -158,6 +158,68 @@ describe("refresh orchestrator", () => {
     });
   });
 
+  it("removes artifacts managed by the previous manifest when no current stage produces them", async () => {
+    const root = await temporaryDirectory();
+    const targetDir = path.join(root, "gw-4");
+    await mkdir(targetDir, { recursive: true });
+    await writeFile(path.join(targetDir, "obsolete.json"), "old\n", "utf8");
+    await writeFile(path.join(targetDir, "unmanaged.txt"), "keep\n", "utf8");
+    await writeArtifact(targetDir, "refresh-manifest.json", {
+      schemaVersion: 1,
+      runId: "previous-run",
+      gameweek: 4,
+      mode: "offline",
+      status: "success",
+      startedAt: "2026-07-31T00:00:00.000Z",
+      endedAt: "2026-07-31T00:00:01.000Z",
+      durationMs: 1000,
+      concurrency: 1,
+      deadline: { status: "open", time: "2026-08-10T12:00:00.000Z" },
+      inputs: [],
+      stages: [],
+      artifacts: [{ relativePath: "obsolete.json", sha256: "old" }],
+      errors: []
+    });
+    const stage: RefreshStage = {
+      id: "current",
+      required: true,
+      artifacts: [{ relativePath: "current.json" }],
+      run: ({ outputDir }) => writeArtifact(outputDir, "current.json", { ok: true })
+    };
+
+    const result = await runRefresh(baseInput(targetDir, [stage]));
+
+    expect(result.promoted).toBe(true);
+    expect(result.manifest.removedArtifacts).toEqual(["obsolete.json"]);
+    await expect(readFile(path.join(targetDir, "obsolete.json"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(path.join(targetDir, "unmanaged.txt"), "utf8")).resolves.toBe("keep\n");
+  });
+
+  it("removes unmanaged top-level output when strict cleanup is enabled", async () => {
+    const root = await temporaryDirectory();
+    const targetDir = path.join(root, "gw-4");
+    await mkdir(path.join(targetDir, "variants"), { recursive: true });
+    await writeFile(path.join(targetDir, "obsolete.json"), "old\n", "utf8");
+    await writeFile(path.join(targetDir, "variants", "authored.json"), "keep\n", "utf8");
+    const stage: RefreshStage = {
+      id: "current",
+      required: true,
+      artifacts: [{ relativePath: "current.json" }],
+      run: ({ outputDir }) => writeArtifact(outputDir, "current.json", { ok: true })
+    };
+
+    const result = await runRefresh({
+      ...baseInput(targetDir, [stage]),
+      cleanUnmanaged: true,
+      preserveUnmanagedPaths: ["variants"]
+    });
+
+    expect(result.promoted).toBe(true);
+    expect(result.manifest.removedArtifacts).toContain("obsolete.json");
+    await expect(readFile(path.join(targetDir, "obsolete.json"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(path.join(targetDir, "variants", "authored.json"), "utf8")).resolves.toBe("keep\n");
+  });
+
   it("replaces interrupted staging safely when the same run is retried", async () => {
     const root = await temporaryDirectory();
     const targetDir = path.join(root, "gw-4");

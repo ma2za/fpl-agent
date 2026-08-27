@@ -20,6 +20,7 @@ export * from "./recommendationWriter";
 export * from "./refresh";
 export * from "./riskReport";
 export * from "./setPieces";
+export * from "./squadDecisionRecord";
 export * from "./squadComparison";
 export * from "./strategy";
 export * from "./teamNews";

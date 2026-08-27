@@ -73,6 +73,7 @@ describe("decision mathematics", () => {
     });
     expect(report.results.find((item) => item.candidateId === "no-haaland")!.objectiveScore)
       .toBeGreaterThan(report.results.find((item) => item.candidateId === "haaland")!.objectiveScore);
+    expect(report.results.map((item) => item.candidateId)).toEqual(["no-haaland", "haaland"]);
     expect(report.assumptions).toContain("Ownership is excluded from the objective.");
   });
 

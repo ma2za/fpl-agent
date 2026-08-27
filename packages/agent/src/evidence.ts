@@ -23,6 +23,14 @@ type BuildEvidencePackInput = {
   competitionState: CompetitionState;
   manualSquadConfigured: boolean;
   currentSquadPlayerIds: number[];
+  currentSquadReasoning?: Record<number, {
+    role: "starter" | "bench";
+    whySelected: string[];
+    comparedAgainst: Array<{ playerId: number; reason: string }>;
+    materialRisk: string;
+    riskResponse: string;
+    evidence: string[];
+  }>;
   riskProfile: Record<string, string>;
   notes: DecisionContext["notes"];
   warnings: string[];
@@ -107,6 +115,7 @@ function buildClubExposure(players: EvidencePlayer[]) {
 
 export function buildEvidencePack(input: BuildEvidencePackInput): EvidencePack {
   const playersWithProjections = withProjections(input.players, input.projections);
+  const playerById = new Map(input.players.map((player) => [player.id, player]));
   const context: DecisionContext = {
     gameweek: input.gameweek,
     createdAt: input.createdAt,
@@ -197,7 +206,23 @@ export function buildEvidencePack(input: BuildEvidencePackInput): EvidencePack {
           evidence: []
         }
       ],
-      playerDecisions: [
+      playerDecisions: input.currentSquadReasoning ? input.currentSquadPlayerIds.map((playerId) => {
+        const reasoning = input.currentSquadReasoning![playerId];
+        return {
+          playerId,
+          playerName: playerById.get(playerId)?.name ?? `Player ${playerId}`,
+          role: reasoning.role,
+          whyPicked: reasoning.whySelected,
+          comparedAgainst: reasoning.comparedAgainst.map((alternative) => ({
+            playerId: alternative.playerId,
+            name: playerById.get(alternative.playerId)?.name ?? `Player ${alternative.playerId}`,
+            whyNot: [alternative.reason]
+          })),
+          materialRisk: reasoning.materialRisk,
+          riskResponse: reasoning.riskResponse,
+          evidence: reasoning.evidence
+        };
+      }) : [
         {
           playerId: null,
           role: "starter | bench | squad",

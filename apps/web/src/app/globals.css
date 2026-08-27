@@ -229,6 +229,40 @@ tbody tr:last-child td {
   padding: 8px 12px;
 }
 
+.reasoning-grid {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.reasoning-card {
+  display: grid;
+  gap: 12px;
+}
+
+.reasoning-card h4 {
+  margin: 8px 0 0;
+}
+
+.reasoning-title {
+  align-items: flex-start;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.reasoning-title .fine {
+  margin-top: 0;
+}
+
+.evidence-list code,
+.evidence-link {
+  overflow-wrap: anywhere;
+}
+
+.evidence-link {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+
 @media (max-width: 720px) {
   .topbar-inner {
     align-items: flex-start;

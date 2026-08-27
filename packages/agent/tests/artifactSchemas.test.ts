@@ -120,7 +120,7 @@ describe("artifact schemas", () => {
       requestId: "gw1-structures",
       gameweek: 1,
       horizons: [1, 3, 6],
-      scenarios: [{ id: "baseline", label: "Baseline", constraints: { budget: 100 } }],
+      scenarios: [{ id: "baseline", label: "Baseline", constraints: { budget: 100, minimumStartProbability: 0.8, bench: { maximumCost: 18 } } }],
       objective: "role-adjusted-squad-utility",
       projectionScenarioAdjustments: [{
         playerId: 1,
@@ -153,7 +153,7 @@ describe("artifact schemas", () => {
         benchValue: 2,
         roleConfidence: 0.8
       },
-      constraints: { budget: 100 }
+      constraints: { budget: 100, minimumStartProbability: 0.8, bench: { maximumCost: 18 } }
     };
 
     expect(OptimizationRequestSchema.parse(request).requestId).toBe("gw1-structures");
@@ -161,6 +161,28 @@ describe("artifact schemas", () => {
     expect(SquadCandidateSchema.parse(candidate).candidateId).toContain("baseline");
     expect(AgentDecisionArtifactSchema.safeParse(request).success).toBe(false);
     expect(AgentDecisionArtifactSchema.safeParse(candidate).success).toBe(false);
+  });
+
+  it("rejects optimization requests that use cameo-inclusive eligibility or omit a bench budget", () => {
+    const base = {
+      schemaVersion: 1,
+      artifactKind: "tool_evidence",
+      generatedAt: "2026-08-12T00:00:00.000Z",
+      requestId: "unsafe",
+      gameweek: 1,
+      horizons: [1],
+      objective: "role-adjusted-squad-utility",
+      modelAssumptions: ["Test request."]
+    };
+
+    expect(OptimizationRequestSchema.safeParse({
+      ...base,
+      scenarios: [{ id: "legacy", label: "Legacy", constraints: { budget: 100, minimumAppearanceProbability: 0.8, bench: { maximumCost: 18 } } }]
+    }).success).toBe(false);
+    expect(OptimizationRequestSchema.safeParse({
+      ...base,
+      scenarios: [{ id: "uncapped", label: "Uncapped", constraints: { budget: 100, minimumStartProbability: 0.8 } }]
+    }).success).toBe(false);
   });
 
   it("validates correlated-scenario artifacts as tool evidence", () => {

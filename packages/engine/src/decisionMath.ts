@@ -298,7 +298,7 @@ export function simulateStructures(input: {
         total: round(expectedPoints)
       }
     };
-  });
+  }).sort((a, b) => b.objectiveScore - a.objectiveScore || a.candidateId.localeCompare(b.candidateId));
   return {
     schemaVersion: 1,
     model: "shared-player-monte-carlo",

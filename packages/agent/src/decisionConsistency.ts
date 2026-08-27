@@ -198,6 +198,17 @@ function decisionValidation(recommendation: WeeklyRecommendation) {
     }
 
     if (evaluation.decisionType === "structure") {
+      const publishedSquad = recommendation.squadBefore.players
+        .map((player) => player.id)
+        .sort((left, right) => left - right)
+        .join(",");
+      const selectedSquad = selected.state?.playerIds
+        .slice()
+        .sort((left, right) => left - right)
+        .join(",");
+      if (selectedSquad !== publishedSquad) {
+        errors.push(`Decision ${evaluation.decisionId} selected structural candidate ${selected.candidateId}, but its player composition does not equal the published squad.`);
+      }
       const metricSignatures = new Set(eligible.map((candidate) => Object.keys(candidate.metrics ?? {}).sort().join(",")));
       if (eligible.some((candidate) => Object.keys(candidate.metrics ?? {}).length === 0) || metricSignatures.size !== 1) {
         errors.push(`Decision ${evaluation.decisionId} must persist comparable metrics for every eligible structural candidate.`);

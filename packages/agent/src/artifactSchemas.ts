@@ -1592,7 +1592,7 @@ export const ScenarioComparisonSchema = z.object({
 const optimizationHorizon = z.union([z.literal(1), z.literal(3), z.literal(6)]);
 const optimizationConstraints = z.object({
   budget: z.number().positive(),
-  minimumAppearanceProbability: z.number().min(0).max(1).optional(),
+  minimumStartProbability: z.number().min(0).max(1).optional(),
   includedPlayerIds: z.array(z.number()).optional(),
   excludedPlayerIds: z.array(z.number()).optional(),
   clubLimits: z.record(z.string(), z.object({
@@ -1615,7 +1615,14 @@ const optimizationConstraints = z.object({
     minimumRoleConfidence: z.number().min(0).max(1).optional()
   }).strict().optional(),
   formations: z.array(z.enum(["3-4-3", "3-5-2", "4-3-3", "4-4-2", "4-5-1", "5-3-2", "5-4-1"])).optional()
-}).strict();
+}).strict().superRefine((constraints, context) => {
+  if (constraints.minimumStartProbability === undefined) {
+    context.addIssue({ code: "custom", message: "Optimization constraints must declare minimumStartProbability." });
+  }
+  if (constraints.bench?.maximumCost === undefined) {
+    context.addIssue({ code: "custom", message: "Optimization constraints must declare bench.maximumCost." });
+  }
+});
 
 const optimizationScenario = z.object({
   id: z.string().min(1),

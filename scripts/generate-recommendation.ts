@@ -1,4 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -11,7 +12,9 @@ import {
 } from "../packages/engine/src";
 import {
   buildEvidencePack,
+  buildSquadDecisionRecord,
   buildStrategyEvidence,
+  generateSquadReasoning,
   CurrentRoleReportSchema,
   FixtureHorizonReportSchema,
   readArtifactFileIfExists,
@@ -32,7 +35,7 @@ import {
   deriveCompetitionState,
   type DeadlineStatus
 } from "../packages/rules/src";
-import { CURRENT_SQUAD } from "../config/squad";
+import { CURRENT_SQUAD, PLAYER_DECISION_INPUTS, SQUAD_STRATEGY } from "../config/squad";
 import { RISK_PROFILE } from "../config/risk-profile";
 
 type BootstrapEvent = {
@@ -106,6 +109,10 @@ async function writeJson(filePath: string, data: unknown) {
   await writeFile(filePath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
 }
 
+function hashValue(value: unknown) {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
 async function readText(filePath: string) {
   return readFile(filePath, "utf8");
 }
@@ -122,16 +129,24 @@ async function readTextIfExists(filePath: string) {
   }
 }
 
-function hasAuthoredRecommendation(value: unknown) {
+function hasAuthoredRecommendation(value: unknown, configuredPlayerIds: number[]) {
   if (!value || typeof value !== "object") {
     return false;
   }
 
   const recommendation = value as { status?: string; squadBefore?: { players?: unknown[] } };
 
+  const recommendationPlayerIds = (recommendation.squadBefore?.players ?? [])
+    .map((player) => (player as { id?: number }).id)
+    .filter((id): id is number => typeof id === "number")
+    .sort((left, right) => left - right);
+  const configured = [...configuredPlayerIds].sort((left, right) => left - right);
+
   return recommendation.status !== "agent_decision_required" &&
     Array.isArray(recommendation.squadBefore?.players) &&
-    recommendation.squadBefore.players.length > 0;
+    recommendation.squadBefore.players.length > 0 &&
+    recommendationPlayerIds.length === configured.length &&
+    recommendationPlayerIds.every((id, index) => id === configured[index]);
 }
 
 function deadlineStatus(event: BootstrapEvent | undefined, now: number): DeadlineStatus {
@@ -410,7 +425,7 @@ export async function generateRecommendationEvidence(input: {
     recommendationPath,
     RecommendationArtifactSchema
   );
-  const authoredRecommendationExists = hasAuthoredRecommendation(existingRecommendation);
+  const authoredRecommendationExists = hasAuthoredRecommendation(existingRecommendation, CURRENT_SQUAD.players);
   const existingSeasonPlan = await readTextIfExists(seasonPlanPath);
   const existingWeeklyStrategy = await readArtifactFileIfExists(
     weeklyStrategyJsonPath,
@@ -424,6 +439,87 @@ export async function generateRecommendationEvidence(input: {
     strategy: await readText(path.join("packages", "content", "context", "strategy.md")),
     strategyEvidence: await readText(path.join("packages", "content", "context", "strategy-evidence.md"))
   };
+  const projectionHash = hashValue(projectionUncertainty.items);
+  const decisionEvidence = [
+      {
+        id: "projection",
+        kind: "MODEL_OUTPUT" as const,
+        location: "probabilistic-projections.json",
+        retrievedAt: generatedAt,
+        snapshotHash: projectionHash,
+        claimIds: ["start_probability", "appearance_probability", "gw1_expected_points", "projection_distribution"],
+        reliability: 0.8
+      },
+      {
+        id: "fixtures",
+        kind: "MODEL_OUTPUT" as const,
+        location: "fixture-horizon-report.json",
+        retrievedAt: fixtureHorizonReport?.generatedAt ?? generatedAt,
+        snapshotHash: hashValue(fixtureHorizonReport),
+        claimIds: ["fixture_horizon"],
+        reliability: 0.85
+      },
+      {
+        id: "optimizer",
+        kind: "MODEL_OUTPUT" as const,
+        location: SQUAD_STRATEGY.optimizerRun.sourcePath,
+        retrievedAt: SQUAD_STRATEGY.optimizerRun.generatedAt,
+        snapshotHash: hashValue(SQUAD_STRATEGY.optimizerRun),
+        claimIds: ["selected_squad", "bench_cap", "minimum_start_probability", "simulation_mode"],
+        reliability: 0.8
+      },
+      {
+        id: "minutes",
+        kind: "MODEL_OUTPUT" as const,
+        location: "projection-uncertainty-report.json",
+        retrievedAt: generatedAt,
+        snapshotHash: projectionHash,
+        claimIds: ["start_probability", "appearance_probability"],
+        reliability: 0.75
+      },
+      {
+        id: "lineups",
+        kind: "PREDICTED_LINEUP" as const,
+        location: "current-role-report.json",
+        retrievedAt: currentRoleReport?.generatedAt ?? generatedAt,
+        snapshotHash: hashValue(currentRoleReport ?? projectionUncertainty.items),
+        claimIds: ["current_role", "predicted_start"],
+        reliability: 0.7
+      }
+    ];
+  const requiredDecisionPlayerIds = new Set([
+    ...CURRENT_SQUAD.players,
+    ...Object.values(PLAYER_DECISION_INPUTS).map((decision) => decision.alternativePlayerId)
+  ]);
+  const availablePlayerIds = new Set(players.map((player) => player.id));
+  const projectedPlayerIds = new Set(projectionUncertainty.items.map((projection) => projection.playerId));
+  const decisionInputsAvailable = [...requiredDecisionPlayerIds].every((playerId) =>
+    availablePlayerIds.has(playerId) && projectedPlayerIds.has(playerId));
+  const squadDecisionRecord = decisionInputsAvailable ? buildSquadDecisionRecord({
+    gameweek,
+    generatedAt,
+    squad: CURRENT_SQUAD,
+    strategy: SQUAD_STRATEGY,
+    players,
+    projections: projectionUncertainty.items,
+    decisions: PLAYER_DECISION_INPUTS,
+    evidence: decisionEvidence
+  }) : {
+    schemaVersion: 1,
+    artifactKind: "decision_record_unavailable",
+    gameweek,
+    generatedAt,
+    validation: {
+      isValid: false,
+      errors: ["Configured squad and alternative player IDs are unavailable in this evidence dataset."]
+    }
+  };
+  if (decisionInputsAvailable && !squadDecisionRecord.validation.isValid) {
+    throw new Error(`Invalid GW${gameweek} decision record: ${squadDecisionRecord.validation.errors.join("; ")}`);
+  }
+  const squadReasoning = decisionInputsAvailable
+    ? generateSquadReasoning(squadDecisionRecord as ReturnType<typeof buildSquadDecisionRecord>)
+    : undefined;
   const evidencePack = buildEvidencePack({
     gameweek,
     createdAt: generatedAt,
@@ -431,8 +527,9 @@ export async function generateRecommendationEvidence(input: {
     deadline: event?.deadline_time ?? "unknown",
     deadlineStatus: effectiveDeadlineStatus,
     competitionState,
-    manualSquadConfigured: CURRENT_SQUAD.players.length === 15,
+    manualSquadConfigured: decisionInputsAvailable,
     currentSquadPlayerIds: CURRENT_SQUAD.players,
+    currentSquadReasoning: squadReasoning,
     riskProfile: RISK_PROFILE,
     notes,
     warnings: [
@@ -480,6 +577,7 @@ export async function generateRecommendationEvidence(input: {
   await writeJson(path.join(outputDir, "budget-tiers.json"), evidencePack.budgetTiers);
   await writeJson(path.join(outputDir, "club-exposure.json"), evidencePack.clubExposure);
   await writeJson(path.join(outputDir, "strategy-evidence.json"), strategyEvidence);
+  await writeJson(path.join(outputDir, "decision-record.json"), squadDecisionRecord);
   await writeJson(path.join(outputDir, "recommendation-template.json"), evidencePack.recommendationTemplate);
   await writeFile(path.join(outputDir, "projection-summary.md"), renderProjectionSummary(evidencePack), "utf8");
   await writeFile(path.join(outputDir, "decision-prompts.md"), renderDecisionPrompts(evidencePack, fixtureHorizonReport), "utf8");

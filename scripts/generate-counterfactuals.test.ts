@@ -11,7 +11,7 @@ describe("counterfactual input construction", () => {
       rawProjectionIfStarting: 5,
       roleAdjustedProjection: 4,
       p10: 1,
-      appearance: { appearanceProbability: 0.9, overallEvidenceConfidence: 0.8 }
+      appearance: { startProbability: 0.8, appearanceProbability: 0.9, overallEvidenceConfidence: 0.8 }
     } as ProbabilisticProjection;
     const request = {
       projectionScenarioAdjustments: [{

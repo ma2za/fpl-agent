@@ -25,9 +25,7 @@ import {
   buildMinutesRiskReport,
   buildSetPieceReport,
   buildTeamNewsReport,
-  isWeeklyRecommendationArtifact,
   readArtifactFile,
-  readArtifactFileIfExists,
   renderEvidenceReportMarkdown,
   renderCurrentRoleReportMarkdown,
   renderFixtureHorizonMarkdown,
@@ -449,17 +447,11 @@ function artifact(relativePath: string, schema?: Parameters<typeof readArtifactF
   };
 }
 
-async function selectedPlayerState(outputDir: string) {
-  const artifact = await readArtifactFileIfExists(
-    path.join(outputDir, "recommendation.json"),
-    RecommendationArtifactSchema
-  );
-  const recommendation = artifact && isWeeklyRecommendationArtifact(artifact) ? artifact : null;
-
+async function selectedPlayerState(_outputDir: string) {
   return {
-    selectedPlayerIds: recommendation?.squadBefore.players.map((player) => player.id) ?? [],
-    startingPlayerIds: recommendation?.pickTeam.startingXI ?? [],
-    benchOrder: recommendation?.pickTeam.benchOrder ?? []
+    selectedPlayerIds: CURRENT_SQUAD.players,
+    startingPlayerIds: CURRENT_SQUAD.players.filter((id) => !CURRENT_SQUAD.benchOrder.includes(id)),
+    benchOrder: CURRENT_SQUAD.benchOrder
   };
 }
 
@@ -529,10 +521,16 @@ function buildStages(input: {
     artifact("budget-tiers.json"),
     artifact("club-exposure.json"),
     artifact("strategy-evidence.json", StrategyEvidenceSchema),
+    artifact("decision-record.json"),
     artifact("recommendation-template.json", RecommendationArtifactSchema),
     artifact("projection-summary.md"),
     artifact("decision-prompts.md"),
-    artifact("recommendation.json", RecommendationArtifactSchema)
+    artifact("recommendation.json", RecommendationArtifactSchema),
+    artifact("captain-candidates.json"),
+    artifact("transfer-candidates.json"),
+    artifact("legality-report.json"),
+    artifact("agent-brief.md"),
+    artifact("manual-checklist.md")
   ];
 
   return [
@@ -1159,7 +1157,9 @@ export async function refresh(input: {
     concurrency: input.concurrency ?? 3,
     runId,
     beforePromote: data.publish,
-    sidecars
+    sidecars,
+    cleanUnmanaged: true,
+    preserveUnmanagedPaths: ["player-dossiers", "raw-sources", "variants"]
   });
 
   return { ...result, gameweek, targetDir };

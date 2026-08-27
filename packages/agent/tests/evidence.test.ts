@@ -71,8 +71,18 @@ describe("buildEvidencePack", () => {
         activeGameweek: 1,
         nextDeadline: null
       },
-      manualSquadConfigured: false,
-      currentSquadPlayerIds: [],
+      manualSquadConfigured: true,
+      currentSquadPlayerIds: [1],
+      currentSquadReasoning: {
+        1: {
+          role: "starter",
+          whySelected: ["Best projected goalkeeper."],
+          comparedAgainst: [{ playerId: 2, reason: "Lower structural value." }],
+          materialRisk: "Difficult fixture.",
+          riskResponse: "Playable bench cover.",
+          evidence: ["probabilistic-projections.json"]
+        }
+      },
       riskProfile: {},
       notes: {
         fixtures: "",
@@ -97,7 +107,18 @@ describe("buildEvidencePack", () => {
     expect(template.tool).toBe("recommendation-template");
     expect(template.payload).toMatchObject({
       decisionContext: { phase: "PRESEASON_DRAFT" },
-      allowedActions: expect.arrayContaining(["retain_draft", "lock_draft"])
+      allowedActions: expect.arrayContaining(["retain_draft", "lock_draft"]),
+      decisionAnalysis: {
+        playerDecisions: [{
+          playerId: 1,
+          playerName: "Goalkeeper",
+          whyPicked: ["Best projected goalkeeper."],
+          comparedAgainst: [{ playerId: 2, name: "Defender", whyNot: ["Lower structural value."] }],
+          materialRisk: "Difficult fixture.",
+          riskResponse: "Playable bench cover.",
+          evidence: ["probabilistic-projections.json"]
+        }]
+      }
     });
     expect(renderProjectionSummary(pack)).toContain("Projection Summary");
     expect(renderDecisionPrompts(pack)).toContain("Agent Questions");
