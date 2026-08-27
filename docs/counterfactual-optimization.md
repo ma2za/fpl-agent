@@ -59,9 +59,11 @@ Constraints support:
 - bench minimum or maximum cost and minimum role confidence
 - allowed formations
 
-The deterministic objective approximates full expected utility as role-adjusted starting-XI points, the best starter's captain bonus, and explicit bench reserve value. A local HiGHS mixed-integer model proves each next-best legal squad, adds an exclusion cut, and repeats until it has the configured top-N objective candidates. The optimization proof reports how many k-best solutions were proven optimal and retained.
+The deterministic objective approximates full expected utility as role-adjusted starting-XI points, the best starter's captain bonus, and explicit bench reserve value. A local HiGHS mixed-integer model proves each next-best legal squad, adds an exclusion cut, and repeats until it has generated the configured k-best frontier. The bound controls generation cost; it is not a retention filter. Every generated candidate is persisted, and the counterfactual set records that zero generated candidates were discarded.
 
-Pass the resulting counterfactual set to `pnpm simulate:frontier` for the second stage. The simulation report distinguishes exhaustive deterministic search from bounded probabilistic reranking, so explanations must say `among the N evaluated candidates` unless every legal candidate was simulated.
+Pass the resulting counterfactual set to `pnpm simulate:frontier` for the second stage. Every persisted candidate for the requested horizon is simulated. `maximumCandidates` is rejected because it would discard candidates. The report stores the complete candidate and model inputs plus every per-sample score vector, so explanations must still say `among the N generated candidates` unless the deterministic frontier itself covers every legal squad.
+
+Final recommendation verification requires `candidatesSimulated === candidatesGenerated`, `discardedCandidates === 0`, at least two distinct candidates, and an optimality proof for every candidate produced by `highs-milp-k-best`.
 
 The command writes the normalized request, candidate set, optimization proofs, complete-vector comparison, and Markdown comparison. These are tool evidence and candidate artifacts, not final recommendations.
 

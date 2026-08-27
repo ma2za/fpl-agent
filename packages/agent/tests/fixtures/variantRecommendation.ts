@@ -258,7 +258,7 @@ export function variantRecommendation(gameweek = 1, replacedPlayerId?: number): 
       ownershipTreatment: "excluded",
       structureSimulationReportPath: "structure-simulation.json",
       rankSimulationReportPath: null,
-      candidateSearch: { generator: "manual", exhaustive: false, playerUniverseSize: 100, candidatesGenerated: 6, candidatesSimulated: 6 },
+      candidateSearch: { generator: "manual", exhaustive: false, playerUniverseSize: 100, candidatesGenerated: 6, candidatesSimulated: 6, discardedCandidates: 0 },
       projectionAdjustments: [],
       projectionScenarioAdjustments: []
     },

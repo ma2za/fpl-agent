@@ -270,7 +270,7 @@ export function simulateStructures(input: {
     }
   }
   const fieldWeight = (input.fieldCandidates ?? []).reduce((sum, item) => sum + item.weight, 0);
-  const results = input.candidates.map((candidate) => {
+  const summarizedResults = allCandidates.map((candidate) => {
     const samples = totals.get(candidate.candidateId)!;
     const sorted = [...samples].sort((a, b) => a - b);
     const expectedPoints = samples.reduce((sum, value) => sum + value, 0) / sampleCount;
@@ -296,17 +296,39 @@ export function simulateStructures(input: {
         expectedAutosubs: round(breakdown.expectedAutosubs / sampleCount),
         viceCaptainFallback: round(breakdown.viceCaptainFallback / sampleCount),
         total: round(expectedPoints)
-      }
+      },
+      samplePoints: samples
     };
-  }).sort((a, b) => b.objectiveScore - a.objectiveScore || a.candidateId.localeCompare(b.candidateId));
+  });
+  const managerCandidateIds = new Set(input.candidates.map((candidate) => candidate.candidateId));
+  const results = summarizedResults
+    .filter((result) => managerCandidateIds.has(result.candidateId))
+    .sort((a, b) => b.objectiveScore - a.objectiveScore || a.candidateId.localeCompare(b.candidateId));
+  const fieldResults = summarizedResults
+    .filter((result) => !managerCandidateIds.has(result.candidateId))
+    .map((result) => ({ ...result, expectedRankUtility: null, objectiveScore: result.expectedPoints }))
+    .sort((a, b) => a.candidateId.localeCompare(b.candidateId));
   return {
     schemaVersion: 1,
     model: "shared-player-monte-carlo",
-    modelVersion: "0.0.18",
+    modelVersion: "0.0.19",
     mode: input.mode,
     seed,
     sampleCount,
     results,
+    fieldResults,
+    inputs: {
+      candidates: input.candidates,
+      fieldCandidates: input.fieldCandidates ?? [],
+      playerDistributions: input.playerDistributions,
+      fixtureDistributions: input.fixtureDistributions ?? []
+    },
+    retention: {
+      candidateInputs: "ALL",
+      simulationSamples: "ALL_CANDIDATE_TOTALS",
+      truncationApplied: false,
+      replayableFromSeedAndInputs: true
+    },
     objectiveDefinition: {
       captainDoubling: true,
       viceCaptainFallback: true,
@@ -369,22 +391,29 @@ export function analyzeDecisionMargins(input: {
     const pointsPerMeanPoint = ((selectedScore - rivalScore) - baseObjectiveMargin) / perturbationStep;
     const breakEvenMean = Math.abs(pointsPerMeanPoint) < 1e-9 ? null : player.mean - baseObjectiveMargin / pointsPerMeanPoint;
     return {
-      playerId,
-      rivalCandidateId: rival.candidateId,
-      currentMean: round(player.mean),
-      breakEvenMean: breakEvenMean === null ? null : round(breakEvenMean),
-      margin: breakEvenMean === null ? null : round(Math.abs(player.mean - breakEvenMean)),
-      pointsPerMeanPoint: round(pointsPerMeanPoint),
-      method: "COMMON_RANDOM_NUMBERS_FINITE_DIFFERENCE" as const
+      report,
+      margin: {
+        playerId,
+        rivalCandidateId: rival.candidateId,
+        currentMean: round(player.mean),
+        breakEvenMean: breakEvenMean === null ? null : round(breakEvenMean),
+        margin: breakEvenMean === null ? null : round(Math.abs(player.mean - breakEvenMean)),
+        pointsPerMeanPoint: round(pointsPerMeanPoint),
+        method: "COMMON_RANDOM_NUMBERS_FINITE_DIFFERENCE" as const
+      }
     };
   });
   return {
     schemaVersion: 1,
-    modelVersion: "0.0.18",
+    modelVersion: "0.0.19",
     selectedCandidateId: selected.candidateId,
     rivalCandidateId: rival.candidateId,
     baseObjectiveMargin: round(baseObjectiveMargin),
     perturbationStep,
-    margins
+    margins: margins.map((item) => item.margin),
+    simulations: {
+      base,
+      perturbations: margins.map((item) => ({ playerId: item.margin.playerId, report: item.report }))
+    }
   };
 }

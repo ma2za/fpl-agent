@@ -337,6 +337,32 @@ describe("artifact schemas", () => {
       }
     } as const;
     expect(StructureSimulationReportSchema.parse(current)).toEqual(current);
+
+    const retained = {
+      ...current,
+      modelVersion: "0.0.19",
+      results: current.results.map((result) => ({ ...result, samplePoints: [result.p10, result.p50, result.p90] })),
+      fieldResults: [],
+      inputs: {
+        candidates: [
+          { candidateId: "a", playerIds: [1], captainPlayerId: 1 },
+          { candidateId: "b", playerIds: [2], captainPlayerId: 2 }
+        ],
+        fieldCandidates: [],
+        playerDistributions: [
+          { playerId: 1, mean: 60, standardDeviation: 10 },
+          { playerId: 2, mean: 59, standardDeviation: 10 }
+        ],
+        fixtureDistributions: []
+      },
+      retention: {
+        candidateInputs: "ALL",
+        simulationSamples: "ALL_CANDIDATE_TOTALS",
+        truncationApplied: false,
+        replayableFromSeedAndInputs: true
+      }
+    } as const;
+    expect(StructureSimulationReportSchema.parse(retained)).toEqual(retained);
   });
 });
 

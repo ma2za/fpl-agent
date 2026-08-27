@@ -21,6 +21,20 @@ describe("engine", () => {
     expect(projection.availabilityFactor).toBe(1);
   });
 
+  it("uses position-specific fixture difficulty", () => {
+    const defender = projectPlayer(engineSquad.find((player) => player.position === "DEF")!, {
+      attackFixtureDifficultyByTeamId: { 1: 5 },
+      defenceFixtureDifficultyByTeamId: { 1: 2 }
+    });
+    const midfielder = projectPlayer(engineSquad.find((player) => player.position === "MID")!, {
+      attackFixtureDifficultyByTeamId: { 1: 5 },
+      defenceFixtureDifficultyByTeamId: { 1: 2 }
+    });
+
+    expect(defender.fixtureDifficultyFactor).toBe(1.1);
+    expect(midfielder.fixtureDifficultyFactor).toBe(0.8);
+  });
+
   it("ranks captain candidates by projected points", () => {
     const projections = projectPlayers(engineSquad);
     const captains = rankCaptainCandidates(projections, undefined, 3);
@@ -28,6 +42,13 @@ describe("engine", () => {
     expect(captains).toHaveLength(3);
     expect(captains[0].projectedPoints).toBeGreaterThanOrEqual(captains[1].projectedPoints);
     expect(captains[0].risk).toBe("low");
+  });
+
+  it("retains every eligible captain candidate by default", () => {
+    const projections = projectPlayers(engineSquad);
+    const eligible = engineSquad.slice(0, 11).map((player) => player.id);
+
+    expect(rankCaptainCandidates(projections, eligible)).toHaveLength(eligible.length);
   });
 
   it("selects a legal starting XI and bench order", () => {

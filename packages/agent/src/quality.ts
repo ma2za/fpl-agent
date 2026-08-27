@@ -148,8 +148,20 @@ function decisionAnalysisErrors(recommendation: WeeklyRecommendation) {
     }
     if (!policy.candidateSearch) {
       errors.push("Optimization policy must disclose its candidate-search scope.");
-    } else if (policy.candidateSearch.candidatesSimulated > policy.candidateSearch.candidatesGenerated) {
-      errors.push("Candidate search cannot simulate more unique candidates than it generated.");
+    } else {
+      const search = policy.candidateSearch;
+      if (search.candidatesGenerated < 2) {
+        errors.push("Candidate search must generate at least two distinct candidates.");
+      }
+      if (search.candidatesSimulated !== search.candidatesGenerated) {
+        errors.push("Every generated candidate must be retained and simulated.");
+      }
+      if (search.discardedCandidates !== 0) {
+        errors.push("Candidate search must not discard generated candidates.");
+      }
+      if (search.generator === "highs-milp-k-best" && search.solutionsProvenOptimal !== search.candidatesGenerated) {
+        errors.push("Every retained MILP candidate must have an optimality proof.");
+      }
     }
     for (const adjustment of policy.projectionAdjustments) {
       const featureIds = adjustment.features.map((feature) => feature.featureId);

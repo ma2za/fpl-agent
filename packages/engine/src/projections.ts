@@ -68,13 +68,20 @@ function formFactor(player: PlayerForEngine) {
   return clamp(0.9 + player.form / 20, 0.8, 1.4);
 }
 
+function fixtureDifficulty(player: PlayerForEngine, context: ProjectionContext) {
+  const positionMap = player.position === "GKP" || player.position === "DEF"
+    ? context.defenceFixtureDifficultyByTeamId
+    : context.attackFixtureDifficultyByTeamId;
+  return positionMap?.[player.teamId] ?? context.fixtureDifficultyByTeamId?.[player.teamId];
+}
+
 export function projectPlayer(
   player: PlayerForEngine,
   context: ProjectionContext = {}
 ): PlayerProjection {
   const minutes = expectedMinutes(player);
   const expectedMinutesFactor = minutes / 90;
-  const fixtureFactor = fixtureDifficultyFactor(context.fixtureDifficultyByTeamId?.[player.teamId]);
+  const fixtureFactor = fixtureDifficultyFactor(fixtureDifficulty(player, context));
   const available = availabilityFactor(player);
   const form = formFactor(player);
   const base = basePointsPer90(player);

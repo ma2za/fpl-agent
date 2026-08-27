@@ -19,6 +19,7 @@ export type DecisionEvidenceRef = {
 type ProjectionInput = {
   playerId: number;
   roleAdjustedProjection: number;
+  projectionStandardDeviation: number;
   p10: number;
   median: number;
   p90: number;
@@ -28,6 +29,8 @@ type ProjectionInput = {
 type DecisionInput = {
   selectionCase: string;
   alternativePlayerId: number;
+  additionalAlternativePlayerIds?: number[];
+  alternativeCases?: Record<number, string>;
   alternativeCase: string;
   materialRisk: string;
   riskResponse: string;
@@ -79,6 +82,7 @@ export type SquadDecisionRecord = {
       p10: number;
       median: number;
       p90: number;
+      projectionStandardDeviation?: number;
     };
     selectionCase: string;
     alternative: {
@@ -88,13 +92,16 @@ export type SquadDecisionRecord = {
       price: number;
       startProbability: number;
       gw1ExpectedPoints: number;
+      projectionStandardDeviation?: number;
       delta: number;
+      uncertaintyThreshold?: number;
       classification: "MODEL_TIE" | "MEANINGFUL_EDGE";
       tieBreakApplied: string | null;
       comparisonRunId: string;
       comparisonScope: "PLAYER_PROJECTION" | "STRUCTURE";
       rationale: string;
     };
+    alternatives?: SquadDecisionRecord["playerDecisions"][number]["alternative"][];
     materialRisk: string;
     riskResponse: string;
     trigger: DecisionInput["trigger"] | null;
@@ -133,18 +140,36 @@ export function validateSquadDecisionRecord(record: SquadDecisionRecord, players
   const evidence = new Map(record.evidence.map((item) => [item.id, item]));
   for (const decision of record.playerDecisions) {
     if (!selected.has(decision.playerId)) errors.push(`Decision exists for unselected player ${decision.playerId}.`);
-    if (selected.has(decision.alternative.playerId)) errors.push(`Alternative ${decision.alternative.playerId} is already selected.`);
-    if (!playerById.has(decision.alternative.playerId)) errors.push(`Alternative ${decision.alternative.playerId} does not exist.`);
-    const expectedDelta = Number((decision.metrics.gw1ExpectedPoints - decision.alternative.gw1ExpectedPoints).toFixed(3));
-    if (Math.abs(expectedDelta - decision.alternative.delta) > 0.001) errors.push(`Alternative delta is stale for player ${decision.playerId}.`);
-    const expectedClassification = Math.abs(expectedDelta) < record.decisionTolerance.epsilon ? "MODEL_TIE" : "MEANINGFUL_EDGE";
-    if (decision.alternative.classification !== expectedClassification) errors.push(`Tolerance classification is stale for player ${decision.playerId}.`);
-    if (expectedClassification === "MODEL_TIE" && !decision.alternative.tieBreakApplied) errors.push(`Model tie for player ${decision.playerId} requires a tie-break.`);
-    if (expectedClassification === "MEANINGFUL_EDGE" && decision.alternative.tieBreakApplied) errors.push(`Non-tie for player ${decision.playerId} cannot apply a tie-break.`);
-    if (decision.alternative.tieBreakApplied && !record.decisionTolerance.tieBreakOrder.includes(decision.alternative.tieBreakApplied)) {
-      errors.push(`Unknown tie-break for player ${decision.playerId}.`);
+    const alternatives = decision.alternatives ?? [decision.alternative];
+    if (new Set(alternatives.map((alternative) => alternative.playerId)).size !== alternatives.length) {
+      errors.push(`Alternatives must be unique for player ${decision.playerId}.`);
     }
-    if (decision.alternative.comparisonRunId !== record.optimizerRun.runId) errors.push(`Comparison run is stale for player ${decision.playerId}.`);
+    for (const alternative of alternatives) {
+      if (selected.has(alternative.playerId)) errors.push(`Alternative ${alternative.playerId} is already selected.`);
+      if (!playerById.has(alternative.playerId)) errors.push(`Alternative ${alternative.playerId} does not exist.`);
+      const expectedDelta = Number((decision.metrics.gw1ExpectedPoints - alternative.gw1ExpectedPoints).toFixed(3));
+      if (Math.abs(expectedDelta - alternative.delta) > 0.001) errors.push(`Alternative delta is stale for player ${decision.playerId}.`);
+      if (decision.metrics.projectionStandardDeviation !== undefined && alternative.projectionStandardDeviation !== undefined) {
+        const expectedThreshold = Number(Math.max(
+          record.decisionTolerance.epsilon,
+          record.decisionTolerance.components.modelUncertaintyThreshold * Math.hypot(
+            decision.metrics.projectionStandardDeviation,
+            alternative.projectionStandardDeviation
+          )
+        ).toFixed(3));
+        if (alternative.uncertaintyThreshold !== expectedThreshold) errors.push(`Uncertainty threshold is stale for player ${decision.playerId}.`);
+      }
+      const comparisonThreshold = alternative.uncertaintyThreshold ?? record.decisionTolerance.epsilon;
+      const expectedClassification = Math.abs(expectedDelta) < comparisonThreshold ? "MODEL_TIE" : "MEANINGFUL_EDGE";
+      if (alternative.classification !== expectedClassification) errors.push(`Tolerance classification is stale for player ${decision.playerId}.`);
+      if (expectedClassification === "MODEL_TIE" && !alternative.tieBreakApplied) errors.push(`Model tie for player ${decision.playerId} requires a tie-break.`);
+      if (expectedClassification === "MEANINGFUL_EDGE" && alternative.tieBreakApplied) errors.push(`Non-tie for player ${decision.playerId} cannot apply a tie-break.`);
+      if (expectedClassification === "MEANINGFUL_EDGE" && expectedDelta < 0) errors.push(`Alternative ${alternative.playerId} has a meaningful projection edge over player ${decision.playerId}.`);
+      if (alternative.tieBreakApplied && !record.decisionTolerance.tieBreakOrder.includes(alternative.tieBreakApplied)) {
+        errors.push(`Unknown tie-break for player ${decision.playerId}.`);
+      }
+      if (alternative.comparisonRunId !== record.optimizerRun.runId) errors.push(`Comparison run is stale for player ${decision.playerId}.`);
+    }
     const threshold = decision.role === "starter"
       ? record.strategy.minimumXIStartProbability
       : record.strategy.minimumBenchStartProbability;
@@ -183,20 +208,46 @@ export function buildSquadDecisionRecord(input: {
   const playerById = new Map(input.players.map((player) => [player.id, player]));
   const projectionById = new Map(input.projections.map((projection) => [projection.playerId, projection]));
   const bench = new Set(input.squad.benchOrder);
-  const epsilon = Math.max(
-    input.strategy.decisionTolerance.minimumExpectedPointsDelta,
-    input.strategy.decisionTolerance.modelUncertaintyThreshold
-  );
+  const epsilon = input.strategy.decisionTolerance.minimumExpectedPointsDelta;
   const playerDecisions = input.squad.players.map((playerId) => {
     const player = playerById.get(playerId);
     const projection = projectionById.get(playerId);
     const decision = input.decisions[playerId];
     if (!player || !projection || !decision) throw new Error(`Missing structured decision input for player ${playerId}.`);
-    const alternativePlayer = playerById.get(decision.alternativePlayerId);
-    const alternativeProjection = projectionById.get(decision.alternativePlayerId);
-    if (!alternativePlayer || !alternativeProjection) throw new Error(`Missing alternative evidence for player ${playerId}.`);
-    const delta = Number((projection.roleAdjustedProjection - alternativeProjection.roleAdjustedProjection).toFixed(3));
-    const classification = Math.abs(delta) < epsilon ? "MODEL_TIE" as const : "MEANINGFUL_EDGE" as const;
+    const alternativeIds = [decision.alternativePlayerId, ...(decision.additionalAlternativePlayerIds ?? [])];
+    if (new Set(alternativeIds).size !== alternativeIds.length) throw new Error(`Duplicate alternative input for player ${playerId}.`);
+    const alternatives = alternativeIds.map((alternativePlayerId) => {
+      const alternativePlayer = playerById.get(alternativePlayerId);
+      const alternativeProjection = projectionById.get(alternativePlayerId);
+      if (!alternativePlayer || !alternativeProjection) throw new Error(`Missing alternative evidence for player ${playerId}.`);
+      const delta = Number((projection.roleAdjustedProjection - alternativeProjection.roleAdjustedProjection).toFixed(3));
+      const uncertaintyThreshold = Number(Math.max(
+        epsilon,
+        input.strategy.decisionTolerance.modelUncertaintyThreshold * Math.hypot(
+          projection.projectionStandardDeviation,
+          alternativeProjection.projectionStandardDeviation
+        )
+      ).toFixed(3));
+      const classification = Math.abs(delta) < uncertaintyThreshold ? "MODEL_TIE" as const : "MEANINGFUL_EDGE" as const;
+      return {
+        playerId: alternativePlayer.id,
+        playerName: alternativePlayer.name,
+        position: alternativePlayer.position,
+        price: alternativePlayer.price,
+        startProbability: alternativeProjection.appearance.startProbability,
+        gw1ExpectedPoints: alternativeProjection.roleAdjustedProjection,
+        projectionStandardDeviation: alternativeProjection.projectionStandardDeviation,
+        delta,
+        uncertaintyThreshold,
+        classification,
+        tieBreakApplied: classification === "MODEL_TIE"
+          ? tieBreak(projection, alternativeProjection, player.price, alternativePlayer.price)
+          : null,
+        comparisonRunId: input.strategy.optimizerRun.runId,
+        comparisonScope: player.position === alternativePlayer.position ? "PLAYER_PROJECTION" as const : "STRUCTURE" as const,
+        rationale: decision.alternativeCases?.[alternativePlayerId] ?? decision.alternativeCase
+      };
+    });
     return {
       playerId,
       playerName: player.name,
@@ -208,25 +259,12 @@ export function buildSquadDecisionRecord(input: {
         gw1ExpectedPoints: projection.roleAdjustedProjection,
         p10: projection.p10,
         median: projection.median,
-        p90: projection.p90
+        p90: projection.p90,
+        projectionStandardDeviation: projection.projectionStandardDeviation
       },
       selectionCase: decision.selectionCase,
-      alternative: {
-        playerId: alternativePlayer.id,
-        playerName: alternativePlayer.name,
-        position: alternativePlayer.position,
-        price: alternativePlayer.price,
-        startProbability: alternativeProjection.appearance.startProbability,
-        gw1ExpectedPoints: alternativeProjection.roleAdjustedProjection,
-        delta,
-        classification,
-        tieBreakApplied: classification === "MODEL_TIE"
-          ? tieBreak(projection, alternativeProjection, player.price, alternativePlayer.price)
-          : null,
-        comparisonRunId: input.strategy.optimizerRun.runId,
-        comparisonScope: player.position === alternativePlayer.position ? "PLAYER_PROJECTION" as const : "STRUCTURE" as const,
-        rationale: decision.alternativeCase
-      },
+      alternative: alternatives[0],
+      alternatives,
       materialRisk: decision.materialRisk,
       riskResponse: decision.riskResponse,
       trigger: decision.trigger ?? null,
@@ -272,13 +310,16 @@ export function buildSquadDecisionRecord(input: {
 export function generateSquadReasoning(record: SquadDecisionRecord) {
   return Object.fromEntries(record.playerDecisions.map((decision) => {
     const metricSentence = `${(decision.metrics.startProbability * 100).toFixed(1)}% start probability and ${decision.metrics.gw1ExpectedPoints.toFixed(1)} GW1 expected points.`;
-    const comparison = decision.alternative.classification === "MODEL_TIE"
-      ? `Model tie within ${record.decisionTolerance.epsilon.toFixed(2)} points; ${decision.alternative.tieBreakApplied!.replaceAll("_", " ")} selects the player. ${decision.alternative.rationale}`
-      : `${decision.alternative.delta.toFixed(1)} GW1 expected-points edge in the current projection comparison. ${decision.alternative.rationale}`;
+    const comparisons = (decision.alternatives ?? [decision.alternative]).map((alternative) => {
+      const comparison = alternative.classification === "MODEL_TIE"
+        ? `Model tie within ${(alternative.uncertaintyThreshold ?? record.decisionTolerance.epsilon).toFixed(2)} points; ${alternative.tieBreakApplied!.replaceAll("_", " ")} selects the player. ${alternative.rationale}`
+        : `${alternative.delta.toFixed(1)} GW1 expected-points edge in the current projection comparison. ${alternative.rationale}`;
+      return { playerId: alternative.playerId, reason: comparison };
+    });
     return [decision.playerId, {
       role: decision.role,
       whySelected: [decision.selectionCase, metricSentence],
-      comparedAgainst: [{ playerId: decision.alternative.playerId, reason: comparison }],
+      comparedAgainst: comparisons,
       materialRisk: decision.materialRisk,
       riskResponse: decision.riskResponse,
       evidence: decision.evidenceIds.map((id) => record.evidence.find((item) => item.id === id)!.location)

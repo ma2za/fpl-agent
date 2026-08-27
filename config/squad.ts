@@ -3,6 +3,8 @@ import selectionJson from "../data/cache/gw1-final-2026-08-21/selection.json";
 type DecisionInput = {
   selectionCase: string;
   alternativePlayerId: number;
+  additionalAlternativePlayerIds?: number[];
+  alternativeCases?: Record<number, string>;
   alternativeCase: string;
   materialRisk: string;
   riskResponse: string;
@@ -42,7 +44,7 @@ export const SQUAD_STRATEGY = {
   },
   decisionTolerance: {
     minimumExpectedPointsDelta: 0.15,
-    modelUncertaintyThreshold: 0.15,
+    modelUncertaintyThreshold: 0.5,
     tieBreakOrder: ["higher_p10", "higher_start_probability", "lower_price", "lower_club_concentration", "optimizer_candidate_order"]
   },
   optimizerRun: {
@@ -92,6 +94,10 @@ export const PLAYER_DECISION_INPUTS: Record<number, DecisionInput> = {
   533: {
     selectionCase: "Secure projected starter retained in the selected defensive structure.",
     alternativePlayerId: 534,
+    additionalAlternativePlayerIds: [418],
+    alternativeCases: {
+      418: "Maguire is retained as the manager's same-price defensive alternative and must clear the uncertainty-scaled comparison."
+    },
     alternativeCase: "The alternative adds role interpretation risk without improving the current projection.",
     materialRisk: "Sunderland defensive roles may change when the full back line is available.",
     riskResponse: "The current role forecast clears the selection threshold and the bench covers a late omission.",
@@ -140,6 +146,10 @@ export const PLAYER_DECISION_INPUTS: Record<number, DecisionInput> = {
   336: {
     selectionCase: "Best current projection in the selected price slot while clearing the starter threshold.",
     alternativePlayerId: 236,
+    additionalAlternativePlayerIds: [542],
+    alternativeCases: {
+      542: "Le Fee is retained as the manager's lower-cost midfield alternative and must clear the uncertainty-scaled comparison."
+    },
     alternativeCase: "The alternative requires a broader structure change and does not improve the current objective.",
     materialRisk: "Start security is at the minimum accepted level and increases Leeds concentration.",
     riskResponse: "A threshold breach triggers reoptimization, with the first substitute providing coverage.",

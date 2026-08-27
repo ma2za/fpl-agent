@@ -75,6 +75,15 @@ describe("decision mathematics", () => {
       .toBeGreaterThan(report.results.find((item) => item.candidateId === "haaland")!.objectiveScore);
     expect(report.results.map((item) => item.candidateId)).toEqual(["no-haaland", "haaland"]);
     expect(report.assumptions).toContain("Ownership is excluded from the objective.");
+    expect(report.modelVersion).toBe("0.0.19");
+    expect(report.inputs?.candidates).toHaveLength(2);
+    expect(report.results.every((item) => item.samplePoints?.length === 20_000)).toBe(true);
+    expect(report.retention).toEqual({
+      candidateInputs: "ALL",
+      simulationSamples: "ALL_CANDIDATE_TOTALS",
+      truncationApplied: false,
+      replayableFromSeedAndInputs: true
+    });
   });
 
   it("requires a simulated field for rank objectives", () => {
@@ -111,6 +120,8 @@ describe("decision mathematics", () => {
       ]
     });
     expect(report.results.every((item) => item.expectedRankUtility !== null)).toBe(true);
+    expect(report.fieldResults).toHaveLength(2);
+    expect(report.fieldResults?.every((item) => item.samplePoints.length === 5_000)).toBe(true);
     expect(report.results[0].expectedPoints).toBeCloseTo(report.results[1].expectedPoints, 0);
     expect(report.assumptions.some((assumption) => assumption.includes("simulated competing scores"))).toBe(true);
   });
@@ -216,5 +227,7 @@ describe("decision mathematics", () => {
       expect.objectContaining({ playerId: 1, breakEvenMean: 4, margin: 1, pointsPerMeanPoint: 1 }),
       expect.objectContaining({ playerId: 2, breakEvenMean: 5, margin: 1, pointsPerMeanPoint: -1 })
     ]);
+    expect(report.simulations?.base.results.every((item) => item.samplePoints?.length === 100)).toBe(true);
+    expect(report.simulations?.perturbations).toHaveLength(2);
   });
 });

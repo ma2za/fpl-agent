@@ -15,6 +15,8 @@ export type PlayerForEngine = PlayerForRules & {
 
 export type ProjectionContext = {
   fixtureDifficultyByTeamId?: Record<number, number>;
+  attackFixtureDifficultyByTeamId?: Record<number, number>;
+  defenceFixtureDifficultyByTeamId?: Record<number, number>;
 };
 
 export type PlayerProjection = {
@@ -122,7 +124,7 @@ export type StructureSimulationFieldCandidate = StructureSimulationCandidate & {
 export type StructureSimulationReport = {
   schemaVersion: 1;
   model: "shared-player-monte-carlo";
-  modelVersion: "0.0.17" | "0.0.18";
+  modelVersion: "0.0.17" | "0.0.18" | "0.0.19";
   mode: OptimizationMode;
   seed: number;
   sampleCount: number;
@@ -141,7 +143,37 @@ export type StructureSimulationReport = {
       viceCaptainFallback: number;
       total: number;
     };
+    samplePoints?: number[];
   }>;
+  fieldResults?: Array<{
+    candidateId: string;
+    expectedPoints: number;
+    p10: number;
+    p50: number;
+    p90: number;
+    expectedRankUtility: null;
+    objectiveScore: number;
+    expectedPointsBreakdown: {
+      startingXI: number;
+      captainBonus: number;
+      expectedAutosubs: number;
+      viceCaptainFallback: number;
+      total: number;
+    };
+    samplePoints: number[];
+  }>;
+  inputs?: {
+    candidates: StructureSimulationCandidate[];
+    fieldCandidates: StructureSimulationFieldCandidate[];
+    playerDistributions: StructureSimulationPlayerDistribution[];
+    fixtureDistributions: StructureSimulationFixtureDistribution[];
+  };
+  retention?: {
+    candidateInputs: "ALL";
+    simulationSamples: "ALL_CANDIDATE_TOTALS";
+    truncationApplied: false;
+    replayableFromSeedAndInputs: true;
+  };
   objectiveDefinition?: {
     captainDoubling: boolean;
     viceCaptainFallback: boolean;
@@ -178,12 +210,16 @@ export type DecisionMargin = {
 
 export type DecisionMarginReport = {
   schemaVersion: 1;
-  modelVersion: "0.0.18";
+  modelVersion: "0.0.18" | "0.0.19";
   selectedCandidateId: string;
   rivalCandidateId: string;
   baseObjectiveMargin: number;
   perturbationStep: number;
   margins: DecisionMargin[];
+  simulations?: {
+    base: StructureSimulationReport;
+    perturbations: Array<{ playerId: number; report: StructureSimulationReport }>;
+  };
 };
 
 export type MinutesDistribution = {

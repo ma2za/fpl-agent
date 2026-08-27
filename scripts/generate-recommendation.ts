@@ -5,10 +5,12 @@ import { pathToFileURL } from "node:url";
 import {
   buildProjectionUncertaintyReport,
   projectPlayers,
+  rankCaptainCandidates,
   renderProjectionUncertaintyMarkdown,
   roleAdjustedPlayerProjections,
   type ConditionalAppearanceSample,
-  type PlayerForEngine
+  type PlayerForEngine,
+  type ProjectionContext
 } from "../packages/engine/src";
 import {
   buildEvidencePack,
@@ -64,6 +66,22 @@ function argValue(name: string) {
   }
 
   return process.argv[index + 1] ?? null;
+}
+
+export function fixtureProjectionContext(report: FixtureHorizonReport | null): ProjectionContext {
+  const gw1Fixtures = report?.teams.map((team) => [
+    team.teamId,
+    team.horizons.find((horizon) => horizon.gameweeks === 1)
+  ] as const) ?? [];
+
+  return {
+    attackFixtureDifficultyByTeamId: Object.fromEntries(gw1Fixtures.flatMap(([teamId, horizon]) =>
+      horizon?.attack.averageDifficulty == null ? [] : [[teamId, horizon.attack.averageDifficulty]]
+    )),
+    defenceFixtureDifficultyByTeamId: Object.fromEntries(gw1Fixtures.flatMap(([teamId, horizon]) =>
+      horizon?.defence.averageDifficulty == null ? [] : [[teamId, horizon.defence.averageDifficulty]]
+    ))
+  };
 }
 
 async function readJson<T>(filePath: string) {
@@ -396,7 +414,11 @@ export async function generateRecommendationEvidence(input: {
     ...player,
     teamStrength: teamStrengthById.get(player.teamId) ?? null
   }));
-  const rawProjections = projectPlayers(projectionPlayers);
+  const fixtureHorizonReport = input.fixtureHorizonReport ?? await readArtifactFileIfExists(
+    path.join(outputDir, "fixture-horizon-report.json"),
+    FixtureHorizonReportSchema
+  );
+  const rawProjections = projectPlayers(projectionPlayers, fixtureProjectionContext(fixtureHorizonReport));
   const currentRoleReport: CurrentRoleReport | null = await readArtifactFileIfExists(
     path.join(outputDir, "current-role-report.json"),
     CurrentRoleReportSchema
@@ -411,10 +433,6 @@ export async function generateRecommendationEvidence(input: {
     historyByPlayerId
   });
   const projections = roleAdjustedPlayerProjections(rawProjections, projectionUncertainty);
-  const fixtureHorizonReport = input.fixtureHorizonReport ?? await readArtifactFileIfExists(
-    path.join(outputDir, "fixture-horizon-report.json"),
-    FixtureHorizonReportSchema
-  );
   const strategyDir = path.join("packages", "content", "strategy");
   const weeklyStrategyDir = path.join(strategyDir, "weekly");
   const seasonPlanPath = path.join(strategyDir, "season-plan.md");
@@ -542,6 +560,8 @@ export async function generateRecommendationEvidence(input: {
     freeTransfers: CURRENT_SQUAD.freeTransfers,
     chipsAvailable: CURRENT_SQUAD.chipsAvailable
   });
+  const startingXI = CURRENT_SQUAD.players.filter((playerId) => !CURRENT_SQUAD.benchOrder.includes(playerId));
+  const captainCandidates = rankCaptainCandidates(projections, startingXI);
   const strategyEvidence = buildStrategyEvidence({
     evidencePack,
     seasonPlanExists: existingSeasonPlan !== null,
@@ -579,12 +599,12 @@ export async function generateRecommendationEvidence(input: {
   await writeJson(path.join(outputDir, "strategy-evidence.json"), strategyEvidence);
   await writeJson(path.join(outputDir, "decision-record.json"), squadDecisionRecord);
   await writeJson(path.join(outputDir, "recommendation-template.json"), evidencePack.recommendationTemplate);
+  await writeJson(path.join(outputDir, "captain-candidates.json"), captainCandidates);
   await writeFile(path.join(outputDir, "projection-summary.md"), renderProjectionSummary(evidencePack), "utf8");
   await writeFile(path.join(outputDir, "decision-prompts.md"), renderDecisionPrompts(evidencePack, fixtureHorizonReport), "utf8");
 
   if (!authoredRecommendationExists) {
     await writeJson(recommendationPath, evidencePack.recommendationTemplate);
-    await writeJson(path.join(outputDir, "captain-candidates.json"), []);
     await writeJson(path.join(outputDir, "transfer-candidates.json"), []);
     await writeJson(path.join(outputDir, "legality-report.json"), {
       isValid: false,

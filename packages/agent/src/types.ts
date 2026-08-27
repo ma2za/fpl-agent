@@ -187,6 +187,8 @@ export type OptimizationPolicy = {
     playerUniverseSize: number;
     candidatesGenerated: number;
     candidatesSimulated: number;
+    discardedCandidates: number;
+    solutionsProvenOptimal?: number;
   };
   projectionAdjustments: Array<{
     playerId: number;

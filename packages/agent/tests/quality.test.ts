@@ -13,7 +13,7 @@ const recommendation: WeeklyRecommendation = {
     ownershipTreatment: "excluded",
     structureSimulationReportPath: "structure-simulation.json",
     rankSimulationReportPath: null,
-    candidateSearch: { generator: "manual", exhaustive: false, playerUniverseSize: 100, candidatesGenerated: 6, candidatesSimulated: 6 },
+    candidateSearch: { generator: "manual", exhaustive: false, playerUniverseSize: 100, candidatesGenerated: 6, candidatesSimulated: 6, discardedCandidates: 0 },
     projectionAdjustments: [],
     projectionScenarioAdjustments: []
   },
@@ -169,6 +169,39 @@ describe("evaluateRecommendationQuality", () => {
     expect(result.isValid).toBe(true);
     expect(result.errors).toEqual([]);
     expect(result.gates.find((gate) => gate.gate === "budget")?.status).toBe("pass");
+  });
+
+  it("rejects discarded or unsimulated candidates", () => {
+    const result = evaluateRecommendationQuality({
+      ...recommendation,
+      optimizationPolicy: {
+        ...recommendation.optimizationPolicy!,
+        candidateSearch: {
+          ...recommendation.optimizationPolicy!.candidateSearch!,
+          candidatesSimulated: 5,
+          discardedCandidates: 1
+        }
+      }
+    });
+
+    expect(result.errors).toContain("Every generated candidate must be retained and simulated.");
+    expect(result.errors).toContain("Candidate search must not discard generated candidates.");
+  });
+
+  it("rejects unproven exact-search candidates", () => {
+    const result = evaluateRecommendationQuality({
+      ...recommendation,
+      optimizationPolicy: {
+        ...recommendation.optimizationPolicy!,
+        candidateSearch: {
+          ...recommendation.optimizationPolicy!.candidateSearch!,
+          generator: "highs-milp-k-best",
+          solutionsProvenOptimal: 5
+        }
+      }
+    });
+
+    expect(result.errors).toContain("Every retained MILP candidate must have an optimality proof.");
   });
 
   it("warns for excessive bank", () => {

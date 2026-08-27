@@ -412,7 +412,9 @@ const optimizationPolicy = looseObject({
     exhaustive: z.boolean(),
     playerUniverseSize: z.number().int().nonnegative(),
     candidatesGenerated: z.number().int().positive(),
-    candidatesSimulated: z.number().int().positive()
+    candidatesSimulated: z.number().int().positive(),
+    discardedCandidates: z.number().int().nonnegative(),
+    solutionsProvenOptimal: z.number().int().nonnegative().optional()
   }).strict().optional(),
   projectionAdjustments: z.array(looseObject({
     playerId: z.number(),
@@ -1355,6 +1357,68 @@ const structureSimulationResult = z.object({
   }).strict().optional()
 }).strict();
 
+const structureSimulationResultV19 = structureSimulationResult.extend({
+  samplePoints: z.array(z.number())
+}).strict();
+
+const structureSimulationCandidate = z.object({
+  candidateId: z.string().min(1),
+  playerIds: z.array(z.number()).min(1),
+  benchOrder: z.array(z.number()).optional(),
+  captainPlayerId: z.number().nullable(),
+  viceCaptainPlayerId: z.number().nullable().optional()
+}).strict();
+
+const structureSimulationFieldCandidate = structureSimulationCandidate.extend({
+  weight: z.number().positive()
+}).strict();
+
+const structureSimulationPlayerDistribution = z.object({
+  playerId: z.number().int().positive(),
+  mean: z.number(),
+  standardDeviation: z.number().nonnegative(),
+  appearanceProbability: z.number().min(0).max(1).optional(),
+  position: z.enum(["GKP", "DEF", "MID", "FWD"]).optional(),
+  teamId: z.number().int().positive().optional(),
+  price: z.number().nonnegative().optional(),
+  fixtureId: z.number().int().positive().optional(),
+  opponentTeamId: z.number().int().positive().optional()
+}).strict();
+
+const structureSimulationFixtureDistribution = z.object({
+  fixtureId: z.number().int().positive(),
+  homeTeamId: z.number().int().positive(),
+  awayTeamId: z.number().int().positive(),
+  homeExpectedGoals: z.number().nonnegative(),
+  awayExpectedGoals: z.number().nonnegative(),
+  model: z.literal("INDEPENDENT_POISSON_FROM_EXPECTED_GOALS"),
+  expectedGoalsMethod: z.enum(["FPL_OVERALL_STRENGTH_HEURISTIC_V1", "MARKET_IMPLIED_EXPECTED_GOALS"]),
+  confidence: z.enum(["low", "medium", "high"]),
+  evidenceIds: stringArray
+}).strict();
+
+const structureSimulationObjectiveDefinition = z.object({
+  captainDoubling: z.boolean(),
+  viceCaptainFallback: z.boolean(),
+  automaticSubstitutions: z.boolean(),
+  formationLegalityAfterSubstitutions: z.boolean(),
+  goalkeeperSubstitution: z.boolean(),
+  appearanceProbabilities: z.boolean(),
+  scoringVariance: z.boolean(),
+  correlatedMatchStates: z.boolean()
+}).strict();
+
+const structureSimulationSearchScope = z.object({
+  generator: z.enum(["manual", "deterministic-branch-and-bound", "highs-milp-k-best"]),
+  exhaustive: z.boolean(),
+  deterministicSearchExhaustive: z.boolean().optional(),
+  legalSquadsEvaluatedDeterministically: z.number().int().nonnegative().optional(),
+  solutionsProvenOptimal: z.number().int().nonnegative().optional(),
+  playerUniverseSize: z.number().int().nonnegative(),
+  candidatesGenerated: z.number().int().positive(),
+  candidatesSimulated: z.number().int().positive()
+}).strict();
+
 const structureSimulationReportBase = {
   schemaVersion: z.literal(1),
   model: z.literal("shared-player-monte-carlo"),
@@ -1371,32 +1435,34 @@ export const StructureSimulationReportSchema = z.union([
   z.object({
     ...structureSimulationReportBase,
     modelVersion: z.literal("0.0.18"),
-    objectiveDefinition: z.object({
-      captainDoubling: z.boolean(),
-      viceCaptainFallback: z.boolean(),
-      automaticSubstitutions: z.boolean(),
-      formationLegalityAfterSubstitutions: z.boolean(),
-      goalkeeperSubstitution: z.boolean(),
-      appearanceProbabilities: z.boolean(),
-      scoringVariance: z.boolean(),
-      correlatedMatchStates: z.boolean()
+    objectiveDefinition: structureSimulationObjectiveDefinition,
+    searchScope: structureSimulationSearchScope
+  }).strict(),
+  z.object({
+    ...structureSimulationReportBase,
+    modelVersion: z.literal("0.0.19"),
+    results: z.array(structureSimulationResultV19).min(2),
+    fieldResults: z.array(structureSimulationResultV19),
+    inputs: z.object({
+      candidates: z.array(structureSimulationCandidate).min(2),
+      fieldCandidates: z.array(structureSimulationFieldCandidate),
+      playerDistributions: z.array(structureSimulationPlayerDistribution).min(1),
+      fixtureDistributions: z.array(structureSimulationFixtureDistribution)
     }).strict(),
-    searchScope: z.object({
-      generator: z.enum(["manual", "deterministic-branch-and-bound", "highs-milp-k-best"]),
-      exhaustive: z.boolean(),
-      deterministicSearchExhaustive: z.boolean().optional(),
-      legalSquadsEvaluatedDeterministically: z.number().int().nonnegative().optional(),
-      solutionsProvenOptimal: z.number().int().nonnegative().optional(),
-      playerUniverseSize: z.number().int().nonnegative(),
-      candidatesGenerated: z.number().int().positive(),
-      candidatesSimulated: z.number().int().positive()
-    }).strict()
+    retention: z.object({
+      candidateInputs: z.literal("ALL"),
+      simulationSamples: z.literal("ALL_CANDIDATE_TOTALS"),
+      truncationApplied: z.literal(false),
+      replayableFromSeedAndInputs: z.literal(true)
+    }).strict(),
+    objectiveDefinition: structureSimulationObjectiveDefinition,
+    searchScope: structureSimulationSearchScope
   }).strict()
 ]);
 
 export const DecisionMarginReportSchema = z.object({
   schemaVersion: z.literal(1),
-  modelVersion: z.literal("0.0.18"),
+  modelVersion: z.union([z.literal("0.0.18"), z.literal("0.0.19")]),
   selectedCandidateId: z.string().min(1),
   rivalCandidateId: z.string().min(1),
   baseObjectiveMargin: z.number(),
@@ -1409,7 +1475,14 @@ export const DecisionMarginReportSchema = z.object({
     margin: z.number().nonnegative().nullable(),
     pointsPerMeanPoint: z.number(),
     method: z.literal("COMMON_RANDOM_NUMBERS_FINITE_DIFFERENCE")
-  }).strict())
+  }).strict()),
+  simulations: z.object({
+    base: StructureSimulationReportSchema,
+    perturbations: z.array(z.object({
+      playerId: z.number().int().positive(),
+      report: StructureSimulationReportSchema
+    }).strict())
+  }).strict().optional()
 }).strict();
 
 const squadUtilityVector = z.object({
@@ -1710,7 +1783,11 @@ export const CounterfactualSetSchema = z.object({
   request: OptimizationRequestSchema,
   candidates: z.array(SquadCandidateSchema),
   paretoCandidateIds: z.array(z.string()),
-  proofs: z.array(OptimizationProofSchema)
+  proofs: z.array(OptimizationProofSchema),
+  retention: z.object({
+    generatedCandidates: z.literal("ALL"),
+    discardedCandidates: z.literal(0)
+  }).strict().optional()
 }).strict();
 
 export const CounterfactualComparisonSchema = z.object({

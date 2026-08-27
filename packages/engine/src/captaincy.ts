@@ -15,14 +15,15 @@ function riskForProjection(projection: PlayerProjection): RiskLabel {
 export function rankCaptainCandidates(
   projections: PlayerProjection[],
   playerIds?: number[],
-  limit = 5
+  limit?: number
 ): CaptainCandidate[] {
   const allowedIds = playerIds ? new Set(playerIds) : null;
-
-  return projections
+  const ranked = projections
     .filter((projection) => !allowedIds || allowedIds.has(projection.playerId))
-    .sort((a, b) => b.projectedPoints - a.projectedPoints || b.expectedMinutes - a.expectedMinutes)
-    .slice(0, limit)
+    .sort((a, b) => b.projectedPoints - a.projectedPoints || b.expectedMinutes - a.expectedMinutes);
+  const retained = limit === undefined ? ranked : ranked.slice(0, limit);
+
+  return retained
     .map((projection) => ({
       playerId: projection.playerId,
       projectedPoints: projection.projectedPoints,

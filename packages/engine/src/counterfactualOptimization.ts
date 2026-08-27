@@ -104,6 +104,10 @@ export type CounterfactualSet = {
   candidates: SquadCandidate[];
   paretoCandidateIds: string[];
   proofs: OptimizationProof[];
+  retention: {
+    generatedCandidates: "ALL";
+    discardedCandidates: 0;
+  };
 };
 
 export type CounterfactualComparison = {
@@ -649,7 +653,8 @@ export function buildCounterfactualSet(request: OptimizationRequest, players: Op
     request,
     candidates,
     paretoCandidateIds: [...paretoCandidateIds].sort(),
-    proofs
+    proofs,
+    retention: { generatedCandidates: "ALL", discardedCandidates: 0 }
   };
 }
 
@@ -680,7 +685,8 @@ export async function buildCounterfactualSetMilp(request: OptimizationRequest, p
     request,
     candidates,
     paretoCandidateIds: [...paretoCandidateIds].sort(),
-    proofs
+    proofs,
+    retention: { generatedCandidates: "ALL", discardedCandidates: 0 }
   };
 }
 

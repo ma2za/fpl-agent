@@ -8,6 +8,42 @@ function argValue(name: string) {
   return index === -1 ? null : process.argv[index + 1] ?? null;
 }
 
+type FrontierCandidate = {
+  candidateId: string;
+  horizon: number;
+  startingXI: number[];
+  benchOrder: number[];
+  metrics: { objective: number };
+};
+
+export function simulationCandidatesForHorizon(
+  set: { candidates: FrontierCandidate[] },
+  horizon: number,
+  playerDistributions: Array<{ playerId: number; mean: number }>
+) {
+  const distributionById = new Map(playerDistributions.map((item) => [item.playerId, item]));
+  return set.candidates
+    .filter((item) => item.horizon === horizon)
+    .sort((a, b) => b.metrics.objective - a.metrics.objective || a.candidateId.localeCompare(b.candidateId))
+    .map((candidate) => {
+      const captains = [...candidate.startingXI].sort((a, b) =>
+        distributionById.get(b)!.mean - distributionById.get(a)!.mean || a - b);
+      return {
+        candidateId: candidate.candidateId,
+        playerIds: candidate.startingXI,
+        benchOrder: candidate.benchOrder,
+        captainPlayerId: captains[0],
+        viceCaptainPlayerId: captains[1]
+      };
+    });
+}
+
+export function rejectCandidateTruncation(request: { maximumCandidates?: number }) {
+  if (request.maximumCandidates !== undefined) {
+    throw new Error("maximumCandidates is no longer supported because simulation candidate truncation is prohibited.");
+  }
+}
+
 async function main() {
   const inputPath = argValue("--input");
   const outputPath = argValue("--out");
@@ -80,32 +116,17 @@ async function main() {
   if (counterfactualSet) {
     const set = counterfactualSet;
     const horizon = request.horizon ?? 1;
-    const maximumCandidates = request.maximumCandidates ?? 100;
-    const unique = new Map<string, any>();
-    for (const candidate of set.candidates.filter((item: any) => item.horizon === horizon)) {
-      const key = candidate.playerIds.join(",");
-      if (!unique.has(key)) unique.set(key, candidate);
-    }
-    const frontier = [...unique.values()].sort((a, b) => b.metrics.objective - a.metrics.objective || a.candidateId.localeCompare(b.candidateId)).slice(0, maximumCandidates);
+    rejectCandidateTruncation(request);
+    const frontier = set.candidates
+      .filter((item: any) => item.horizon === horizon)
+      .sort((a: any, b: any) => b.metrics.objective - a.metrics.objective || a.candidateId.localeCompare(b.candidateId));
     const proofs = set.proofs.filter((proof: any) => proof.horizon === horizon);
     const branchProofs = proofs.filter((proof: any) => proof.algorithm === "deterministic-branch-and-bound");
     const legalSquadsEvaluatedDeterministically = branchProofs.length > 0
       ? branchProofs.reduce((sum: number, proof: any) => sum + proof.feasibleSquads, 0)
       : undefined;
     const solutionsProvenOptimal = proofs.reduce((sum: number, proof: any) => sum + (proof.solutionsProvenOptimal ?? 0), 0);
-    const distributionById = new Map<number, { playerId: number; mean: number }>(
-      playerDistributions.map((item: { playerId: number; mean: number }) => [item.playerId, item])
-    );
-    candidates = frontier.map((candidate) => {
-      const captains = [...candidate.startingXI].sort((a, b) => distributionById.get(b)!.mean - distributionById.get(a)!.mean || a - b);
-      return {
-        candidateId: candidate.candidateId,
-        playerIds: candidate.startingXI,
-        benchOrder: candidate.benchOrder,
-        captainPlayerId: captains[0],
-        viceCaptainPlayerId: captains[1]
-      };
-    });
+    candidates = simulationCandidatesForHorizon(set, horizon, playerDistributions);
     searchScope = {
       generator: proofs.every((proof: any) => proof.algorithm === "highs-milp-k-best") ? "highs-milp-k-best" : "deterministic-branch-and-bound",
       exhaustive: proofs.length === 1 && proofs.every((proof: any) => proof.frontierComplete),
@@ -113,7 +134,7 @@ async function main() {
       legalSquadsEvaluatedDeterministically,
       solutionsProvenOptimal,
       playerUniverseSize: playerDistributions.length,
-      candidatesGenerated: unique.size,
+      candidatesGenerated: frontier.length,
       candidatesSimulated: candidates.length
     };
   }

@@ -118,6 +118,7 @@ describe("exact counterfactual optimization", () => {
     const second = buildCounterfactualSet(request, players);
 
     expect(second).toEqual(first);
+    expect(first.retention).toEqual({ generatedCandidates: "ALL", discardedCandidates: 0 });
     expect(first.proofs).toHaveLength(9);
     expect(first.candidates.filter((candidate) => candidate.scenarioId === "player-1").every((candidate) => candidate.playerIds.includes(1))).toBe(true);
     expect(first.candidates.filter((candidate) => candidate.scenarioId === "player-2").every((candidate) => candidate.playerIds.includes(2))).toBe(true);
