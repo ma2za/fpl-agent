@@ -1,5 +1,6 @@
 import json
 import sys
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
@@ -7,10 +8,16 @@ from google_news_api import GoogleNewsClient
 from selectolax.parser import HTMLParser
 
 
+def ascii_query_name(value):
+    translated = value.translate(str.maketrans({"Đ": "D", "đ": "d", "Ł": "L", "ł": "l", "Ø": "O", "ø": "o"}))
+    normalized = unicodedata.normalize("NFKD", translated)
+    return "".join(character for character in normalized if not unicodedata.combining(character)).encode("ascii", "ignore").decode().strip()
+
+
 def query_for(player):
     names = []
-    for name in [player["name"], player["webName"]]:
-        escaped = name.strip().replace('"', "")
+    for name in [player["name"], player["webName"], *player.get("aliases", [])]:
+        escaped = ascii_query_name(name).replace('"', "")
         if escaped and escaped.casefold() not in [item.casefold() for item in names]:
             names.append(escaped)
     quoted = " OR ".join(f'"{name}"' for name in names)

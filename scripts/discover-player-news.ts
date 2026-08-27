@@ -26,6 +26,19 @@ type BrowserClient = {
 };
 let browserTail = Promise.resolve();
 
+export function eligibleNewsDiscoveryPlayers<T extends { playerId: number }>(
+  players: T[],
+  probability: Map<number, number>,
+  minimumAppearanceProbability: number,
+  requestedPlayerIds: Set<number> | null,
+  includedPlayerIds: Set<number>
+) {
+  return players.filter((player) =>
+    (!requestedPlayerIds || requestedPlayerIds.has(player.playerId)) &&
+    ((probability.get(player.playerId) ?? 0) >= minimumAppearanceProbability || includedPlayerIds.has(player.playerId))
+  );
+}
+
 export function searchGoogleNews(players: WorklistPlayer[], when = "14d", maxResults = 10, workers = 8) {
   return new Promise<{ provider: string; results: GoogleNewsResult[] }>((resolve, reject) => {
     const child = spawn("uv", ["run", "python", path.join("scripts", "google-news-player-search.py")], {
@@ -265,6 +278,8 @@ export async function discoverPlayerNews(input: {
   sources?: PlayerNewsSource[];
   sourceIds?: string[];
   playerIds?: number[];
+  includePlayerIds?: number[];
+  minimumPriorStartProbability?: number;
   fetchImpl?: typeof fetch;
   storePath?: string;
   googleNewsSearch?: typeof searchGoogleNews;
@@ -282,10 +297,17 @@ export async function discoverPlayerNews(input: {
   const probability = new Map(projections.map((item) => [item.playerId, item.appearance.appearanceProbability]));
   const minimumAppearanceProbability = input.minimumAppearanceProbability ?? 0;
   const requestedPlayerIds = input.playerIds ? new Set(input.playerIds) : null;
-  const eligiblePlayers = worklist.players.filter((player) =>
-    (probability.get(player.playerId) ?? 0) >= minimumAppearanceProbability &&
-    (!requestedPlayerIds || requestedPlayerIds.has(player.playerId))
-  );
+  const includedPlayerIds = new Set(input.includePlayerIds ?? []);
+  if (input.minimumPriorStartProbability !== undefined) {
+    const priorArchivePath = path.join("data", "gameweek-archive", `gw-${input.gameweek - 1}`, "archive-manifest.json");
+    const priorArchive = JSON.parse(await readFile(priorArchivePath, "utf8")) as {
+      forecasts: Array<{ playerId: number; startProbability: number }>;
+    };
+    for (const forecast of priorArchive.forecasts) {
+      if (forecast.startProbability >= input.minimumPriorStartProbability) includedPlayerIds.add(forecast.playerId);
+    }
+  }
+  const eligiblePlayers = eligibleNewsDiscoveryPlayers(worklist.players, probability, minimumAppearanceProbability, requestedPlayerIds, includedPlayerIds);
   const skippedPlayers = eligiblePlayers.filter((player) => completedPlayerIds.has(player.playerId)).length;
   const remainingPlayers = eligiblePlayers.filter((player) => !completedPlayerIds.has(player.playerId));
   const players = input.maxPlayers === undefined ? remainingPlayers : remainingPlayers.slice(0, input.maxPlayers);
@@ -384,23 +406,30 @@ export async function discoverPlayerNews(input: {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const gameweek = Number(argValue("--gw"));
   const minimumAppearanceProbability = Number(argValue("--min-appearance") ?? "0");
+  const minimumPriorStartValue = argValue("--min-prior-start");
+  const minimumPriorStartProbability = minimumPriorStartValue === null ? undefined : Number(minimumPriorStartValue);
   const maxPagesPerSource = Number(argValue("--max-pages-per-source") ?? "30");
+  const sourceConcurrency = Number(argValue("--source-concurrency") ?? "6");
   const googleNewsConcurrency = Number(argValue("--news-concurrency") ?? "8");
   const batchSize = Number(argValue("--batch-size") ?? "25");
   const maxPlayersValue = argValue("--max-players");
   const maxPlayers = maxPlayersValue === null ? undefined : Number(maxPlayersValue);
   const sourceIds = process.argv.flatMap((arg, index) => arg === "--source" && process.argv[index + 1] ? [process.argv[index + 1]] : []);
   const playerIds = process.argv.flatMap((arg, index) => arg === "--player" && process.argv[index + 1] ? [Number(process.argv[index + 1])] : []);
+  const includePlayerIds = process.argv.flatMap((arg, index) => arg === "--include-player" && process.argv[index + 1] ? [Number(process.argv[index + 1])] : []);
   if (!Number.isInteger(gameweek) || gameweek < 1 || minimumAppearanceProbability < 0 || minimumAppearanceProbability > 1 ||
+    (minimumPriorStartProbability !== undefined && (minimumPriorStartProbability < 0 || minimumPriorStartProbability > 1)) ||
+    !Number.isInteger(sourceConcurrency) || sourceConcurrency < 1 || sourceConcurrency > 16 ||
     !Number.isInteger(googleNewsConcurrency) || googleNewsConcurrency < 1 || googleNewsConcurrency > 16 ||
     !Number.isInteger(batchSize) || batchSize < 1 || batchSize > 100 ||
     (maxPlayers !== undefined && (!Number.isInteger(maxPlayers) || maxPlayers < 1)) ||
-    playerIds.some((id) => !Number.isInteger(id) || id < 1)) {
-    console.error("Usage: pnpm evidence:discover -- --gw <n> [--player <id>] [--min-appearance <0..1>] [--max-pages-per-source <n>] [--news-concurrency <1..16>] [--batch-size <1..100>] [--max-players <n>] [--no-resume]");
+    [...playerIds, ...includePlayerIds].some((id) => !Number.isInteger(id) || id < 1)) {
+    console.error("Usage: pnpm evidence:discover -- --gw <n> [--player <id>] [--include-player <id>] [--min-appearance <0..1>] [--min-prior-start <0..1>] [--max-pages-per-source <n>] [--source-concurrency <1..16>] [--news-concurrency <1..16>] [--batch-size <1..100>] [--max-players <n>] [--no-resume]");
     process.exitCode = 1;
   } else {
-    discoverPlayerNews({ gameweek, minimumAppearanceProbability, maxPagesPerSource, googleNewsConcurrency, batchSize, maxPlayers,
-      resume: !process.argv.includes("--no-resume"), sourceIds, playerIds: playerIds.length ? playerIds : undefined }).then((result) => {
+    discoverPlayerNews({ gameweek, minimumAppearanceProbability, minimumPriorStartProbability, maxPagesPerSource, concurrency: sourceConcurrency, googleNewsConcurrency, batchSize, maxPlayers,
+      resume: !process.argv.includes("--no-resume"), sourceIds, playerIds: playerIds.length ? playerIds : undefined,
+      includePlayerIds: includePlayerIds.length ? includePlayerIds : undefined }).then((result) => {
       console.log(`Stored ${result.discoveryIds.length} discovery checkpoint(s): ${result.players} players searched, ${result.skippedPlayers} already complete, ${result.completedSources}/${result.sourceCount} sources, ${result.candidateCount} candidate matches.`);
     }).catch((error) => {
       console.error(error instanceof Error ? error.message : error);

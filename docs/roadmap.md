@@ -124,7 +124,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Operational State
 
-- The local release suite contains 55 test files and 398 tests, all passing.
+- The local release suite contains 56 test files and 400 tests, all passing.
 - Type-check, production build, cached offline refresh, store validation, worklist generation, and dossier generation pass.
 - The accepted 600-player store baseline is 156.779 ms initial ingestion, 78.167 ms idempotent re-ingestion, 1150.416 ms dossier-index generation, and 2.302 ms individual dossier query on Node 24.14.1, Windows x64.
 - A bounded live adapter smoke completed 48 of 50 configured UK football-news sources. The Times and talkSPORT were retained as explicit robots-blocked results; no blocked source was bypassed or counted as completed coverage.
