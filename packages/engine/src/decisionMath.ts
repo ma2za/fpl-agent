@@ -107,12 +107,15 @@ export function simulateStructures(input: {
   playerDistributions: StructureSimulationPlayerDistribution[];
   fixtureDistributions?: StructureSimulationFixtureDistribution[];
   searchScope?: StructureSimulationReport["searchScope"];
+  maximumSquadCost?: number;
   seed?: number;
   sampleCount?: number;
 }): StructureSimulationReport {
   const seed = input.seed ?? 170017;
   const sampleCount = input.sampleCount ?? 10_000;
+  const maximumSquadCost = input.maximumSquadCost ?? 100;
   if (!Number.isInteger(sampleCount) || sampleCount <= 0) throw new Error("Sample count must be a positive integer.");
+  if (!Number.isFinite(maximumSquadCost) || maximumSquadCost <= 0) throw new Error("Maximum squad cost must be positive and finite.");
   if (input.candidates.length < 2) throw new Error("At least two competing structures are required.");
   if (input.mode !== "MAX_EXPECTED_POINTS" && (!input.fieldCandidates || input.fieldCandidates.length === 0)) {
     throw new Error(`${input.mode} requires simulated field candidates; ownership cannot be applied as a points adjustment.`);
@@ -178,7 +181,9 @@ export function simulateStructures(input: {
         cost += distribution.price!;
       }
       if ([...clubCounts.values()].some((count) => count > 3)) throw new Error(`Candidate ${candidate.candidateId} exceeds the three-player club limit.`);
-      if (cost > 100 + 1e-9) throw new Error(`Candidate ${candidate.candidateId} exceeds the £100.0m budget.`);
+      if (cost > maximumSquadCost + 1e-9) {
+        throw new Error(`Candidate ${candidate.candidateId} exceeds the £${maximumSquadCost.toFixed(1)}m squad-value ceiling.`);
+      }
     }
   }
   const random = randomGenerator(seed);
@@ -321,7 +326,8 @@ export function simulateStructures(input: {
       candidates: input.candidates,
       fieldCandidates: input.fieldCandidates ?? [],
       playerDistributions: input.playerDistributions,
-      fixtureDistributions: input.fixtureDistributions ?? []
+      fixtureDistributions: input.fixtureDistributions ?? [],
+      maximumSquadCost
     },
     retention: {
       candidateInputs: "ALL",

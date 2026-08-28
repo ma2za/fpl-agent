@@ -64,7 +64,7 @@ function projection(playerId: number, appearanceProbability = 1, conditionalPoin
     footballOutcomeVariance: appearanceProbability * (1 - appearanceProbability) * conditionalPoints ** 2,
     evidenceUncertainty: 0.15,
     model: "appearance-state-mixture",
-    modelVersion: "0.0.12",
+    modelVersion: "0.0.13",
     inputs: {
       seed: playerId,
       sampleCount: 1000,

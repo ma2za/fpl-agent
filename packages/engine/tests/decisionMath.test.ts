@@ -176,6 +176,47 @@ describe("decision mathematics", () => {
     expect(report.assumptions).toContain("Complete 15-player inputs apply formation-safe automatic substitutions and vice-captain fallback in every sample.");
   });
 
+  it("accepts a legal current squad value above the initial budget when declared", () => {
+    const positions = ["GKP", "GKP", "DEF", "DEF", "DEF", "DEF", "DEF", "MID", "MID", "MID", "MID", "MID", "FWD", "FWD", "FWD"] as const;
+    const distributions = positions.map((position, index) => ({
+      playerId: index + 1,
+      position,
+      appearanceProbability: 1,
+      mean: 2,
+      standardDeviation: 0,
+      teamId: index + 1,
+      price: index === 0 ? 5.2 : 6.8
+    }));
+    const candidate = {
+      playerIds: [1, 3, 4, 5, 8, 9, 10, 11, 13, 14, 15],
+      benchOrder: [2, 6, 7, 12],
+      captainPlayerId: 13,
+      viceCaptainPlayerId: 14
+    };
+
+    expect(() => simulateStructures({
+      mode: "MAX_EXPECTED_POINTS",
+      sampleCount: 1,
+      candidates: [
+        { candidateId: "current-a", ...candidate },
+        { candidateId: "current-b", ...candidate, captainPlayerId: 14 }
+      ],
+      playerDistributions: distributions
+    })).toThrow("£100.0m squad-value ceiling");
+    const report = simulateStructures({
+      mode: "MAX_EXPECTED_POINTS",
+      maximumSquadCost: 100.4,
+      sampleCount: 1,
+      candidates: [
+        { candidateId: "current-a", ...candidate },
+        { candidateId: "current-b", ...candidate, captainPlayerId: 14 }
+      ],
+      playerDistributions: distributions
+    });
+
+    expect(report.inputs?.maximumSquadCost).toBe(100.4);
+  });
+
   it("shares clean-sheet states between defenders from the same team", () => {
     const report = simulateStructures({
       mode: "MAX_EXPECTED_POINTS",

@@ -1,4 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import { once } from "node:events";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { analyzeDecisionMargins, applyProjectionAdjustments, applyProjectionScenarioAdjustment, simulateStructures } from "../packages/engine/src";
@@ -42,6 +44,32 @@ export function rejectCandidateTruncation(request: { maximumCandidates?: number 
   if (request.maximumCandidates !== undefined) {
     throw new Error("maximumCandidates is no longer supported because simulation candidate truncation is prohibited.");
   }
+}
+
+async function streamJson(filePath: string, value: Record<string, unknown>) {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  const stream = createWriteStream(filePath, { encoding: "utf8" });
+  const write = async (chunk: string) => {
+    if (!stream.write(chunk)) await once(stream, "drain");
+  };
+  await write("{\n");
+  const entries = Object.entries(value);
+  for (let index = 0; index < entries.length; index += 1) {
+    const [key, entry] = entries[index];
+    await write(`  ${JSON.stringify(key)}: `);
+    if ((key === "results" || key === "fieldResults") && Array.isArray(entry)) {
+      await write("[\n");
+      for (let itemIndex = 0; itemIndex < entry.length; itemIndex += 1) {
+        await write(`    ${JSON.stringify(entry[itemIndex])}${itemIndex === entry.length - 1 ? "" : ","}\n`);
+      }
+      await write("  ]");
+    } else {
+      await write(JSON.stringify(entry, null, 2).split("\n").map((line, lineIndex) => lineIndex === 0 ? line : `  ${line}`).join("\n"));
+    }
+    await write(index === entries.length - 1 ? "\n" : ",\n");
+  }
+  stream.end("}\n");
+  await once(stream, "finish");
 }
 
 async function main() {
@@ -129,7 +157,7 @@ async function main() {
     candidates = simulationCandidatesForHorizon(set, horizon, playerDistributions);
     searchScope = {
       generator: proofs.every((proof: any) => proof.algorithm === "highs-milp-k-best") ? "highs-milp-k-best" : "deterministic-branch-and-bound",
-      exhaustive: proofs.length === 1 && proofs.every((proof: any) => proof.frontierComplete),
+      exhaustive: proofs.length > 0 && proofs.every((proof: any) => proof.frontierComplete),
       deterministicSearchExhaustive: proofs.every((proof: any) => proof.exhaustive),
       legalSquadsEvaluatedDeterministically,
       solutionsProvenOptimal,
@@ -140,8 +168,7 @@ async function main() {
   }
   const report = marginsOnly ? null : simulateStructures({ ...request, candidates, playerDistributions, searchScope });
   if (report && outputPath) {
-    await mkdir(path.dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+    await streamJson(outputPath, report as unknown as Record<string, unknown>);
   }
   if ((request.sensitivityPlayerIds?.length ?? 0) > 0) {
     const marginReport = analyzeDecisionMargins({

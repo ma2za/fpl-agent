@@ -1,5 +1,6 @@
 import type {
   ConditionalAppearanceSample,
+  AppearanceStateForecast,
   MinutesDistribution,
   PlayerForEngine,
   PlayerProjection,
@@ -111,12 +112,21 @@ function empiricalMeans(history: ConditionalAppearanceSample[]) {
 function appearanceForecast(
   player: PlayerForEngine,
   raw: PlayerProjection,
-  role?: RoleEvidenceForProjection
+  role?: RoleEvidenceForProjection,
+  history: ConditionalAppearanceSample[] = [],
+  priorAppearance?: AppearanceStateForecast
 ) {
   const availability = clamp(raw.availabilityFactor);
-  const historicalRoleConfidence = historicalConfidence(player);
+  const historicalRoleConfidence = Math.max(
+    historicalConfidence(player),
+    priorAppearance?.historicalRoleConfidence ?? 0
+  );
   const currentConfidence = role?.currentEvidencePresent ? clamp(role.confidence) : 0;
-  const prior = historicalStartPrior(raw.expectedMinutes);
+  const previousPrior = priorAppearance?.startProbability ?? historicalStartPrior(raw.expectedMinutes);
+  const priorWeight = 4;
+  const prior = history.length > 0
+    ? (previousPrior * priorWeight + history.filter((sample) => sample.started).length) / (priorWeight + history.length)
+    : previousPrior;
   let conditionalStart = role?.currentEvidencePresent
     ? prior * (1 - currentConfidence) + clamp(role.supportScore) * currentConfidence
     : prior;
@@ -173,6 +183,8 @@ function appearanceForecast(
     source,
     reasonCodes: [
       source,
+      ...(priorAppearance ? ["previous_gameweek_prior"] : []),
+      ...(history.length > 0 ? ["current_season_start_update"] : []),
       ...(role?.disagreement ? ["conflicting_role_evidence"] : []),
       ...(!role?.currentEvidencePresent ? ["missing_current_role_evidence"] : []),
       ...((player.minutes ?? 0) === 0 ? ["cohort_minutes_fallback"] : [])
@@ -185,12 +197,19 @@ export function probabilisticProjection(input: {
   rawProjection: PlayerProjection;
   roleEvidence?: RoleEvidenceForProjection;
   history?: ConditionalAppearanceSample[];
+  priorAppearance?: AppearanceStateForecast;
   seed?: number;
   sampleCount?: number;
 }): ProbabilisticProjection {
   const seed = seedFor(input.seed ?? 120026, input.player.id);
   const sampleCount = input.sampleCount ?? SAMPLE_COUNT;
-  const appearance = appearanceForecast(input.player, input.rawProjection, input.roleEvidence);
+  const appearance = appearanceForecast(
+    input.player,
+    input.rawProjection,
+    input.roleEvidence,
+    input.history,
+    input.priorAppearance
+  );
   const cohort = cohortFor(input.player, input.rawProjection.expectedMinutes, input.roleEvidence);
   const empirical = empiricalMeans(input.history ?? []);
   const cohortValues = cohortMinutes(input.player.position, cohort, input.rawProjection.expectedMinutes);
@@ -274,7 +293,7 @@ export function probabilisticProjection(input: {
       }] : [])
     ],
     model: "appearance-state-mixture",
-    modelVersion: "0.0.12",
+    modelVersion: "0.0.13",
     inputs: {
       seed,
       sampleCount,
@@ -302,6 +321,7 @@ export function buildProjectionUncertaintyReport(input: {
   rawProjections: PlayerProjection[];
   roleEvidence?: RoleEvidenceForProjection[];
   historyByPlayerId?: Map<number, ConditionalAppearanceSample[]>;
+  priorAppearanceByPlayerId?: Map<number, AppearanceStateForecast>;
   seed?: number;
   sampleCount?: number;
 }): ProjectionUncertaintyReport {
@@ -316,6 +336,7 @@ export function buildProjectionUncertaintyReport(input: {
       rawProjection,
       roleEvidence: roleById.get(player.id),
       history: input.historyByPlayerId?.get(player.id),
+      priorAppearance: input.priorAppearanceByPlayerId?.get(player.id),
       seed,
       sampleCount
     })] : [];
@@ -326,7 +347,7 @@ export function buildProjectionUncertaintyReport(input: {
     generatedAt: input.generatedAt,
     gameweek: input.gameweek,
     model: "appearance-state-mixture",
-    modelVersion: "0.0.12",
+    modelVersion: "0.0.13",
     seed,
     sampleCount,
     items,

@@ -353,7 +353,8 @@ describe("artifact schemas", () => {
           { playerId: 1, mean: 60, standardDeviation: 10 },
           { playerId: 2, mean: 59, standardDeviation: 10 }
         ],
-        fixtureDistributions: []
+        fixtureDistributions: [],
+        maximumSquadCost: 100.4
       },
       retention: {
         candidateInputs: "ALL",
@@ -398,7 +399,7 @@ describe("artifact IO", () => {
       generatedAt: "2026-08-09T00:00:00.000Z",
       gameweek: 1,
       model: "appearance-state-mixture",
-      modelVersion: "0.0.12",
+      modelVersion: "0.0.13",
       seed: 12,
       sampleCount: 1000,
       items: [{
@@ -438,7 +439,7 @@ describe("artifact IO", () => {
         footballOutcomeVariance: 16,
         evidenceUncertainty: 0.2,
         model: "appearance-state-mixture",
-        modelVersion: "0.0.12",
+        modelVersion: "0.0.13",
         inputs: {
           seed: 1,
           sampleCount: 1000,

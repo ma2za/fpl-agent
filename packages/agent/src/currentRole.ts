@@ -32,7 +32,7 @@ const assessmentInputs: Record<RoleAssessmentDimension, RoleEvidenceDimension[]>
   transferRisk: ["transfer_risk"],
   setPieceRole: ["set_piece_roles"]
 };
-const weights: Record<RoleEvidenceAdapterKind | "previous_season_starts" | "historical_minutes", number> = {
+const weights: Record<RoleEvidenceAdapterKind | "previous_season_starts" | "historical_minutes" | "current_season_minutes", number> = {
   official_availability: 0.9,
   manager_confirmation: 0.95,
   official_club: 0.9,
@@ -43,7 +43,8 @@ const weights: Record<RoleEvidenceAdapterKind | "previous_season_starts" | "hist
   bookmaker_market: 0.8,
   reviewed_manual: 1,
   previous_season_starts: 0.45,
-  historical_minutes: 0.3
+  historical_minutes: 0.3,
+  current_season_minutes: 0.6
 };
 
 type RolePlayer = {
@@ -117,7 +118,7 @@ function normalizeRecord(
   };
 }
 
-function historicalRecords(player: RolePlayer, generatedAt: string) {
+function historicalRecords(player: RolePlayer, generatedAt: string, gameweek: number) {
   const records: NormalizedRoleEvidence[] = [];
   const historicalObservedAt = player.historical_observed_at ?? generatedAt;
 
@@ -133,7 +134,18 @@ function historicalRecords(player: RolePlayer, generatedAt: string) {
     }, "previous-season-starts", "Fantasy Premier League history", "previous_season_starts", 1, generatedAt));
   }
 
-  if (typeof player.minutes === "number" && player.minutes > 0) {
+  if (gameweek > 1 && typeof player.minutes === "number") {
+    const completedGameweeks = gameweek - 1;
+    const minutesPerGameweek = player.minutes / completedGameweeks;
+    records.push(normalizeRecord({
+      playerId: player.id,
+      dimension: "historical_starts",
+      signal: minutesPerGameweek >= 60 ? "supports_start" : minutesPerGameweek < 20 ? "opposes_start" : "neutral",
+      value: Number(minutesPerGameweek.toFixed(1)),
+      observedAt: historicalObservedAt,
+      note: `${player.minutes} minutes across ${completedGameweeks} completed gameweek(s).`
+    }, "current-season-minutes", "Fantasy Premier League current-season history", "current_season_minutes", 1, generatedAt));
+  } else if (typeof player.minutes === "number" && player.minutes > 0) {
     records.push(normalizeRecord({
       playerId: player.id,
       dimension: "historical_starts",
@@ -326,7 +338,7 @@ export function buildCurrentRoleReport(input: BuildCurrentRoleReportInput): Curr
   );
   const selectedIds = new Set(input.selectedPlayerIds ?? []);
   const items = input.players.map((player): CurrentRoleItem => {
-    const records = [...historicalRecords(player, input.generatedAt), ...adapterRecords.filter((record) => record.playerId === player.id)];
+    const records = [...historicalRecords(player, input.generatedAt, input.gameweek), ...adapterRecords.filter((record) => record.playerId === player.id)];
     const grouped = emptyDimensions();
     for (const record of records) grouped[record.dimension].push(record);
     const assessments = Object.fromEntries(assessmentDimensions.map((dimension) => [

@@ -1033,7 +1033,7 @@ function buildStages(input: {
             oddsReport?.summary.matchedFixtures ?? 0
           ),
           component("projection_model", path.join(outputDir, "projections.json"), "src:projection-model", "0.0.15", input.generatedAt),
-          component("appearance_model", path.join(outputDir, "projection-uncertainty-report.json"), "src:appearance-model", "0.0.12", input.generatedAt),
+          component("appearance_model", path.join(outputDir, "projection-uncertainty-report.json"), "src:appearance-model", "0.0.13", input.generatedAt),
           input.agentRoleEvidence
             ? {
                 kind: "manual_overrides" as const,

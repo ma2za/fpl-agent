@@ -10,6 +10,7 @@ import {
   roleAdjustedPlayerProjections,
   type ConditionalAppearanceSample,
   type PlayerForEngine,
+  type ProbabilisticProjection,
   type ProjectionContext
 } from "../packages/engine/src";
 import {
@@ -19,6 +20,7 @@ import {
   generateSquadReasoning,
   CurrentRoleReportSchema,
   FixtureHorizonReportSchema,
+  ProbabilisticProjectionArraySchema,
   readArtifactFileIfExists,
   RecommendationArtifactSchema,
   renderDecisionPrompts,
@@ -110,7 +112,7 @@ async function loadConditionalHistory() {
     const samples = (data?.currentSeasonHistory ?? []).flatMap((item) => {
       const minutes = typeof item.minutes === "number" ? item.minutes : null;
       const points = typeof item.total_points === "number" ? item.total_points : null;
-      if (minutes === null || points === null || minutes <= 0) return [];
+      if (minutes === null || points === null || minutes < 0) return [];
       return [{
         started: item.starts === 1 || (item.starts === undefined && minutes > 45),
         minutes,
@@ -424,13 +426,19 @@ export async function generateRecommendationEvidence(input: {
     CurrentRoleReportSchema
   );
   const historyByPlayerId = await loadConditionalHistory();
+  const priorProjections: ProbabilisticProjection[] | null = gameweek > 1
+    ? await readArtifactFileIfExists(path.join(
+      "packages", "content", "recommendations", `gw-${gameweek - 1}`, "probabilistic-projections.json"
+    ), ProbabilisticProjectionArraySchema)
+    : null;
   const projectionUncertainty = buildProjectionUncertaintyReport({
     generatedAt,
     gameweek,
     players: projectionPlayers,
     rawProjections,
     roleEvidence: currentRoleReport?.items,
-    historyByPlayerId
+    historyByPlayerId,
+    priorAppearanceByPlayerId: new Map((priorProjections ?? []).map((projection) => [projection.playerId, projection.appearance]))
   });
   const projections = roleAdjustedPlayerProjections(rawProjections, projectionUncertainty);
   const strategyDir = path.join("packages", "content", "strategy");

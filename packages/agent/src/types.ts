@@ -1296,7 +1296,7 @@ export type RoleEvidenceAdapterInput = {
 export type NormalizedRoleEvidence = RoleEvidenceRecord & {
   sourceId: string;
   provider: string;
-  sourceKind: RoleEvidenceAdapterKind | "previous_season_starts" | "historical_minutes";
+  sourceKind: RoleEvidenceAdapterKind | "previous_season_starts" | "historical_minutes" | "current_season_minutes";
   rootSourceIds: string[];
   observationIds: string[];
   independentSourceCount: number;

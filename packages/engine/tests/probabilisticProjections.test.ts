@@ -69,6 +69,26 @@ describe("probabilistic projections", () => {
     expect(probabilisticProjection(input)).toEqual(probabilisticProjection(input));
   });
 
+  it("carries the previous gameweek start prior and updates it with current-season starts", () => {
+    const subject = player(15, 90, 5);
+    const prior = probabilisticProjection({
+      player: player(15, 2800, 180),
+      rawProjection: projectPlayer(player(15, 2800, 180)),
+      roleEvidence: role(15, 0.9)
+    }).appearance;
+    const projection = probabilisticProjection({
+      player: subject,
+      rawProjection: projectPlayer(subject),
+      history: [{ started: true, minutes: 90, points: 5 }],
+      priorAppearance: prior
+    });
+
+    expect(projection.appearance.startProbability).toBeGreaterThan(prior.startProbability);
+    expect(projection.appearance.startProbability).toBeGreaterThan(0.9);
+    expect(projection.appearance.reasonCodes).toContain("previous_gameweek_prior");
+    expect(projection.appearance.reasonCodes).toContain("current_season_start_update");
+  });
+
   it("uses a labeled cohort when conditional history is insufficient", () => {
     const subject = player(3, 0, 0, "DEF");
     const projection = probabilisticProjection({ player: subject, rawProjection: projectPlayer(subject) });

@@ -113,6 +113,26 @@ describe("current-role evidence", () => {
     });
   });
 
+  it("treats current-season minutes relative to completed gameweeks", () => {
+    const starter = buildCurrentRoleReport({
+      generatedAt,
+      gameweek: 2,
+      players: [{ ...player, minutes: 90, starts: undefined, appearances: undefined }],
+      adapters: [],
+      selectedPlayerIds: [1]
+    }).items[0].dimensions.historical_starts[0];
+    const nonStarter = buildCurrentRoleReport({
+      generatedAt,
+      gameweek: 2,
+      players: [{ ...player, minutes: 0, starts: undefined, appearances: undefined }],
+      adapters: [],
+      selectedPlayerIds: [1]
+    }).items[0].dimensions.historical_starts[0];
+
+    expect(starter).toMatchObject({ sourceKind: "current_season_minutes", signal: "supports_start", value: 90 });
+    expect(nonStarter).toMatchObject({ sourceKind: "current_season_minutes", signal: "opposes_start", value: 0 });
+  });
+
   it("applies source precedence and recency decay", () => {
     const report = buildCurrentRoleReport({
       generatedAt,

@@ -1122,7 +1122,7 @@ const normalizedRoleEvidence = looseObject({
   note: z.string(),
   sourceId: z.string(),
   provider: z.string(),
-  sourceKind: z.union([roleAdapterKind, z.enum(["previous_season_starts", "historical_minutes"])]),
+  sourceKind: z.union([roleAdapterKind, z.enum(["previous_season_starts", "historical_minutes", "current_season_minutes"])]),
   rootSourceIds: z.array(z.string()),
   observationIds: z.array(z.string()),
   independentSourceCount: z.number().int().nonnegative(),
@@ -1227,7 +1227,7 @@ export const CurrentRoleReportSchema = looseObject({
   for (const item of report.items) {
     for (const records of Object.values(item.dimensions)) {
       for (const record of records) {
-        if (!["previous_season_starts", "historical_minutes"].includes(record.sourceKind) && record.observationIds.length === 0) {
+        if (!["previous_season_starts", "historical_minutes", "current_season_minutes"].includes(record.sourceKind) && record.observationIds.length === 0) {
           context.addIssue({ code: "custom", message: `Non-historical role record for player ${item.playerId} has no root observation.` });
         }
         for (const observationId of record.observationIds) {
@@ -1306,7 +1306,7 @@ const probabilisticProjection = z.object({
     evidenceIds: stringArray
   }).strict()).optional(),
   model: z.literal("appearance-state-mixture"),
-  modelVersion: z.literal("0.0.12"),
+  modelVersion: z.literal("0.0.13"),
   inputs: z.object({
     seed: z.number().int().nonnegative(),
     sampleCount: z.number().int().positive(),
@@ -1333,7 +1333,7 @@ export const ProjectionUncertaintyReportSchema = z.object({
   generatedAt: z.string(),
   gameweek: z.number().int().positive(),
   model: z.literal("appearance-state-mixture"),
-  modelVersion: z.literal("0.0.12"),
+  modelVersion: z.literal("0.0.13"),
   seed: z.number().int().nonnegative(),
   sampleCount: z.number().int().positive(),
   items: ProbabilisticProjectionArraySchema,
@@ -1447,7 +1447,8 @@ export const StructureSimulationReportSchema = z.union([
       candidates: z.array(structureSimulationCandidate).min(2),
       fieldCandidates: z.array(structureSimulationFieldCandidate),
       playerDistributions: z.array(structureSimulationPlayerDistribution).min(1),
-      fixtureDistributions: z.array(structureSimulationFixtureDistribution)
+      fixtureDistributions: z.array(structureSimulationFixtureDistribution),
+      maximumSquadCost: z.number().positive().optional()
     }).strict(),
     retention: z.object({
       candidateInputs: z.literal("ALL"),

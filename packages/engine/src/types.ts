@@ -167,6 +167,7 @@ export type StructureSimulationReport = {
     fieldCandidates: StructureSimulationFieldCandidate[];
     playerDistributions: StructureSimulationPlayerDistribution[];
     fixtureDistributions: StructureSimulationFixtureDistribution[];
+    maximumSquadCost: number;
   };
   retention?: {
     candidateInputs: "ALL";
@@ -287,7 +288,7 @@ export type ProbabilisticProjection = {
     evidenceIds: string[];
   }>;
   model: "appearance-state-mixture";
-  modelVersion: "0.0.12";
+  modelVersion: "0.0.13";
   inputs: ProjectionModelInputs;
 };
 
@@ -296,7 +297,7 @@ export type ProjectionUncertaintyReport = {
   generatedAt: string;
   gameweek: number;
   model: "appearance-state-mixture";
-  modelVersion: "0.0.12";
+  modelVersion: "0.0.13";
   seed: number;
   sampleCount: number;
   items: ProbabilisticProjection[];
