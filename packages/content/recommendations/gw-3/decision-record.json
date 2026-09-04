@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "artifactKind": "agent_decision",
+  "generatedAt": "2026-09-04T14:06:40.906Z",
+  "gameweek": 3,
+  "deadline": "2026-09-04T17:30:00Z",
+  "status": "selected",
+  "optimizationPolicy": "MAX_EXPECTED_POINTS",
+  "selectedCandidateId": "gw3-one-free-transfer:out-165:gw1:1",
+  "action": {
+    "type": "transfer",
+    "freeTransfersBefore": 1,
+    "transfersUsed": 1,
+    "pointsCost": 0,
+    "chip": "none",
+    "sellPlayerId": 165,
+    "sellPlayerName": "Joao Pedro",
+    "sellPrice": 7.6,
+    "buyPlayerId": 106,
+    "buyPlayerName": "Igor Thiago",
+    "buyPrice": 8.0
+  },
+  "squad": {
+    "playerIds": [82, 109, 4, 418, 8, 88, 204, 397, 427, 542, 260, 212, 346, 106, 411],
+    "startingXI": [82, 204, 4, 88, 8, 397, 260, 427, 411, 106, 346],
+    "benchOrder": [109, 418, 542, 212],
+    "captainPlayerId": 411,
+    "viceCaptainPlayerId": 397,
+    "formation": "4-3-3",
+    "cost": 100.0,
+    "bank": 0.0
+  },
+  "deterministicMetrics": {
+    "objective": 80.6,
+    "unpenalizedObjective": 81.95,
+    "concentrationPenalty": 1.35,
+    "rawProjection": 68.893,
+    "roleAdjustedProjection": 68.256,
+    "downside": 19.379,
+    "benchValue": 1.399,
+    "threeGameweekObjective": 232.384,
+    "sixGameweekObjective": 462.77
+  },
+  "simulation": {
+    "model": "shared-player-monte-carlo",
+    "modelVersion": "0.0.19",
+    "seed": 4092026,
+    "sampleCount": 10000,
+    "candidatesSimulated": 2025,
+    "expectedPoints": 73.802,
+    "p10": 54.398,
+    "p50": 73.614,
+    "p90": 93.476,
+    "retention": {
+      "candidateInputs": "ALL",
+      "simulationSamples": "ALL_CANDIDATE_TOTALS",
+      "truncationApplied": false,
+      "replayableFromSeedAndInputs": true
+    }
+  },
+  "comparison": {
+    "runnerUpCandidateId": "gw3-one-free-transfer:out-427:gw1:1",
+    "runnerUpAction": "Mbeumo to Gakpo",
+    "runnerUpExpectedPoints": 73.529,
+    "pairedExpectedPointsDelta": 0.273,
+    "pairedWinRate": 0.5174,
+    "rollCandidateId": "gw3-one-free-transfer:roll:gw1:1",
+    "rollExpectedPoints": 72.01,
+    "rollExpectedPointsDelta": 1.792,
+    "threeGameweekLeader": "Mbeumo to Gakpo",
+    "threeGameweekLeaderObjective": 233.489,
+    "sixGameweekLeader": "Joao Pedro to Igor Thiago",
+    "sixGameweekLeaderObjective": 462.77
+  },
+  "candidateProof": {
+    "generatedCandidates": 6075,
+    "horizonOneCandidates": 2025,
+    "horizonThreeCandidates": 2025,
+    "horizonSixCandidates": 2025,
+    "proofs": 48,
+    "horizonOneSolutionsProvenOptimal": 2025,
+    "frontiersComplete": true,
+    "discardedCandidates": 0
+  },
+  "constraints": {
+    "startingSquadSource": "packages/content/postmortems/gw-2.json",
+    "maximumTransfers": 1,
+    "freeTransfers": 1,
+    "maximumPlayersPerClub": 3,
+    "requiredSquadCounts": { "GKP": 2, "DEF": 5, "MID": 5, "FWD": 3 },
+    "pointsHitsAllowed": false,
+    "chipsAllowed": false
+  },
+  "evidence": {
+    "officialDataRefresh": "packages/content/recommendations/gw-3/refresh-manifest.json",
+    "recommendation": "packages/content/recommendations/gw-3/recommendation.json",
+    "projections": "packages/content/recommendations/gw-3/probabilistic-projections.json",
+    "marketDistributions": "packages/content/recommendations/gw-3/fixture-distributions.json",
+    "readiness": "packages/content/recommendations/gw-3/evidence-readiness-report.json",
+    "counterfactualSet": "packages/content/recommendations/gw-3/counterfactuals/gw3-one-free-transfer/counterfactual-set.json",
+    "simulationReport": "packages/content/recommendations/gw-3/counterfactuals/gw3-one-free-transfer/structure-simulation.json",
+    "legalityReport": "packages/content/recommendations/gw-3/legality-report.json"
+  }
+}

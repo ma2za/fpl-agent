@@ -413,6 +413,47 @@ describe("verifyRecommendation", () => {
     expect(result.errors).toContain("Transfer cost must be 0, received 4.");
   });
 
+  it("validates transfer membership against the selected post-transfer squad", () => {
+    const players = recommendation.squadBefore.players.map((player) => player.id === 7
+      ? { ...player, id: 99, name: "Replacement Defender" }
+      : player);
+    const transferred = withDecisionConsistency({
+      ...recommendation,
+      claimLedger: testClaimLedger(),
+      squadBefore: { ...recommendation.squadBefore, players },
+      recommendedAction: {
+        type: "transfer",
+        transfers: [{ sellPlayerId: 7, buyPlayerId: 99 }],
+        transferCost: 0,
+        bankAfter: recommendation.squadBefore.bank,
+        explanation: "Use the free transfer."
+      }
+    });
+
+    expect(verifyRecommendation(transferred).errors).not.toContain(
+      "Transfer sell player id 7 remains in the selected squad."
+    );
+    expect(verifyRecommendation(transferred).errors).not.toContain(
+      "Transfer buy player id 99 is absent from the selected squad."
+    );
+  });
+
+  it("rejects transfer membership that does not match the selected post-transfer squad", () => {
+    const result = verifyRecommendation({
+      ...recommendation,
+      recommendedAction: {
+        type: "transfer",
+        transfers: [{ sellPlayerId: 7, buyPlayerId: 99 }],
+        transferCost: 0,
+        bankAfter: recommendation.squadBefore.bank,
+        explanation: "Use the free transfer."
+      }
+    });
+
+    expect(result.errors).toContain("Transfer sell player id 7 remains in the selected squad.");
+    expect(result.errors).toContain("Transfer buy player id 99 is absent from the selected squad.");
+  });
+
   it("fails recommendations that do not require manual execution", () => {
     const result = verifyRecommendation({
       ...recommendation,

@@ -151,12 +151,12 @@ function actionErrors(recommendation: WeeklyRecommendation) {
   }
 
   for (const transfer of recommendation.recommendedAction.transfers) {
-    if (!squadIds.has(transfer.sellPlayerId)) {
-      errors.push(`Transfer sell player id ${transfer.sellPlayerId} is not in the squad.`);
+    if (squadIds.has(transfer.sellPlayerId)) {
+      errors.push(`Transfer sell player id ${transfer.sellPlayerId} remains in the selected squad.`);
     }
 
-    if (squadIds.has(transfer.buyPlayerId)) {
-      errors.push(`Transfer buy player id ${transfer.buyPlayerId} is already in the squad.`);
+    if (!squadIds.has(transfer.buyPlayerId)) {
+      errors.push(`Transfer buy player id ${transfer.buyPlayerId} is absent from the selected squad.`);
     }
   }
 

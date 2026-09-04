@@ -602,8 +602,11 @@ export async function generateRecommendationEvidence(input: {
   ]);
   const availablePlayerIds = new Set(players.map((player) => player.id));
   const projectedPlayerIds = new Set(projectionUncertainty.items.map((projection) => projection.playerId));
-  const decisionInputsAvailable = CURRENT_SQUAD.sourceGameweek === gameweek && [...requiredDecisionPlayerIds].every((playerId) =>
+  const squadInputsAvailable = CURRENT_SQUAD.sourceGameweek === gameweek - 1 && CURRENT_SQUAD.players.every((playerId) =>
     availablePlayerIds.has(playerId) && projectedPlayerIds.has(playerId));
+  const decisionInputsAvailable = squadInputsAvailable
+    && CURRENT_SQUAD.players.every((playerId) => PLAYER_DECISION_INPUTS[playerId] !== undefined)
+    && [...requiredDecisionPlayerIds].every((playerId) => availablePlayerIds.has(playerId) && projectedPlayerIds.has(playerId));
   const squadDecisionRecord = decisionInputsAvailable ? buildSquadDecisionRecord({
     gameweek,
     generatedAt,
@@ -636,7 +639,7 @@ export async function generateRecommendationEvidence(input: {
     deadline: event?.deadline_time ?? "unknown",
     deadlineStatus: effectiveDeadlineStatus,
     competitionState,
-    manualSquadConfigured: decisionInputsAvailable,
+    manualSquadConfigured: squadInputsAvailable,
     currentSquadPlayerIds: CURRENT_SQUAD.players,
     currentSquadReasoning: squadReasoning,
     riskProfile: RISK_PROFILE,
