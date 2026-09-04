@@ -47,6 +47,19 @@ function quantile(sorted: number[], probability: number) {
   return sorted[Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * probability))] ?? 0;
 }
 
+function pairedStandardError(left: number[], right: number[]) {
+  if (left.length !== right.length || left.length < 2) return 0;
+  let mean = 0;
+  let squaredDifference = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    const value = left[index] - right[index];
+    const delta = value - mean;
+    mean += delta / (index + 1);
+    squaredDifference += delta * (value - mean);
+  }
+  return Math.sqrt(squaredDifference / (left.length - 1) / left.length);
+}
+
 export function applyProjectionAdjustments(input: {
   baseProjection: number;
   baseStandardDeviation: number;
@@ -313,6 +326,25 @@ export function simulateStructures(input: {
     .filter((result) => !managerCandidateIds.has(result.candidateId))
     .map((result) => ({ ...result, expectedRankUtility: null, objectiveScore: result.expectedPoints }))
     .sort((a, b) => a.candidateId.localeCompare(b.candidateId));
+  const minimumMaterialMargin = 0.15;
+  const leader = results[0];
+  const runnerUp = results[1];
+  const runnerUpStandardError = pairedStandardError(leader.samplePoints, runnerUp.samplePoints);
+  const materialityThreshold = Math.max(minimumMaterialMargin, 1.96 * runnerUpStandardError);
+  const decisionStability = input.mode === "MAX_EXPECTED_POINTS" ? {
+    leaderCandidateId: leader.candidateId,
+    runnerUpCandidateId: runnerUp.candidateId,
+    objectiveMargin: round(leader.objectiveScore - runnerUp.objectiveScore),
+    minimumMaterialMargin,
+    pairedStandardError: round(runnerUpStandardError),
+    materialityThreshold: round(materialityThreshold),
+    status: leader.objectiveScore - runnerUp.objectiveScore > materialityThreshold ? "clear" as const : "near_tie" as const,
+    nearTieCandidateIds: results.filter((candidate) => {
+      const threshold = Math.max(minimumMaterialMargin, 1.96 * pairedStandardError(leader.samplePoints, candidate.samplePoints));
+      return leader.objectiveScore - candidate.objectiveScore <= threshold;
+    }).map((candidate) => candidate.candidateId),
+    method: "PAIRED_COMMON_RANDOM_NUMBERS_95CI" as const
+  } : undefined;
   return {
     schemaVersion: 1,
     model: "shared-player-monte-carlo",
@@ -335,6 +367,7 @@ export function simulateStructures(input: {
       truncationApplied: false,
       replayableFromSeedAndInputs: true
     },
+    decisionStability,
     objectiveDefinition: {
       captainDoubling: true,
       viceCaptainFallback: true,
@@ -364,7 +397,7 @@ export function simulateStructures(input: {
         ? "Ownership is excluded from the objective."
         : "Field weights affect rank utility only through simulated competing scores; they are never subtracted from expected points."
     ],
-    decisionPolicy: "This report exposes objective scores and distributions. It does not select or recommend a structure."
+    decisionPolicy: "This report exposes objective scores, distributions, and the uncertainty-aware near-tie band. It does not select or recommend a structure."
   };
 }
 

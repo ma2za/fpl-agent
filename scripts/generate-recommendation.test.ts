@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FixtureHorizonReport } from "../packages/agent/src";
 import { CURRENT_SQUAD } from "../config/squad";
-import { fixtureProjectionContext } from "./generate-recommendation";
+import { fixtureProjectionContext, marketCoverageWarnings } from "./generate-recommendation";
 
 describe("recommendation projection context", () => {
   it("identifies the frozen source gameweek for configured decisions", () => {
@@ -30,5 +30,32 @@ describe("recommendation projection context", () => {
       attackFixtureDifficultyByTeamId: {},
       defenceFixtureDifficultyByTeamId: {}
     });
+  });
+
+  it("labels missing market components for likely-starting squad players", () => {
+    const warnings = marketCoverageWarnings({
+      features: {
+        players: [
+          { playerId: 1, anytimeScorerProbability: null, cleanSheetProbability: 0.35 },
+          { playerId: 2, anytimeScorerProbability: null, cleanSheetProbability: null }
+        ]
+      },
+      players: [
+        { id: 1, position: "MID" },
+        { id: 2, position: "GKP" },
+        { id: 3, position: "FWD" }
+      ],
+      projections: [
+        { playerId: 1, appearance: { startProbability: 0.95 } },
+        { playerId: 2, appearance: { startProbability: 0.95 } },
+        { playerId: 3, appearance: { startProbability: 0.8 } }
+      ],
+      squadPlayerIds: [1, 2, 3]
+    });
+
+    expect(warnings).toEqual([
+      "Heuristic goal fallback remains active for likely-starting squad player IDs: 1.",
+      "Heuristic clean-sheet fallback remains active for likely-starting squad player IDs: 2."
+    ]);
   });
 });

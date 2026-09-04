@@ -361,6 +361,17 @@ describe("artifact schemas", () => {
         simulationSamples: "ALL_CANDIDATE_TOTALS",
         truncationApplied: false,
         replayableFromSeedAndInputs: true
+      },
+      decisionStability: {
+        leaderCandidateId: "a",
+        runnerUpCandidateId: "b",
+        objectiveMargin: 1,
+        minimumMaterialMargin: 0.15,
+        pairedStandardError: 0.1,
+        materialityThreshold: 0.196,
+        status: "clear",
+        nearTieCandidateIds: ["a"],
+        method: "PAIRED_COMMON_RANDOM_NUMBERS_95CI"
       }
     } as const;
     expect(StructureSimulationReportSchema.parse(retained)).toEqual(retained);

@@ -175,6 +175,17 @@ export type StructureSimulationReport = {
     truncationApplied: false;
     replayableFromSeedAndInputs: true;
   };
+  decisionStability?: {
+    leaderCandidateId: string;
+    runnerUpCandidateId: string;
+    objectiveMargin: number;
+    minimumMaterialMargin: number;
+    pairedStandardError: number;
+    materialityThreshold: number;
+    status: "clear" | "near_tie";
+    nearTieCandidateIds: string[];
+    method: "PAIRED_COMMON_RANDOM_NUMBERS_95CI";
+  };
   objectiveDefinition?: {
     captainDoubling: boolean;
     viceCaptainFallback: boolean;

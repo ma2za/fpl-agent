@@ -1544,6 +1544,17 @@ export const StructureSimulationReportSchema = z.union([
       truncationApplied: z.literal(false),
       replayableFromSeedAndInputs: z.literal(true)
     }).strict(),
+    decisionStability: z.object({
+      leaderCandidateId: z.string().min(1),
+      runnerUpCandidateId: z.string().min(1),
+      objectiveMargin: z.number().nonnegative(),
+      minimumMaterialMargin: z.number().positive(),
+      pairedStandardError: z.number().nonnegative(),
+      materialityThreshold: z.number().positive(),
+      status: z.enum(["clear", "near_tie"]),
+      nearTieCandidateIds: z.array(z.string().min(1)).min(1),
+      method: z.literal("PAIRED_COMMON_RANDOM_NUMBERS_95CI")
+    }).strict().optional(),
     objectiveDefinition: structureSimulationObjectiveDefinition,
     searchScope: structureSimulationSearchScope
   }).strict()

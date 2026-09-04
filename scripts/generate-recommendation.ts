@@ -89,6 +89,35 @@ export function fixtureProjectionContext(report: FixtureHorizonReport | null): P
   };
 }
 
+export function marketCoverageWarnings(input: {
+  features: { players: Array<{ playerId: number; anytimeScorerProbability: number | null; cleanSheetProbability: number | null }> } | null;
+  players: Array<{ id: number; position: PlayerForEngine["position"] }>;
+  projections: Array<{ playerId: number; appearance: { startProbability: number } }>;
+  squadPlayerIds: number[];
+}) {
+  const squad = new Set(input.squadPlayerIds);
+  const playerById = new Map(input.players.map((player) => [player.id, player]));
+  const featureById = new Map((input.features?.players ?? []).map((feature) => [feature.playerId, feature]));
+  const likelyStarters = input.projections.filter((projection) =>
+    squad.has(projection.playerId) && projection.appearance.startProbability >= 0.9);
+  const missingScorer = likelyStarters.filter((projection) => {
+    const player = playerById.get(projection.playerId);
+    return player?.position !== "GKP" && featureById.get(projection.playerId)?.anytimeScorerProbability == null;
+  }).map((projection) => projection.playerId);
+  const missingCleanSheet = likelyStarters.filter((projection) => {
+    const player = playerById.get(projection.playerId);
+    return player?.position !== "FWD" && featureById.get(projection.playerId)?.cleanSheetProbability == null;
+  }).map((projection) => projection.playerId);
+  return [
+    ...(missingScorer.length > 0
+      ? [`Heuristic goal fallback remains active for likely-starting squad player IDs: ${missingScorer.join(", ")}.`]
+      : []),
+    ...(missingCleanSheet.length > 0
+      ? [`Heuristic clean-sheet fallback remains active for likely-starting squad player IDs: ${missingCleanSheet.join(", ")}.`]
+      : [])
+  ];
+}
+
 async function readJson<T>(filePath: string) {
   return JSON.parse(await readFile(filePath, "utf8")) as T;
 }
@@ -486,6 +515,12 @@ export async function generateRecommendationEvidence(input: {
     marketInputsByPlayerId
   });
   const projections = roleAdjustedPlayerProjections(rawProjections, projectionUncertainty);
+  const marketWarnings = marketCoverageWarnings({
+    features: marketFeatures,
+    players: projectionPlayers,
+    projections: projectionUncertainty.items,
+    squadPlayerIds: CURRENT_SQUAD.players
+  });
   const strategyDir = path.join("packages", "content", "strategy");
   const weeklyStrategyDir = path.join(strategyDir, "weekly");
   const seasonPlanPath = path.join(strategyDir, "season-plan.md");
@@ -609,7 +644,8 @@ export async function generateRecommendationEvidence(input: {
     warnings: [
       dataMode === "provisional"
         ? "Public FPL data may be stale. The agent must verify current season data before selecting players."
-        : "Official FPL data appears current. The agent must still verify team news before selecting players."
+        : "Official FPL data appears current. The agent must still verify team news before selecting players.",
+      ...marketWarnings
     ],
     players,
     projections,

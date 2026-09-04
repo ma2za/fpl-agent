@@ -662,6 +662,8 @@ Delivered:
 - Fit market-implied Poisson goals only from complete, unambiguous evidence with RMSE at most five percentage points.
 - Replace only player goal and eligible clean-sheet components, retain uncapped adjustments, and cap applied conditional-start changes at two points.
 - Preserve the `0.0.13` appearance model and label every heuristic fallback.
+- Regress early-season form toward neutral with a 900-minute prior and expose uncertainty-aware near ties from shared simulation samples.
+- Name likely-starting squad players whose goal or clean-sheet projection still uses the heuristic fallback.
 
 Release gate:
 

@@ -84,6 +84,42 @@ describe("decision mathematics", () => {
       truncationApplied: false,
       replayableFromSeedAndInputs: true
     });
+    expect(report.decisionStability).toMatchObject({
+      leaderCandidateId: "no-haaland",
+      runnerUpCandidateId: "haaland",
+      status: "clear",
+      nearTieCandidateIds: ["no-haaland"],
+      method: "PAIRED_COMMON_RANDOM_NUMBERS_95CI"
+    });
+  });
+
+  it("reports candidates inside the material near-tie band", () => {
+    const report = simulateStructures({
+      mode: "MAX_EXPECTED_POINTS",
+      sampleCount: 100,
+      candidates: [
+        { candidateId: "leader", playerIds: [1], captainPlayerId: null },
+        { candidateId: "near", playerIds: [2], captainPlayerId: null },
+        { candidateId: "clear", playerIds: [3], captainPlayerId: null }
+      ],
+      playerDistributions: [
+        { playerId: 1, mean: 5, standardDeviation: 0 },
+        { playerId: 2, mean: 4.9, standardDeviation: 0 },
+        { playerId: 3, mean: 4, standardDeviation: 0 }
+      ]
+    });
+
+    expect(report.decisionStability).toEqual({
+      leaderCandidateId: "leader",
+      runnerUpCandidateId: "near",
+      objectiveMargin: 0.1,
+      minimumMaterialMargin: 0.15,
+      pairedStandardError: 0,
+      materialityThreshold: 0.15,
+      status: "near_tie",
+      nearTieCandidateIds: ["leader", "near"],
+      method: "PAIRED_COMMON_RANDOM_NUMBERS_95CI"
+    });
   });
 
   it("requires a simulated field for rank objectives", () => {
