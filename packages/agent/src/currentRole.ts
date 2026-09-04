@@ -44,7 +44,7 @@ const weights: Record<RoleEvidenceAdapterKind | "previous_season_starts" | "hist
   reviewed_manual: 1,
   previous_season_starts: 0.45,
   historical_minutes: 0.3,
-  current_season_minutes: 0.6
+  current_season_minutes: 0.85
 };
 
 type RolePlayer = {
@@ -137,13 +137,21 @@ function historicalRecords(player: RolePlayer, generatedAt: string, gameweek: nu
   if (gameweek > 1 && typeof player.minutes === "number") {
     const completedGameweeks = gameweek - 1;
     const minutesPerGameweek = player.minutes / completedGameweeks;
+    const startRate = typeof player.starts === "number"
+      ? player.starts / completedGameweeks
+      : null;
     records.push(normalizeRecord({
       playerId: player.id,
-      dimension: "historical_starts",
-      signal: minutesPerGameweek >= 60 ? "supports_start" : minutesPerGameweek < 20 ? "opposes_start" : "neutral",
-      value: Number(minutesPerGameweek.toFixed(1)),
+      dimension: "current_manager_preference",
+      signal: startRate !== null
+        ? startRate >= 0.75 ? "supports_start" : startRate <= 0.25 ? "opposes_start" : "neutral"
+        : minutesPerGameweek >= 60 ? "supports_start" : minutesPerGameweek < 20 ? "opposes_start" : "neutral",
+      value: startRate === null ? Number(minutesPerGameweek.toFixed(1)) : Number(startRate.toFixed(3)),
       observedAt: historicalObservedAt,
-      note: `${player.minutes} minutes across ${completedGameweeks} completed gameweek(s).`
+      sourceReliability: Math.min(1, completedGameweeks / 2),
+      note: startRate === null
+        ? `${player.minutes} minutes across ${completedGameweeks} completed gameweek(s).`
+        : `${player.starts} starts and ${player.minutes} minutes across ${completedGameweeks} completed gameweek(s).`
     }, "current-season-minutes", "Fantasy Premier League current-season history", "current_season_minutes", 1, generatedAt));
   } else if (typeof player.minutes === "number" && player.minutes > 0) {
     records.push(normalizeRecord({

@@ -114,23 +114,58 @@ describe("current-role evidence", () => {
   });
 
   it("treats current-season minutes relative to completed gameweeks", () => {
-    const starter = buildCurrentRoleReport({
+    const starterReport = buildCurrentRoleReport({
       generatedAt,
       gameweek: 2,
       players: [{ ...player, minutes: 90, starts: undefined, appearances: undefined }],
       adapters: [],
       selectedPlayerIds: [1]
-    }).items[0].dimensions.historical_starts[0];
+    }).items[0];
+    const starter = starterReport.dimensions.current_manager_preference[0];
     const nonStarter = buildCurrentRoleReport({
       generatedAt,
       gameweek: 2,
       players: [{ ...player, minutes: 0, starts: undefined, appearances: undefined }],
       adapters: [],
       selectedPlayerIds: [1]
-    }).items[0].dimensions.historical_starts[0];
+    }).items[0].dimensions.current_manager_preference[0];
 
     expect(starter).toMatchObject({ sourceKind: "current_season_minutes", signal: "supports_start", value: 90 });
     expect(nonStarter).toMatchObject({ sourceKind: "current_season_minutes", signal: "opposes_start", value: 0 });
+    expect(starterReport.status).toBe("INSUFFICIENT");
+  });
+
+  it("uses official current-season starts as current manager evidence", () => {
+    const regular = buildCurrentRoleReport({
+      generatedAt,
+      gameweek: 3,
+      players: [{ ...player, minutes: 180, starts: 2, appearances: undefined }],
+      adapters: [],
+      selectedPlayerIds: [1]
+    }).items[0];
+    const rotationRisk = buildCurrentRoleReport({
+      generatedAt,
+      gameweek: 3,
+      players: [{ ...player, minutes: 110, starts: 1, appearances: undefined }],
+      adapters: [],
+      selectedPlayerIds: [1]
+    }).items[0];
+
+    expect(regular).toMatchObject({
+      status: "READY",
+      currentEvidencePresent: true,
+      supportScore: 1
+    });
+    expect(regular.dimensions.current_manager_preference[0]).toMatchObject({
+      sourceKind: "current_season_minutes",
+      signal: "supports_start",
+      value: 1
+    });
+    expect(rotationRisk).toMatchObject({
+      status: "INSUFFICIENT",
+      currentEvidencePresent: false,
+      supportScore: 0.5
+    });
   });
 
   it("applies source precedence and recency decay", () => {
