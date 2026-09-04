@@ -75,7 +75,7 @@ function assertCategoryChange(category: "squad" | "transfer" | "captaincy" | "be
   if (!valid) throw new Error(`Candidate transition ${from.candidateId} -> ${to.candidateId} is mislabeled as ${category} regret.`);
 }
 
-function scoreCandidate(candidate: Candidate, outcomes: Map<number, { points: number; appearances: number }>) {
+export function scoreRegretCandidate(candidate: Candidate, outcomes: Map<number, { points: number; appearances: number }>) {
   const appeared = (playerId: number) => (outcomes.get(playerId)?.appearances ?? 0) > 0;
   const autosubstitutions: Array<{ outPlayerId: number; inPlayerId: number }> = [];
   let counted = candidate.picks.filter((pick) => pick.role === "starter");
@@ -151,9 +151,10 @@ export function buildDecisionRegretReport(db: Database.Database, value: unknown)
     if (!row || row.finalized !== 1 || !["final", "blank"].includes(row.status)) throw new Error(`Finalized outcome is unavailable for player ${playerId}.`);
     outcomes.set(playerId, { points: row.points, appearances: row.appearances });
   }
-  const candidateResults = request.candidates.map((candidate) => scoreCandidate(candidate, outcomes));
+  const candidateResults = request.candidates.map((candidate) => scoreRegretCandidate(candidate, outcomes));
   const resultMap = new Map(candidateResults.map((result) => [result.candidateId, result]));
-  const retained = candidateResults.filter((result) => result.origin === "archived_candidate").sort((a, b) => b.actualPoints - a.actualPoints || a.candidateId.localeCompare(b.candidateId));
+  const retained = candidateResults.filter((result) => result.origin === "archived_candidate").sort((a, b) =>
+    b.actualPoints - a.actualPoints || Number(b.candidateId === agent.candidateId) - Number(a.candidateId === agent.candidateId) || a.candidateId.localeCompare(b.candidateId));
   const comparator = retained[0];
   if (!comparator) throw new Error("Regret requires at least one frozen archived candidate.");
   if (comparator.candidateId === agent.candidateId && request.agentRegretPath.length > 0) throw new Error("Agent regret path must be empty when the agent selected the best retained candidate.");

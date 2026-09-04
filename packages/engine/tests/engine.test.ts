@@ -35,6 +35,14 @@ describe("engine", () => {
     expect(midfielder.fixtureDifficultyFactor).toBe(0.8);
   });
 
+  it("shrinks early-season form toward neutral", () => {
+    const sparse = projectPlayer({ ...engineSquad[7], minutes: 75, form: 13 });
+    const established = projectPlayer({ ...engineSquad[7], minutes: 2400, form: 13 });
+
+    expect(sparse.formFactor).toBe(1);
+    expect(established.formFactor).toBe(1.3);
+  });
+
   it("ranks captain candidates by projected points", () => {
     const projections = projectPlayers(engineSquad);
     const captains = rankCaptainCandidates(projections, undefined, 3);

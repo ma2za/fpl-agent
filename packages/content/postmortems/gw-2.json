@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "artifactKind": "gameweek_postmortem",
+  "gameweek": 2,
+  "source": "https://fantasy.premierleague.com/en/entry/7407631/event/2",
+  "manager": {
+    "entryId": 7407631,
+    "teamName": "five points",
+    "totalPoints": 88,
+    "overallPoints": 135,
+    "gameweekAverage": 81,
+    "gameweekHighest": 161,
+    "gameweekRank": 3486434,
+    "overallRank": 3976662,
+    "totalPlayers": 9904815,
+    "teamValue": 100.2,
+    "bank": 0.4,
+    "transfers": 1
+  },
+  "aiSelection": {
+    "candidateId": "gw2-one-free-transfer:out-32:gw1:1",
+    "projectedPoints": 76.7,
+    "actualPointsCounterfactual": 87,
+    "sourcePath": "data/cache/gw2-final-2026-08-28/selection.json"
+  },
+  "submittedSelection": {
+    "formation": "3-4-3",
+    "captainPlayerId": 411,
+    "viceCaptainPlayerId": 165,
+    "picks": [
+      { "playerId": 82, "name": "Kelleher", "position": "GKP", "role": "starter", "rawPoints": 2, "multiplier": 1, "countedPoints": 2 },
+      { "playerId": 4, "name": "Gabriel", "position": "DEF", "role": "starter", "rawPoints": 8, "multiplier": 1, "countedPoints": 8 },
+      { "playerId": 418, "name": "Maguire", "position": "DEF", "role": "starter", "rawPoints": 4, "multiplier": 1, "countedPoints": 4 },
+      { "playerId": 8, "name": "Calafiori", "position": "DEF", "role": "starter", "rawPoints": 11, "multiplier": 1, "countedPoints": 11 },
+      { "playerId": 397, "name": "Semenyo", "position": "MID", "role": "starter", "rawPoints": 5, "multiplier": 1, "countedPoints": 5 },
+      { "playerId": 427, "name": "Mbeumo", "position": "MID", "role": "starter", "rawPoints": 11, "multiplier": 1, "countedPoints": 11 },
+      { "playerId": 542, "name": "E.Le Fée", "position": "MID", "role": "starter", "rawPoints": 3, "multiplier": 1, "countedPoints": 3 },
+      { "playerId": 260, "name": "Wilson", "position": "MID", "role": "starter", "rawPoints": 1, "multiplier": 1, "countedPoints": 1 },
+      { "playerId": 346, "name": "Calvert-Lewin", "position": "FWD", "role": "starter", "rawPoints": 8, "multiplier": 1, "countedPoints": 8 },
+      { "playerId": 165, "name": "João Pedro", "position": "FWD", "role": "starter", "rawPoints": 9, "multiplier": 1, "countedPoints": 9 },
+      { "playerId": 411, "name": "Haaland", "position": "FWD", "role": "starter", "rawPoints": 13, "multiplier": 2, "countedPoints": 26 },
+      { "playerId": 109, "name": "Verbruggen", "position": "GKP", "role": "bench", "rawPoints": 0, "multiplier": 0, "countedPoints": 0 },
+      { "playerId": 88, "name": "Kayode", "position": "DEF", "role": "bench", "rawPoints": 2, "multiplier": 0, "countedPoints": 0 },
+      { "playerId": 204, "name": "Mitchell", "position": "DEF", "role": "bench", "rawPoints": 0, "multiplier": 0, "countedPoints": 0 },
+      { "playerId": 212, "name": "Hughes", "position": "MID", "role": "bench", "rawPoints": 0, "multiplier": 0, "countedPoints": 0 }
+    ]
+  },
+  "managerOverrides": [
+    {
+      "outPlayerId": 88,
+      "outName": "Kayode",
+      "outPoints": 2,
+      "inPlayerId": 542,
+      "inName": "E.Le Fée",
+      "inPoints": 3,
+      "pointsDelta": 1,
+      "outcomeNote": "The submitted 3-4-3 started Le Fée while the selected 4-3-3 started Kayode. Both played, so the realized delta is direct."
+    }
+  ],
+  "counterfactuals": {
+    "managerOverrideDelta": 1,
+    "viceCaptainAsCaptainPoints": 84,
+    "captaincyDelta": -4,
+    "unusedBenchPoints": 2
+  },
+  "lessons": [
+    "The submitted team scored 88 points, seven above the gameweek average, and moved the overall total to 135.",
+    "The Le Fée-over-Kayode formation override added one realized point. Kayode's 6.2 projection versus Le Fée's 4.2 was inflated by applying the maximum form multiplier after only one 75-minute match; future fallback projections now regress form toward neutral with a 900-minute prior.",
+    "Haaland scored 13 raw points and captaincy added 13; switching the armband to João Pedro would have lost four points.",
+    "The selected AI candidate scored 87 against a 76.7 expectation and remained inside its retained 58.464 to 94.979 p10-p90 interval.",
+    "Arsenal's two starting defenders returned 19 points, while Mbeumo and Calvert-Lewin added 19 more; these returns outweighed the weak Kelleher and Wilson outcomes.",
+    "Cash and Kayode both scored two points, so the free transfer produced no immediate points gain before considering future gameweeks or value changes.",
+    "The best legal retained horizon-one candidate scored 99 by selling Wilson for Scott and starting Le Fée; the model projected Wilson at 5.0 and Scott at 4.3, but they realized one and 12 points. The selected AI candidate trailed by 12, and the manager formation override reduced submitted regret to 11.",
+    "The retained horizon-one set included 175 candidates containing an unavailable player. They remain archived but were excluded from the legal regret comparator, exposing a candidate-generation validation defect."
+  ]
+}

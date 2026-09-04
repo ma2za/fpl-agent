@@ -180,6 +180,7 @@ export type PlayerSummaryResult = {
   contentHash: string | null;
   fixtures: Array<Record<string, unknown>>;
   history: Array<Record<string, unknown>>;
+  previousSeasons?: Array<Record<string, unknown>>;
   error: string | null;
 };
 

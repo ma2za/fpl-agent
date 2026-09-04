@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "artifactKind": "agent_decision",
+  "generatedAt": "2026-08-28T08:40:00.000Z",
+  "gameweek": 2,
+  "status": "selected",
+  "optimizationPolicy": "MAX_EXPECTED_POINTS",
+  "selectedCandidateId": "gw2-one-free-transfer:out-32:gw1:1",
+  "action": {
+    "type": "transfer",
+    "freeTransfersBefore": 1,
+    "transfersUsed": 1,
+    "pointsCost": 0,
+    "chip": "none",
+    "sellPlayerId": 32,
+    "sellPlayerName": "Matty Cash",
+    "sellPrice": 4.5,
+    "buyPlayerId": 88,
+    "buyPlayerName": "Michael Kayode",
+    "buyPrice": 4.6
+  },
+  "squad": {
+    "playerIds": [82, 109, 4, 418, 8, 88, 204, 397, 427, 542, 260, 212, 346, 165, 411],
+    "startingXI": [82, 4, 88, 8, 418, 427, 397, 260, 411, 165, 346],
+    "benchOrder": [109, 542, 204, 212],
+    "captainPlayerId": 411,
+    "viceCaptainPlayerId": 165,
+    "formation": "4-3-3",
+    "cost": 99.8,
+    "bank": 0.4
+  },
+  "deterministicMetrics": {
+    "objective": 80.526,
+    "unpenalizedObjective": 81.426,
+    "concentrationPenalty": 0.9,
+    "uncaptainedStartingXIProjection": 71.754,
+    "downside": 16.92,
+    "benchValue": 1.073
+  },
+  "simulation": {
+    "model": "shared-player-monte-carlo",
+    "modelVersion": "0.0.19",
+    "seed": 28082026,
+    "sampleCount": 10000,
+    "candidatesSimulated": 2408,
+    "expectedPoints": 76.7,
+    "p10": 58.464,
+    "p50": 76.523,
+    "p90": 94.979,
+    "retention": {
+      "candidateInputs": "ALL",
+      "simulationSamples": "ALL_CANDIDATE_TOTALS",
+      "truncationApplied": false
+    }
+  },
+  "candidateProof": {
+    "legalSquadCompositions": 7224,
+    "horizonOneCandidates": 2408,
+    "proofs": 48,
+    "solverRuns": 7272,
+    "frontiersComplete": true,
+    "discardedCandidates": 0,
+    "runnerUpCandidateId": "gw2-one-free-transfer:out-204:gw1:1",
+    "runnerUpExpectedPoints": 76.697,
+    "rollCandidateId": "gw2-one-free-transfer:roll:gw1:1"
+  },
+  "constraints": {
+    "startingSquadSource": "packages/content/postmortems/gw-1.json",
+    "maximumTransfers": 1,
+    "freeTransfers": 1,
+    "maximumPlayersPerClub": 3,
+    "requiredSquadCounts": { "GKP": 2, "DEF": 5, "MID": 5, "FWD": 3 },
+    "pointsHitsAllowed": false,
+    "chipsAllowed": false
+  },
+  "evidence": {
+    "officialDataRefresh": "packages/content/recommendations/gw-2/refresh-manifest.json",
+    "projections": "packages/content/recommendations/gw-2/probabilistic-projections.json",
+    "counterfactualSet": "packages/content/recommendations/gw-2/counterfactuals/gw2-one-free-transfer/counterfactual-set.json",
+    "simulationReport": "packages/content/recommendations/gw-2/counterfactuals/gw2-one-free-transfer/structure-simulation.json",
+    "officialKayodeMatchReport": "https://www.brentfordfc.com/en/news/article/match-reports-brentford-3-tottenham-hotspur-0-premier-league-22-08-2026",
+    "officialLeedsPreview": "https://www.brentfordfc.com/en/news/article/match-previews-leeds-united-v-brentford-premier-league-30-08-2026",
+    "officialPriceChange": "https://www.premierleague.com/en/news/2884829"
+  }
+}

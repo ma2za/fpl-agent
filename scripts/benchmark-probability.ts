@@ -36,7 +36,7 @@ async function main() {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     runtime: { node: process.version, platform: process.platform, architecture: process.arch },
-    modelVersion: "0.0.13",
+    modelVersion: "0.0.23",
     playerCount: players.length,
     sampleCountPerPlayer: 1000,
     inputHash: createHash("sha256").update(source).digest("hex"),

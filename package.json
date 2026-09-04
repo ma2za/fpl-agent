@@ -1,6 +1,6 @@
 {
   "name": "fpl-agent",
-  "version": "0.0.22",
+  "version": "0.0.23",
   "private": true,
   "license": "Apache-2.0",
   "engines": {
@@ -45,6 +45,7 @@
     "fetch:pl-fixtures": "tsx scripts/fetch-premier-league-fixtures.ts",
     "evidence": "tsx scripts/generate-evidence.ts",
     "odds": "tsx scripts/generate-odds.ts",
+    "odds:probe": "tsx scripts/probe-odds.ts",
     "set-pieces": "tsx scripts/generate-set-pieces.ts",
     "team-news": "tsx scripts/generate-team-news.ts",
     "fixtures": "tsx scripts/generate-fixture-ticker.ts",

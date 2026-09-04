@@ -65,7 +65,10 @@ function formFactor(player: PlayerForEngine) {
     return 1;
   }
 
-  return clamp(0.9 + player.form / 20, 0.8, 1.4);
+  const observedMinutes = Math.max(0, player.minutes ?? 0);
+  const reliability = observedMinutes / (observedMinutes + 900);
+  const observedFactor = clamp(0.9 + player.form / 20, 0.8, 1.4);
+  return clamp(1 + (observedFactor - 1) * reliability, 0.8, 1.4);
 }
 
 function fixtureDifficulty(player: PlayerForEngine, context: ProjectionContext) {

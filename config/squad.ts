@@ -1,5 +1,5 @@
 import selectionJson from "../data/cache/gw1-final-2026-08-21/selection.json";
-import postmortemJson from "../packages/content/postmortems/gw-1.json";
+import postmortemJson from "../packages/content/postmortems/gw-2.json";
 
 type DecisionInput = {
   selectionCase: string;

@@ -1,20 +1,25 @@
-import postmortemJson from "../../../../../packages/content/postmortems/gw-1.json";
+import postmortemJson from "../../../../../packages/content/postmortems/gw-2.json";
 import { GameweekPostmortemSchema } from "../../../../../packages/agent/src/postmortem";
 
 const postmortem = GameweekPostmortemSchema.parse(postmortemJson);
 
+function signed(value: number) {
+  return value > 0 ? `+${value}` : `${value}`;
+}
+
 export default function PostmortemsPage() {
   const starters = postmortem.submittedSelection.picks.filter((pick) => pick.role === "starter");
   const bench = postmortem.submittedSelection.picks.filter((pick) => pick.role === "bench");
+  const averageDelta = postmortem.manager.totalPoints - postmortem.manager.gameweekAverage;
 
   return (
     <>
       <section className="hero">
-        <div className="eyebrow">Gameweek 1 review</div>
-        <h1>47 points</h1>
+        <div className="eyebrow">Gameweek {postmortem.gameweek} review</div>
+        <h1>{postmortem.manager.totalPoints} points</h1>
         <p>
-          The submitted team finished three points below the gameweek average.
-          Three manager overrides improved the frozen AI selection by three points after automatic substitutions.
+          The submitted team finished {Math.abs(averageDelta)} points {averageDelta >= 0 ? "above" : "below"} the gameweek average.
+          The formation override improved the frozen AI selection by {postmortem.counterfactuals.managerOverrideDelta} point.
         </p>
         <a className="evidence-link" href={postmortem.source} rel="noreferrer" target="_blank">
           Official FPL result
@@ -29,7 +34,7 @@ export default function PostmortemsPage() {
         </article>
         <article className="metric">
           <span>Manager overrides</span>
-          <strong>+{postmortem.counterfactuals.managerOverrideDelta}</strong>
+          <strong>{signed(postmortem.counterfactuals.managerOverrideDelta)}</strong>
           <em>AI counterfactual {postmortem.aiSelection.actualPointsCounterfactual}</em>
         </article>
         <article className="metric">

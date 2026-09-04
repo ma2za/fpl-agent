@@ -59,15 +59,18 @@ describe("configured squad decision record", () => {
     );
   });
 
-  it("uses the submitted GW1 team as the current squad without changing the frozen AI draft", () => {
+  it("uses the submitted GW2 team as the current squad without changing the frozen AI draft", () => {
+    expect(CURRENT_SQUAD.sourceGameweek).toBe(2);
     expect(CURRENT_SQUAD.players).toContain(418);
     expect(CURRENT_SQUAD.players).toContain(427);
     expect(CURRENT_SQUAD.players).toContain(542);
+    expect(CURRENT_SQUAD.players).toContain(88);
+    expect(CURRENT_SQUAD.players).not.toContain(32);
     expect(CURRENT_SQUAD.players).not.toContain(533);
     expect(CURRENT_SQUAD.players).not.toContain(428);
     expect(CURRENT_SQUAD.players).not.toContain(336);
     expect(FROZEN_AI_SQUAD.players).toEqual(record.squad.playerIds);
-    expect(CURRENT_SQUAD.bank).toBe(0.5);
+    expect(CURRENT_SQUAD.bank).toBe(0.4);
   });
 
   it("rejects stale numerical comparisons", () => {

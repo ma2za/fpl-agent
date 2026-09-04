@@ -6,7 +6,8 @@ import type {
   PlayerProjection,
   ProbabilisticProjection,
   ProjectionUncertaintyReport,
-  RoleEvidenceForProjection
+  RoleEvidenceForProjection,
+  MarketPlayerProjectionInput
 } from "./types";
 
 const SAMPLE_COUNT = 1000;
@@ -48,6 +49,46 @@ function quantile(sorted: number[], probability: number) {
 function standardDeviation(values: number[], mean: number) {
   if (values.length === 0) return 0;
   return Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length);
+}
+
+function goalPoints(position: PlayerForEngine["position"]) {
+  return position === "FWD" ? 4 : position === "MID" ? 5 : 6;
+}
+
+function cleanSheetPoints(position: PlayerForEngine["position"]) {
+  return position === "GKP" || position === "DEF" ? 4 : position === "MID" ? 1 : 0;
+}
+
+function marketAdjustment(input: {
+  player: PlayerForEngine;
+  market: MarketPlayerProjectionInput;
+  appearance: AppearanceStateForecast;
+  startMinutes: number;
+  substituteMinutes: number;
+}) {
+  const appearedMinutes = input.appearance.appearanceProbability === 0 ? 0 :
+    (input.appearance.startProbability * input.startMinutes + input.appearance.subAppearanceProbability * input.substituteMinutes) /
+      input.appearance.appearanceProbability;
+  const marketLambda = input.market.anytimeScorerProbability === null || input.market.anytimeScorerProbability >= 1
+    ? null : -Math.log(1 - input.market.anytimeScorerProbability);
+  const marketGoalRate = marketLambda === null || appearedMinutes <= 0 ? null : marketLambda / appearedMinutes;
+  const baselineGoalRate = input.market.baselineGoalRatePer90 / 90;
+  const goalDelta = (marketGoalRate === null ? 0 : (marketGoalRate - baselineGoalRate) * input.startMinutes * goalPoints(input.player.position));
+  const substituteGoalDelta = marketGoalRate === null ? 0 :
+    (marketGoalRate - baselineGoalRate) * input.substituteMinutes * goalPoints(input.player.position);
+  const cleanDelta = input.market.cleanSheetProbability === null || input.market.baselineCleanSheetProbability === null || input.startMinutes < 60
+    ? 0 : (input.market.cleanSheetProbability - input.market.baselineCleanSheetProbability) * cleanSheetPoints(input.player.position);
+  const rawDelta = goalDelta + cleanDelta;
+  const appliedDelta = clamp(rawDelta, -2, 2);
+  return {
+    goalPointsDelta: round(goalDelta),
+    cleanSheetPointsDelta: round(cleanDelta),
+    rawConditionalStartDelta: round(rawDelta),
+    appliedConditionalStartDelta: round(appliedDelta),
+    conditionalSubstituteDelta: round(substituteGoalDelta),
+    capped: appliedDelta !== rawDelta,
+    evidenceIds: input.market.evidenceIds
+  };
 }
 
 function historicalStartPrior(expectedMinutes: number) {
@@ -198,6 +239,7 @@ export function probabilisticProjection(input: {
   roleEvidence?: RoleEvidenceForProjection;
   history?: ConditionalAppearanceSample[];
   priorAppearance?: AppearanceStateForecast;
+  marketInput?: MarketPlayerProjectionInput;
   seed?: number;
   sampleCount?: number;
 }): ProbabilisticProjection {
@@ -219,14 +261,23 @@ export function probabilisticProjection(input: {
     input.rawProjection.fixtureDifficultyFactor * input.rawProjection.formFactor;
   const usesOutputCohort = (input.player.minutes ?? 0) < 700;
   const cohortConditionalStart = cohortStartPoints(input.player, input.rawProjection, startMinutesMean);
-  const rawProjectionIfStarting = round(empirical?.startPoints ?? (
+  const baselineProjectionIfStarting = round(empirical?.startPoints ?? (
     usesOutputCohort ? cohortConditionalStart : conditionalPer90 * startMinutesMean / 90
   ), 1);
-  const conditionalSubstitutePoints = round(empirical?.substitutePoints ?? (
+  const baselineSubstitutePoints = round(empirical?.substitutePoints ?? (
     usesOutputCohort
       ? cohortConditionalStart * substituteMinutesMean / Math.max(1, startMinutesMean)
       : conditionalPer90 * substituteMinutesMean / 90
   ), 1);
+  const market = input.marketInput ? marketAdjustment({
+    player: input.player,
+    market: input.marketInput,
+    appearance,
+    startMinutes: startMinutesMean,
+    substituteMinutes: substituteMinutesMean
+  }) : null;
+  const rawProjectionIfStarting = round(baselineProjectionIfStarting + (market?.appliedConditionalStartDelta ?? 0), 1);
+  const conditionalSubstitutePoints = round(baselineSubstitutePoints + (market?.conditionalSubstituteDelta ?? 0), 1);
   const roleAdjustedProjection = appearance.startProbability * rawProjectionIfStarting +
     appearance.subAppearanceProbability * conditionalSubstitutePoints;
   const random = randomGenerator(seed);
@@ -290,10 +341,17 @@ export function probabilisticProjection(input: {
         featureId: "current-role-support",
         value: input.roleEvidence.supportScore,
         evidenceIds: input.roleEvidence.evidenceIds ?? ["model:current-role"]
+      }] : []),
+      ...(market ? [{
+        featureId: "market-goal-clean-sheet-adjustment",
+        value: market.appliedConditionalStartDelta,
+        evidenceIds: market.evidenceIds
       }] : [])
     ],
     model: "appearance-state-mixture",
-    modelVersion: "0.0.13",
+    modelVersion: "0.0.23",
+    componentVersions: { appearance: "0.0.13", points: "0.0.23" },
+    marketAdjustment: market,
     inputs: {
       seed,
       sampleCount,
@@ -322,6 +380,7 @@ export function buildProjectionUncertaintyReport(input: {
   roleEvidence?: RoleEvidenceForProjection[];
   historyByPlayerId?: Map<number, ConditionalAppearanceSample[]>;
   priorAppearanceByPlayerId?: Map<number, AppearanceStateForecast>;
+  marketInputsByPlayerId?: Map<number, MarketPlayerProjectionInput>;
   seed?: number;
   sampleCount?: number;
 }): ProjectionUncertaintyReport {
@@ -337,6 +396,7 @@ export function buildProjectionUncertaintyReport(input: {
       roleEvidence: roleById.get(player.id),
       history: input.historyByPlayerId?.get(player.id),
       priorAppearance: input.priorAppearanceByPlayerId?.get(player.id),
+      marketInput: input.marketInputsByPlayerId?.get(player.id),
       seed,
       sampleCount
     })] : [];
@@ -347,7 +407,8 @@ export function buildProjectionUncertaintyReport(input: {
     generatedAt: input.generatedAt,
     gameweek: input.gameweek,
     model: "appearance-state-mixture",
-    modelVersion: "0.0.13",
+    modelVersion: "0.0.23",
+    componentVersions: { appearance: "0.0.13", points: "0.0.23" },
     seed,
     sampleCount,
     items,

@@ -10,6 +10,7 @@ import {
   FixtureHorizonReportSchema,
   FixtureTickerSchema,
   MinutesRiskReportSchema,
+  MarketProjectionFeaturesSchema,
   OddsReportSchema,
   PlayerProjectionArraySchema,
   ProbabilisticProjectionArraySchema,
@@ -17,6 +18,7 @@ import {
   PublicEvidenceReportSchema,
   RecommendationArtifactSchema,
   SetPieceReportSchema,
+  StructureSimulationFixtureDistributionArraySchema,
   StrategyEvidenceSchema,
   TeamNewsReportSchema,
   buildFixtureHorizonReport,
@@ -309,6 +311,7 @@ export async function acquireRefreshData(input: {
             contentHash: sha256(JSON.stringify(summary)),
             fixtures: summary.fixtures,
             history: summary.history,
+            previousSeasons: summary.history_past,
             error: ageHours <= 24 ? null : `Player summary cache is ${ageHours.toFixed(1)} hours old.`
           };
         } catch (error) {
@@ -319,6 +322,7 @@ export async function acquireRefreshData(input: {
             contentHash: null,
             fixtures: [],
             history: [],
+            previousSeasons: [],
             error: error instanceof Error ? error.message : String(error)
           };
         }
@@ -334,8 +338,9 @@ export async function acquireRefreshData(input: {
             status: "available",
             retrievedAt: input.now.toISOString(),
             contentHash: sha256(JSON.stringify(summary)),
-            fixtures: summary.fixtures,
-            history: summary.history,
+          fixtures: summary.fixtures,
+          history: summary.history,
+          previousSeasons: summary.history_past,
             error: null
           };
         } catch (error) {
@@ -591,6 +596,7 @@ function buildStages(input: {
           provisionalModeRequested: input.data.inputs.some((item) => item.freshness === "stale"),
           deadlineStatus: input.deadline.status,
           fixtureHorizonReport,
+          summaries: input.data.summaries,
           writeStrategyTemplates: false,
           log: false
         });
@@ -714,8 +720,13 @@ function buildStages(input: {
     {
       id: "odds",
       required: false,
-      phase: 2,
-      artifacts: [artifact("odds-report.json", OddsReportSchema), artifact("odds-report.md")],
+      phase: 1,
+      artifacts: [
+        artifact("odds-report.json", OddsReportSchema),
+        artifact("odds-report.md"),
+        artifact("fixture-distributions.json", StructureSimulationFixtureDistributionArraySchema),
+        artifact("market-projection-features.json", MarketProjectionFeaturesSchema)
+      ],
       run: async ({ outputDir }) => {
         await generateOddsEvidence({
           gameweek: input.gameweek,
@@ -1032,7 +1043,7 @@ function buildStages(input: {
                 : oddsReport.summary.coverageStatus,
             oddsReport?.summary.matchedFixtures ?? 0
           ),
-          component("projection_model", path.join(outputDir, "projections.json"), "src:projection-model", "0.0.15", input.generatedAt),
+          component("projection_model", path.join(outputDir, "projections.json"), "src:projection-model", "0.0.23", input.generatedAt),
           component("appearance_model", path.join(outputDir, "projection-uncertainty-report.json"), "src:appearance-model", "0.0.13", input.generatedAt),
           input.agentRoleEvidence
             ? {

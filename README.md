@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.22`
+Version: `0.0.23`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -95,6 +95,7 @@ pnpm fetch:data
 pnpm fetch:pl-fixtures -- --gw 1 --horizon 6
 pnpm evidence -- --gw 1
 pnpm odds -- --gw 1
+pnpm odds:probe -- --gw 1
 pnpm set-pieces -- --gw 1
 pnpm team-news -- --gw 1
 pnpm minutes -- --gw 1
@@ -148,7 +149,11 @@ pnpm postmortem -- --gw 1
 
 `pnpm evidence -- --gw {n}` writes a compact evidence freshness report for current FPL data, fixtures, team news, set pieces, odds, historical minutes, current roles, and public browser evidence.
 
-`pnpm odds -- --gw {n}` fetches the public Football-Data fixtures CSV and writes an odds coverage report. It records match-level win/draw/loss and over/under evidence when rows are available, but it does not provide player anytime-scorer odds or direct clean-sheet markets.
+`pnpm odds:probe -- --gw {n}` reports credential availability and the configured worst-case request and credit budgets without spending provider quota.
+
+`pnpm odds -- --gw {n}` ingests API-Football pre-match markets first, supplements them with quota-controlled The Odds API match and scorer markets, and retains Football-Data as an uncredentialed 1X2/totals fallback. It writes immutable raw snapshots, a latest-success cache, a v2 odds report, market projection features, and market-or-fallback fixture distributions. Fresh successful provider caches are reused for three hours; `--force` bypasses freshness only, never the hard quota limits.
+
+See `docs/market-odds.md` for provider calls, hard budgets, artifacts, and source documentation.
 
 `pnpm set-pieces -- --gw {n}` writes an automated set-piece report from public FPL role-order fields. It does not select players.
 
@@ -204,9 +209,11 @@ Copy `.env.example` if needed.
 ```bash
 NEXT_PUBLIC_SITE_URL=
 FPL_MANAGER_ID=
+api_football_com=
+the_odds_api_com=
 ```
 
-There are no LLM provider keys.
+The betting-market credentials are optional. Keys are read only from the environment, are redacted from errors, and are never written into artifact URLs. There are no LLM provider keys.
 
 ## FPL API Usage
 

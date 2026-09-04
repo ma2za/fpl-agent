@@ -5,7 +5,7 @@ import { fixtureProjectionContext } from "./generate-recommendation";
 
 describe("recommendation projection context", () => {
   it("identifies the frozen source gameweek for configured decisions", () => {
-    expect(CURRENT_SQUAD.sourceGameweek).toBe(1);
+    expect(CURRENT_SQUAD.sourceGameweek).toBe(2);
   });
 
   it("maps GW1 attack and defence fixture difficulty without using longer horizons", () => {

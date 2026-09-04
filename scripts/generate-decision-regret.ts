@@ -8,6 +8,7 @@ import {
   openPlayerStore,
   readGameweekArchive,
   recordDecisionRegretReport,
+  scoreRegretCandidate,
   stableJson
 } from "../packages/player-store/src";
 
@@ -17,9 +18,14 @@ function argument(name: string) {
 }
 
 type PoolPlayer = { id: number; position: "GKP" | "DEF" | "MID" | "FWD"; teamId: number; price: number; status: string };
-type DecisionRecord = {
-  generatedAt: string;
-  squad: { playerIds: number[]; startingXI: number[]; benchOrder: number[]; captainPlayerId: number; viceCaptainPlayerId: number };
+type FrontierCandidate = {
+  candidateId: string;
+  scenarioId: string;
+  horizon: number;
+  playerIds: number[];
+  startingXI: number[];
+  benchOrder: number[];
+  constraints: { budget: number };
 };
 
 function collectPlayers(value: unknown, players = new Map<number, PoolPlayer>()) {
@@ -68,40 +74,93 @@ async function derivedRequest(gameweek: number, db: ReturnType<typeof openPlayer
   const archive = readGameweekArchive(db, gameweek);
   if (!archive) throw new Error(`GW${gameweek} must be archived before regret analysis.`);
   const postmortem = GameweekPostmortemSchema.parse(JSON.parse(await readFile(path.join("packages", "content", "postmortems", `gw-${gameweek}.json`), "utf8")));
-  const decision = JSON.parse(await readFile(path.join(directory, "decision-record.json"), "utf8")) as DecisionRecord;
   const players = collectPlayers(JSON.parse(await readFile(path.join(directory, "budget-tiers.json"), "utf8")));
-  addStoredPlayers(db, [...decision.squad.playerIds, ...postmortem.submittedSelection.picks.map((pick) => pick.playerId)], archive.deadline, players);
+  const counterfactualPath = "counterfactuals/gw2-one-free-transfer/counterfactual-set.json";
+  const counterfactual = JSON.parse(await readFile(path.join(directory, counterfactualPath), "utf8")) as {
+    generatedAt: string;
+    candidates: FrontierCandidate[];
+  };
+  const projections = JSON.parse(await readFile(path.join(directory, "probabilistic-projections.json"), "utf8")) as Array<{
+    playerId: number;
+    roleAdjustedProjection: number;
+  }>;
+  const frontier = counterfactual.candidates.filter((candidate) => candidate.horizon === 1);
+  addStoredPlayers(db, [
+    ...frontier.flatMap((candidate) => candidate.playerIds),
+    ...postmortem.submittedSelection.picks.map((pick) => pick.playerId)
+  ], archive.deadline, players);
+  const legalFrontier = frontier.filter((candidate) => candidate.playerIds.every((playerId) => players.get(playerId)?.status !== "u"));
+  const excludedUnavailableCandidates = frontier.length - legalFrontier.length;
   const latest = db.prepare("SELECT MAX(observed_at) AS observed_at FROM gameweek_outcome_batches WHERE gameweek = ? AND finalized = 1").get(gameweek) as { observed_at: string | null };
   if (!latest.observed_at) throw new Error(`GW${gameweek} has no finalized outcome batch.`);
   const chips = ["wildcard", "free_hit", "bench_boost", "triple_captain"] as const;
-  const decisionArtifactHash = archive.artifacts.find((artifact) => artifact.path === "decision-record.json")?.contentHash;
-  if (!decisionArtifactHash) throw new Error("Frozen archive is missing decision-record.json.");
-  const agent = {
-    candidateId: postmortem.aiSelection.candidateId, origin: "archived_candidate" as const, sourceRef: "decision-record.json", sourceContentHash: decisionArtifactHash, frozenAt: decision.generatedAt,
-    picks: candidatePicks(decision.squad.playerIds, new Set(decision.squad.startingXI), decision.squad.benchOrder, players),
-    captainPlayerId: decision.squad.captainPlayerId, viceCaptainPlayerId: decision.squad.viceCaptainPlayerId,
-    budgetLimit: 100, freeTransfersAvailable: 0, transfersUsed: 0, hitPoints: 0, chip: null, chipsAvailable: chips
-  };
+  const counterfactualHash = archive.artifacts.find((artifact) => artifact.path === counterfactualPath)?.contentHash;
+  if (!counterfactualHash) throw new Error("Frozen archive is missing the retained counterfactual set.");
+  const projectionById = new Map(projections.map((projection) => [projection.playerId, projection.roleAdjustedProjection]));
+  const retainedCandidates = legalFrontier.map((candidate) => {
+    const captains = [...candidate.startingXI].sort((a, b) =>
+      (projectionById.get(b) ?? 0) - (projectionById.get(a) ?? 0) || a - b);
+    return {
+      candidateId: candidate.candidateId,
+      origin: "archived_candidate" as const,
+      sourceRef: counterfactualPath,
+      sourceContentHash: counterfactualHash,
+      frozenAt: counterfactual.generatedAt,
+      picks: candidatePicks(candidate.playerIds, new Set(candidate.startingXI), candidate.benchOrder, players),
+      captainPlayerId: captains[0],
+      viceCaptainPlayerId: captains[1],
+      budgetLimit: candidate.constraints.budget,
+      freeTransfersAvailable: 1,
+      transfersUsed: candidate.scenarioId === "roll" ? 0 : 1,
+      hitPoints: 0,
+      chip: null,
+      chipsAvailable: [...chips]
+    };
+  });
+  const agent = retainedCandidates.find((candidate) => candidate.candidateId === postmortem.aiSelection.candidateId);
+  if (!agent) throw new Error("Selected GW2 candidate is missing from the retained horizon-one frontier.");
   const submittedIds = postmortem.submittedSelection.picks.map((pick) => pick.playerId);
   const submittedBench = postmortem.submittedSelection.picks.filter((pick) => pick.role === "bench").map((pick) => pick.playerId);
   const submitted = {
     candidateId: "submitted-manager-team", origin: "submitted_team" as const, sourceRef: postmortem.source, sourceContentHash: null, frozenAt: archive.deadline,
     picks: candidatePicks(submittedIds, new Set(postmortem.submittedSelection.picks.filter((pick) => pick.role === "starter").map((pick) => pick.playerId)), submittedBench, players),
     captainPlayerId: postmortem.submittedSelection.captainPlayerId, viceCaptainPlayerId: postmortem.submittedSelection.viceCaptainPlayerId,
-    budgetLimit: 100, freeTransfersAvailable: 0, transfersUsed: postmortem.manager.transfers, hitPoints: 0, chip: null, chipsAvailable: chips
+    budgetLimit: 100, freeTransfersAvailable: 1, transfersUsed: postmortem.manager.transfers, hitPoints: 0, chip: null, chipsAvailable: [...chips]
   };
+  const outcomeStatement = db.prepare(`SELECT o.points, o.appearances FROM player_gameweek_outcomes o
+    JOIN gameweek_outcome_batches b ON b.batch_id = o.batch_id
+    WHERE o.gameweek = ? AND o.player_id = ? AND b.finalized = 1
+    ORDER BY o.effective_at DESC, o.observed_at DESC, o.rowid DESC LIMIT 1`);
+  const outcomeIds = [...new Set(retainedCandidates.flatMap((candidate) => candidate.picks.map((pick) => pick.playerId)))];
+  const outcomes = new Map(outcomeIds.map((playerId) => {
+    const row = outcomeStatement.get(gameweek, playerId) as { points: number; appearances: number };
+    return [playerId, row] as const;
+  }));
+  const retainedResults = retainedCandidates.map((candidate) => scoreRegretCandidate(candidate, outcomes)).sort((a, b) =>
+    b.actualPoints - a.actualPoints || Number(b.candidateId === agent.candidateId) - Number(a.candidateId === agent.candidateId) || a.candidateId.localeCompare(b.candidateId));
+  const comparator = retainedResults[0];
+  const ids = (candidate: typeof agent) => candidate.picks.map((pick) => pick.playerId).sort((a, b) => a - b).join(",");
+  const starters = (candidate: typeof agent) => candidate.picks.filter((pick) => pick.role === "starter").map((pick) => pick.playerId).sort((a, b) => a - b).join(",");
+  const bestCandidate = retainedCandidates.find((candidate) => candidate.candidateId === comparator.candidateId)!;
+  const category = ids(bestCandidate) !== ids(agent) ? "squad" as const
+    : starters(bestCandidate) !== starters(agent) ? "bench" as const
+      : bestCandidate.captainPlayerId !== agent.captainPlayerId ? "captaincy" as const : "substitution" as const;
   return {
     schemaVersion: 1, archiveId: archive.archiveId, gameweek, generatedAt: latest.observed_at,
-    agentCandidateId: agent.candidateId, submittedCandidateId: submitted.candidateId, candidates: [agent, submitted], agentRegretPath: [], triggerAudits: [],
+    agentCandidateId: agent.candidateId,
+    submittedCandidateId: submitted.candidateId,
+    candidates: [...retainedCandidates, submitted],
+    agentRegretPath: comparator.candidateId === agent.candidateId ? [] : [{ fromCandidateId: comparator.candidateId, toCandidateId: agent.candidateId, category }],
+    triggerAudits: [],
     causalAttributions: [
       { stage: "source", status: "not_applicable", evidenceIds: [], note: "No source-specific miss can be isolated from the retained artifacts." },
       { stage: "transformation", status: "not_applicable", evidenceIds: [], note: "No transformation defect is established by the outcome alone." },
       { stage: "assumption", status: "not_applicable", evidenceIds: [], note: "No assumption-specific miss is established by the outcome alone." },
-      { stage: "forecast", status: "supported", evidenceIds: ["probabilistic-projections.json"], note: "The selected squad scored below its frozen expected-points forecast." },
-      { stage: "candidate_generation", status: "unsupported", evidenceIds: ["decision-record.json"], note: "Only the selected candidate was retained, so squad-level hindsight regret is unavailable." },
-      { stage: "simulation", status: "unsupported", evidenceIds: ["decision-record.json"], note: "No alternative simulation frontier was retained for comparable outcome replay." },
-      { stage: "evidence_gap", status: "supported", evidenceIds: ["archive-manifest.json"], note: "Missing retained alternatives prevent structural regret attribution without hindsight." },
-      { stage: "agent_decision", status: "not_applicable", evidenceIds: ["decision-record.json"], note: "No better frozen legal candidate exists in the archive for comparison." },
+      { stage: "forecast", status: "supported", evidenceIds: ["probabilistic-projections.json"], note: `The selected candidate scored ${postmortem.aiSelection.actualPointsCounterfactual} against ${postmortem.aiSelection.projectedPoints} projected points, but the model ranked it above a retained candidate that realized ${comparator.actualPoints}.` },
+      { stage: "candidate_generation", status: excludedUnavailableCandidates === 0 ? "supported" : "unsupported", evidenceIds: [counterfactualPath], note: excludedUnavailableCandidates === 0 ? `All ${retainedCandidates.length} retained horizon-one legal candidates were replayed.` : `${excludedUnavailableCandidates} retained candidates contained an unavailable player and were excluded from the legal comparator; ${retainedCandidates.length} legal candidates were replayed.` },
+      { stage: "simulation", status: "supported", evidenceIds: ["counterfactuals/gw2-one-free-transfer/structure-simulation.json"], note: "The full pre-deadline simulation and its sample-level candidate totals remain archived." },
+      { stage: "evidence_gap", status: "not_applicable", evidenceIds: ["archive-manifest.json"], note: "The retained horizon-one frontier is complete for the declared candidate-generation request." },
+      { stage: "agent_decision", status: comparator.candidateId === agent.candidateId ? "not_applicable" : "supported", evidenceIds: ["decision-record.json", counterfactualPath], note: comparator.candidateId === agent.candidateId ? "The selected agent candidate tied or led the retained frontier on realized points." : "A better realized result existed in the frozen frontier; this is measured without adding hindsight-only players." },
       { stage: "manager_override", status: "supported", evidenceIds: [postmortem.source], note: "The submitted manager overrides are measured independently from the agent selection." },
       { stage: "normal_outcome_variance", status: "supported", evidenceIds: ["official-finalized-outcomes"], note: "Single-gameweek realized points remain noisy relative to pre-deadline forecasts." }
     ]

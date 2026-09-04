@@ -1015,6 +1015,64 @@ export type SetPieceReport = {
 export type OddsSignal = "high" | "medium" | "low" | "unknown";
 export type OddsSignalSource = "direct" | "derived" | "unavailable";
 export type OddsCoverageStatus = "covered" | "partial" | "missing";
+export type OddsProviderId = "api-football.com" | "the-odds-api.com" | "football-data.co.uk";
+export type OddsMarketKind =
+  | "match-winner"
+  | "goals-total"
+  | "clean-sheet-home"
+  | "clean-sheet-away"
+  | "team-total-home"
+  | "team-total-away"
+  | "anytime-scorer";
+
+export type OddsBookmakerPrice = {
+  provider: OddsProviderId;
+  providerEventId: string;
+  fixtureId: number | null;
+  homeTeam: string;
+  awayTeam: string;
+  kickoffTime: string | null;
+  bookmaker: string;
+  market: OddsMarketKind;
+  selection: string;
+  decimalPrice: number;
+  impliedProbability?: number;
+  fairProbability?: number | null;
+  overround?: number | null;
+  deVigMethod?: "proportional" | "positive-only-unadjusted";
+  line: number | null;
+  playerName: string | null;
+  playerId: number | null;
+  teamName: string | null;
+  fetchedAt: string;
+  sourceId: string;
+  matchStatus: "matched" | "unmatched" | "ambiguous";
+};
+
+export type OddsQuotaUsage = {
+  provider: OddsProviderId;
+  requests: number;
+  credits: number;
+  reportedRemaining: number | null;
+  reportedUsed?: number | null;
+  reportedLimit?: number | null;
+  runLimit: number;
+  periodLimit: number;
+  period: "utc-day" | "gameweek" | "calendar-month";
+};
+
+export type OddsProviderResult = {
+  provider: OddsProviderId;
+  fetchedAt: string;
+  sourcePath: string;
+  fromCache: boolean;
+  requestCount: number;
+  creditsUsed: number;
+  reportedRemaining: number | null;
+  reportedUsed?: number | null;
+  reportedLimit?: number | null;
+  warnings: string[];
+};
 
 export type OddsMarketCoverage = {
   matchOdds: OddsCoverageStatus;
@@ -1085,9 +1143,11 @@ export type OddsPlayerSignal = {
 };
 
 export type OddsReport = {
+  schemaVersion?: 1 | 2;
   generatedAt: string;
   gameweek: number;
   source: EvidenceSource;
+  sources?: EvidenceSource[];
   summary: {
     sourceRows: number;
     premierLeagueRows: number;
@@ -1101,6 +1161,9 @@ export type OddsReport = {
   matches: OddsMatchSignal[];
   teamSignals: OddsTeamSignal[];
   playerSignals: OddsPlayerSignal[];
+  providerResults?: OddsProviderResult[];
+  bookmakerPrices?: OddsBookmakerPrice[];
+  quotaUsage?: OddsQuotaUsage[];
   warnings: string[];
 };
 

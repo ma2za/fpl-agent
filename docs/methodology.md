@@ -9,6 +9,7 @@ The current recommendation model is simple, transparent, and replaceable.
 - Optional public manager data in a later milestone
 - FPL rules
 - Coding-agent-reviewed FPL news evidence with explicit credibility and relevance assessments
+- Optional quota-controlled pre-match bookmaker evidence
 
 ## Decision Principles
 
@@ -35,6 +36,8 @@ projected_points =
   x form_factor
 ```
 
+The form factor is regressed toward `1.0` with a 900-minute prior. A single early-season return therefore cannot receive the full form multiplier; its influence increases only as observed minutes accumulate.
+
 Release `0.0.12` adds a deterministic appearance-state mixture:
 
 ```txt
@@ -48,6 +51,10 @@ role_adjusted_points =
 Start, substitute, and no-appearance states use current-role evidence when present. Cached match history supplies empirical conditional minutes and points only when it contains at least six starts and four substitute appearances. Otherwise, the report names the position, price, historical-role, and fixture-adjusted cohort used as a fallback.
 
 Every probabilistic projection persists its seed, sample count, input confidence, role support, availability factor, historical minutes, conditional sample count, and cohort. The report keeps evidence uncertainty separate from football-outcome variance and exposes raw-if-starting, role-adjusted, median, p10, p90, and standard-deviation values.
+
+Release `0.0.23` de-vigs complete bookmaker outcome sets proportionally, deduplicates bookmakers across providers, and takes the median fair probability. Complete 1X2, 2.5-goal totals, and both clean-sheet probabilities are fitted to independent Poisson home and away goals. A market fit is active only while fresh, unambiguous, and at or below `0.05` RMSE; otherwise the FPL-strength heuristic remains active and labeled.
+
+Anytime-scorer probability becomes a Poisson scoring rate over conditional appeared minutes and is distributed into start and substitute states. Only goal points and position-eligible clean-sheet points are replaced. The applied conditional-start adjustment is capped at `-2.0` to `2.0` points while the uncapped adjustment remains in the artifact. Appearance remains model `0.0.13`; points use model `0.0.23`.
 
 ## Agent Selection
 

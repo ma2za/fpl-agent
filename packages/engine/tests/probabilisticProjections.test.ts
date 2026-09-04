@@ -142,6 +142,31 @@ describe("probabilistic projections", () => {
     expect(projection.roleAdjustedProjection).toBeCloseTo(expected, 1);
   });
 
+  it("replaces goal and clean-sheet components without changing appearance", () => {
+    const subject = player(16, 2600, 150, "DEF");
+    const rawProjection = projectPlayer(subject);
+    const baseline = probabilisticProjection({ player: subject, rawProjection, roleEvidence: role(16, 0.9) });
+    const market = probabilisticProjection({
+      player: subject,
+      rawProjection,
+      roleEvidence: role(16, 0.9),
+      marketInput: {
+        anytimeScorerProbability: 0.25,
+        cleanSheetProbability: 0.5,
+        baselineGoalRatePer90: 0.05,
+        baselineCleanSheetProbability: 0.25,
+        evidenceIds: ["odds:player:16"]
+      }
+    });
+
+    expect(market.appearance).toEqual(baseline.appearance);
+    expect(market.rawProjectionIfStarting).toBeGreaterThan(baseline.rawProjectionIfStarting);
+    expect(market.marketAdjustment?.goalPointsDelta).toBeGreaterThan(0);
+    expect(market.marketAdjustment?.cleanSheetPointsDelta).toBe(1);
+    expect(market.marketAdjustment?.appliedConditionalStartDelta).toBeLessThanOrEqual(2);
+    expect(market.componentVersions).toEqual({ appearance: "0.0.13", points: "0.0.23" });
+  });
+
   it("lowers role-adjusted points when start probability falls without changing conditional-start points", () => {
     const subject = player(6, 2600, 180);
     const rawProjection = projectPlayer(subject);
@@ -198,8 +223,8 @@ describe("probabilistic projections", () => {
     expect(profiles).toEqual([
       { playerId: 9, source: "current_role", cohort: "mid-established-starter", startProbability: 0.95, roleAdjustedProjection: 5.9 },
       { playerId: 10, source: "current_role", cohort: "mid-role-challenger", startProbability: 0.3, roleAdjustedProjection: 2.6 },
-      { playerId: 11, source: "current_role", cohort: "mid-role-challenger", startProbability: 0.65, roleAdjustedProjection: 6.2 },
-      { playerId: 12, source: "cohort_fallback", cohort: "def-new-player", startProbability: 0.18, roleAdjustedProjection: 1.1 }
+      { playerId: 11, source: "current_role", cohort: "mid-role-challenger", startProbability: 0.65, roleAdjustedProjection: 5.6 },
+      { playerId: 12, source: "cohort_fallback", cohort: "def-new-player", startProbability: 0.18, roleAdjustedProjection: 1 }
     ]);
   });
 });

@@ -31,4 +31,16 @@ describe("counterfactual input construction", () => {
     expect(result.horizons[1].benchValue).toBeCloseTo(0.3);
     expect(result.horizons[1].downside).toBeLessThan(1);
   });
+
+  it("excludes players marked unavailable from candidate generation", () => {
+    const player = { id: 55, teamId: 2, position: "GKP", status: "u" } as PlayerForEngine;
+    const projection = { playerId: 55 } as ProbabilisticProjection;
+
+    expect(optimizationPlayers(
+      [player],
+      [projection],
+      { teams: [] } as unknown as FixtureHorizonReport,
+      {} as OptimizationRequest
+    )).toEqual([]);
+  });
 });

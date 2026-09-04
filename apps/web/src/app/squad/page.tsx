@@ -1,8 +1,7 @@
 import playersJson from "../../../../../data/processed/players.json";
-import decisionRecordJson from "../../../../../packages/content/recommendations/gw-1/decision-record.json";
-import postmortem from "../../../../../packages/content/postmortems/gw-1.json";
+import decisionRecord from "../../../../../packages/content/recommendations/gw-2/decision-record.json";
+import postmortem from "../../../../../packages/content/postmortems/gw-2.json";
 import { CURRENT_SQUAD } from "../../../../../config/squad";
-import { generateSquadReasoning, type SquadDecisionRecord } from "../../../../../packages/agent/src/squadDecisionRecord";
 
 type Player = {
   id: number;
@@ -12,10 +11,9 @@ type Player = {
 };
 
 const players = playersJson as Player[];
-const decisionRecord = decisionRecordJson as unknown as SquadDecisionRecord;
-const squadReasoning = generateSquadReasoning(decisionRecord);
 const playerById = new Map(players.map((player) => [player.id, player]));
 const overrideByPlayerId = new Map(postmortem.managerOverrides.map((override) => [override.inPlayerId, override]));
+const replacedByPlayerId = new Map(postmortem.managerOverrides.map((override) => [override.outPlayerId, override]));
 
 function playerName(playerId: number) {
   return playerById.get(playerId)?.name ?? `Player ${playerId}`;
@@ -35,28 +33,26 @@ export default function SquadPage() {
     ...CURRENT_SQUAD.players.filter((playerId) => !bench.has(playerId)),
     ...CURRENT_SQUAD.benchOrder
   ];
-  const cost = CURRENT_SQUAD.players.reduce((sum, playerId) => sum + (playerById.get(playerId)?.price ?? 0), 0);
-  const reasoningCoverage = CURRENT_SQUAD.players.filter((playerId) => squadReasoning[playerId]).length;
 
   return (
     <>
       <section className="hero">
-        <div className="eyebrow">Submitted GW1 selection</div>
+        <div className="eyebrow">Submitted GW{CURRENT_SQUAD.sourceGameweek} selection</div>
         <h1>Squad and reasoning</h1>
         <p>
-          The submitted squad preserves the AI rationale and identifies the three manager overrides separately.
+          The submitted squad preserves the frozen AI decision and identifies the manager's formation override separately.
         </p>
       </section>
 
       <section className="metrics">
         <article className="metric">
-          <span>Squad cost</span>
-          <strong>£{cost.toFixed(1)}</strong>
+          <span>Squad value</span>
+          <strong>£{postmortem.manager.teamValue.toFixed(1)}</strong>
           <em>£{CURRENT_SQUAD.bank.toFixed(1)} bank</em>
         </article>
         <article className="metric">
           <span>Formation</span>
-          <strong>3-4-3</strong>
+          <strong>{CURRENT_SQUAD.formation}</strong>
           <em>11 starters, 4 substitutes</em>
         </article>
         <article className="metric">
@@ -65,9 +61,9 @@ export default function SquadPage() {
           <em>Vice: {playerName(CURRENT_SQUAD.viceCaptainPlayerId)}</em>
         </article>
         <article className="metric">
-          <span>Reasoning coverage</span>
-          <strong>{reasoningCoverage}/15</strong>
-          <em>{15 - reasoningCoverage} manager overrides</em>
+          <span>Simulation</span>
+          <strong>{decisionRecord.simulation.sampleCount.toLocaleString("en-GB")}</strong>
+          <em>{decisionRecord.simulation.candidatesSimulated.toLocaleString("en-GB")} candidates</em>
         </article>
       </section>
 
@@ -76,10 +72,11 @@ export default function SquadPage() {
         <div className="grid reasoning-grid">
           {orderedPlayerIds.map((playerId) => {
             const player = playerById.get(playerId)!;
-            const reasoning = squadReasoning[playerId];
             const override = overrideByPlayerId.get(playerId);
+            const replaced = replacedByPlayerId.get(playerId);
             const captain = playerId === CURRENT_SQUAD.captainPlayerId;
             const viceCaptain = playerId === CURRENT_SQUAD.viceCaptainPlayerId;
+            const transferredIn = playerId === decisionRecord.action.buyPlayerId;
             return (
               <article className="card reasoning-card" key={playerId}>
                 <div className="reasoning-title">
@@ -93,33 +90,26 @@ export default function SquadPage() {
                   {viceCaptain ? <span className="status">Vice</span> : null}
                 </div>
 
-                <h4>Why selected</h4>
-                <ul className="list compact">
-                  {(reasoning?.whySelected ?? [`Manager override: ${override?.outName ?? "AI selection"} replaced by ${player.name}.`])
-                    .map((reason) => <li key={reason}>{reason}</li>)}
-                </ul>
+                <h4>Recorded decision</h4>
+                <p>
+                  {override
+                    ? `Manager started ${player.name} instead of ${override.outName}; the realized change was +${override.pointsDelta} point.`
+                    : replaced
+                      ? `The AI started ${player.name}, but the submitted formation benched him for ${replaced.inName}.`
+                      : transferredIn
+                        ? `Transferred in for ${decisionRecord.action.sellPlayerName} by the selected frontier candidate.`
+                        : "Retained in the selected pre-deadline squad."}
+                </p>
 
-                <h4>Why not the alternative</h4>
-                <ul className="list compact">
-                  {(reasoning?.comparedAgainst ?? (override ? [{
-                    playerId: override.outPlayerId,
-                    reason: `Submitted instead of the frozen AI pick; the recorded GW1 points delta was ${override.pointsDelta >= 0 ? "+" : ""}${override.pointsDelta}.`
-                  }] : [])).map((alternative) => (
-                    <li key={alternative.playerId}>
-                      <strong>{playerName(alternative.playerId)}</strong>: {alternative.reason}
-                    </li>
-                  ))}
-                </ul>
-
-                <h4>Material risk</h4>
-                <p>{reasoning?.materialRisk ?? "No separate pre-deadline manager rationale was recorded for this override."}</p>
-
-                <h4>Risk response</h4>
-                <p>{reasoning?.riskResponse ?? "The override is retained as submitted history and remains separate from the frozen AI decision."}</p>
+                <h4>Outcome</h4>
+                <p>
+                  {override?.outcomeNote ?? replaced?.outcomeNote ??
+                    `${player.name} scored ${postmortem.submittedSelection.picks.find((pick) => pick.playerId === playerId)?.rawPoints ?? 0} points in GW${postmortem.gameweek}.`}
+                </p>
 
                 <h4>Evidence</h4>
                 <ul className="list compact evidence-list">
-                  {(reasoning?.evidence ?? [postmortem.source]).map((reference) => (
+                  {["packages/content/recommendations/gw-2/decision-record.json", postmortem.source].map((reference) => (
                     <li key={reference}><EvidenceReference value={reference} /></li>
                   ))}
                 </ul>

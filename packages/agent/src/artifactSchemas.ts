@@ -979,9 +979,20 @@ export const SetPieceReportSchema = looseObject({
 const oddsCoverage = z.enum(["covered", "partial", "missing"]);
 const oddsSignal = z.enum(["high", "medium", "low", "unknown"]);
 const oddsSignalSource = z.enum(["direct", "derived", "unavailable"]);
+const oddsProvider = z.enum(["api-football.com", "the-odds-api.com", "football-data.co.uk"]);
+const oddsMarket = z.enum([
+  "match-winner",
+  "goals-total",
+  "clean-sheet-home",
+  "clean-sheet-away",
+  "team-total-home",
+  "team-total-away",
+  "anytime-scorer"
+]);
 
 export const OddsReportSchema = looseObject({
   ...selectedReportBase,
+  schemaVersion: z.union([z.literal(1), z.literal(2)]).optional(),
   summary: looseObject({
     sourceRows: z.number(),
     premierLeagueRows: z.number(),
@@ -1054,7 +1065,53 @@ export const OddsReportSchema = looseObject({
     probability: z.number(),
     selected: z.boolean(),
     summary: z.string()
-  }))
+  })),
+  providerResults: z.array(looseObject({
+    provider: oddsProvider,
+    fetchedAt: z.string(),
+    sourcePath: z.string(),
+    fromCache: z.boolean(),
+    requestCount: z.number().int().nonnegative(),
+    creditsUsed: z.number().int().nonnegative(),
+    reportedRemaining: z.number().int().nonnegative().nullable(),
+    reportedUsed: z.number().int().nonnegative().nullable().optional(),
+    reportedLimit: z.number().int().nonnegative().nullable().optional(),
+    warnings: stringArray
+  })).optional(),
+  bookmakerPrices: z.array(looseObject({
+    provider: oddsProvider,
+    providerEventId: z.string(),
+    fixtureId: z.number().int().positive().nullable(),
+    homeTeam: z.string(),
+    awayTeam: z.string(),
+    kickoffTime: z.string().nullable(),
+    bookmaker: z.string(),
+    market: oddsMarket,
+    selection: z.string(),
+    decimalPrice: z.number().positive(),
+    impliedProbability: z.number().min(0).max(1).optional(),
+    fairProbability: nullableNumber.optional(),
+    overround: nullableNumber.optional(),
+    deVigMethod: z.enum(["proportional", "positive-only-unadjusted"]).optional(),
+    line: z.number().nullable(),
+    playerName: z.string().nullable(),
+    playerId: z.number().int().positive().nullable(),
+    teamName: z.string().nullable(),
+    fetchedAt: z.string(),
+    sourceId: z.string(),
+    matchStatus: z.enum(["matched", "unmatched", "ambiguous"])
+  })).optional(),
+  quotaUsage: z.array(looseObject({
+    provider: oddsProvider,
+    requests: z.number().int().nonnegative(),
+    credits: z.number().int().nonnegative(),
+    reportedRemaining: z.number().int().nonnegative().nullable(),
+    reportedUsed: z.number().int().nonnegative().nullable().optional(),
+    reportedLimit: z.number().int().nonnegative().nullable().optional(),
+    runLimit: z.number().int().nonnegative(),
+    periodLimit: z.number().int().nonnegative(),
+    period: z.enum(["utc-day", "gameweek", "calendar-month"])
+  })).optional()
 });
 
 export const MinutesRiskReportSchema = looseObject({
@@ -1306,7 +1363,20 @@ const probabilisticProjection = z.object({
     evidenceIds: stringArray
   }).strict()).optional(),
   model: z.literal("appearance-state-mixture"),
-  modelVersion: z.literal("0.0.13"),
+  modelVersion: z.enum(["0.0.13", "0.0.23"]),
+  componentVersions: looseObject({
+    appearance: z.literal("0.0.13"),
+    points: z.literal("0.0.23")
+  }).optional(),
+  marketAdjustment: looseObject({
+    goalPointsDelta: z.number(),
+    cleanSheetPointsDelta: z.number(),
+    rawConditionalStartDelta: z.number(),
+    appliedConditionalStartDelta: z.number(),
+    conditionalSubstituteDelta: z.number(),
+    capped: z.boolean(),
+    evidenceIds: stringArray
+  }).nullable().optional(),
   inputs: z.object({
     seed: z.number().int().nonnegative(),
     sampleCount: z.number().int().positive(),
@@ -1333,7 +1403,8 @@ export const ProjectionUncertaintyReportSchema = z.object({
   generatedAt: z.string(),
   gameweek: z.number().int().positive(),
   model: z.literal("appearance-state-mixture"),
-  modelVersion: z.literal("0.0.13"),
+  modelVersion: z.enum(["0.0.13", "0.0.23"]),
+  componentVersions: looseObject({ appearance: z.literal("0.0.13"), points: z.literal("0.0.23") }).optional(),
   seed: z.number().int().nonnegative(),
   sampleCount: z.number().int().positive(),
   items: ProbabilisticProjectionArraySchema,
@@ -1395,6 +1466,23 @@ const structureSimulationFixtureDistribution = z.object({
   expectedGoalsMethod: z.enum(["FPL_OVERALL_STRENGTH_HEURISTIC_V1", "MARKET_IMPLIED_EXPECTED_GOALS"]),
   confidence: z.enum(["low", "medium", "high"]),
   evidenceIds: stringArray
+}).strict();
+
+export const StructureSimulationFixtureDistributionArraySchema = z.array(structureSimulationFixtureDistribution);
+
+export const MarketProjectionFeaturesSchema = z.object({
+  schemaVersion: z.literal(1),
+  generatedAt: z.string(),
+  gameweek: z.number().int().positive(),
+  pointsModelVersion: z.literal("0.0.23"),
+  players: z.array(z.object({
+    playerId: z.number().int().positive(),
+    fixtureId: z.number().int().positive(),
+    anytimeScorerProbability: nullableNumber,
+    cleanSheetProbability: nullableNumber,
+    baselineCleanSheetProbability: nullableNumber,
+    evidenceIds: stringArray
+  }).strict())
 }).strict();
 
 const structureSimulationObjectiveDefinition = z.object({

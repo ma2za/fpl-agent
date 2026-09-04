@@ -90,6 +90,14 @@ async function main() {
   if (!request.fixtureDistributions && request.fixtureDistributionPath) {
     request.fixtureDistributions = JSON.parse(await readFile(request.fixtureDistributionPath, "utf8"));
   }
+  if (!request.fixtureDistributions && !request.fixtureDistributionPath) {
+    request.fixtureDistributions = await readFile(path.join(path.dirname(inputPath), "fixture-distributions.json"), "utf8")
+      .then(JSON.parse)
+      .catch((error) => {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+        throw error;
+      });
+  }
   if ((request.sensitivityPlayerIds?.length ?? 0) > 0 && !marginsOutputPath) {
     throw new Error("Requests with sensitivityPlayerIds require --margins-out <report.json>.");
   }

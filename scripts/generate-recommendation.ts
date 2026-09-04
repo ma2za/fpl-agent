@@ -9,6 +9,7 @@ import {
   renderProjectionUncertaintyMarkdown,
   roleAdjustedPlayerProjections,
   type ConditionalAppearanceSample,
+  type MarketPlayerProjectionInput,
   type PlayerForEngine,
   type ProbabilisticProjection,
   type ProjectionContext
@@ -20,6 +21,7 @@ import {
   generateSquadReasoning,
   CurrentRoleReportSchema,
   FixtureHorizonReportSchema,
+  MarketProjectionFeaturesSchema,
   ProbabilisticProjectionArraySchema,
   readArtifactFileIfExists,
   RecommendationArtifactSchema,
@@ -33,6 +35,7 @@ import {
   type DecisionContext,
   type FixtureHorizonReport
 } from "../packages/agent/src";
+import type { PlayerSummaryResult } from "../packages/player-store/src";
 import {
   DEFAULT_STARTING_BUDGET,
   REQUIRED_SQUAD_COUNTS,
@@ -374,6 +377,7 @@ export async function generateRecommendationEvidence(input: {
   provisionalModeRequested?: boolean;
   deadlineStatus?: DeadlineStatus;
   fixtureHorizonReport?: FixtureHorizonReport | null;
+  summaries?: PlayerSummaryResult[];
   writeStrategyTemplates?: boolean;
   log?: boolean;
 } = {}) {
@@ -421,6 +425,10 @@ export async function generateRecommendationEvidence(input: {
     FixtureHorizonReportSchema
   );
   const rawProjections = projectPlayers(projectionPlayers, fixtureProjectionContext(fixtureHorizonReport));
+  const marketFeatures = await readArtifactFileIfExists(
+    path.join(outputDir, "market-projection-features.json"),
+    MarketProjectionFeaturesSchema
+  );
   const currentRoleReport: CurrentRoleReport | null = await readArtifactFileIfExists(
     path.join(outputDir, "current-role-report.json"),
     CurrentRoleReportSchema
@@ -431,6 +439,42 @@ export async function generateRecommendationEvidence(input: {
       "packages", "content", "recommendations", `gw-${gameweek - 1}`, "probabilistic-projections.json"
     ), ProbabilisticProjectionArraySchema)
     : null;
+  const previousByPlayer = new Map((input.summaries ?? []).map((summary) => {
+    const previous = summary.previousSeasons?.at(-1) ?? null;
+    const minutes = Number(previous?.minutes);
+    const goals = Number(previous?.goals_scored);
+    return [summary.playerId, {
+      minutes: Number.isFinite(minutes) && minutes > 0 ? minutes : 0,
+      goals: Number.isFinite(goals) && goals >= 0 ? goals : 0
+    }] as const;
+  }));
+  const cohortRate = (player: PlayerForEngine) => {
+    const peers = projectionPlayers.filter((peer) => peer.position === player.position && Math.floor(peer.price) === Math.floor(player.price))
+      .map((peer) => previousByPlayer.get(peer.id))
+      .filter((value): value is { minutes: number; goals: number } => Boolean(value?.minutes));
+    const fallbackPeers = projectionPlayers.filter((peer) => peer.position === player.position)
+      .map((peer) => previousByPlayer.get(peer.id))
+      .filter((value): value is { minutes: number; goals: number } => Boolean(value?.minutes));
+    const cohort = peers.length > 0 ? peers : fallbackPeers;
+    const cohortMinutes = cohort.reduce((sum, value) => sum + value.minutes, 0);
+    const cohortPer90 = cohortMinutes > 0 ? cohort.reduce((sum, value) => sum + value.goals, 0) / cohortMinutes * 90 : 0;
+    const individual = previousByPlayer.get(player.id);
+    if (!individual?.minutes) return cohortPer90;
+    const weight = individual.minutes / (individual.minutes + 900);
+    return individual.goals / individual.minutes * 90 * weight + cohortPer90 * (1 - weight);
+  };
+  const featureByPlayer = new Map((marketFeatures?.players ?? []).map((feature) => [feature.playerId, feature]));
+  const marketInputsByPlayerId = new Map<number, MarketPlayerProjectionInput>(projectionPlayers.flatMap((player) => {
+    const feature = featureByPlayer.get(player.id);
+    if (!feature || (feature.anytimeScorerProbability === null && feature.cleanSheetProbability === null)) return [];
+    return [[player.id, {
+      anytimeScorerProbability: feature.anytimeScorerProbability,
+      cleanSheetProbability: feature.cleanSheetProbability,
+      baselineGoalRatePer90: cohortRate(player),
+      baselineCleanSheetProbability: feature.baselineCleanSheetProbability,
+      evidenceIds: feature.evidenceIds
+    }]];
+  }));
   const projectionUncertainty = buildProjectionUncertaintyReport({
     generatedAt,
     gameweek,
@@ -438,7 +482,8 @@ export async function generateRecommendationEvidence(input: {
     rawProjections,
     roleEvidence: currentRoleReport?.items,
     historyByPlayerId,
-    priorAppearanceByPlayerId: new Map((priorProjections ?? []).map((projection) => [projection.playerId, projection.appearance]))
+    priorAppearanceByPlayerId: new Map((priorProjections ?? []).map((projection) => [projection.playerId, projection.appearance])),
+    marketInputsByPlayerId
   });
   const projections = roleAdjustedPlayerProjections(rawProjections, projectionUncertainty);
   const strategyDir = path.join("packages", "content", "strategy");

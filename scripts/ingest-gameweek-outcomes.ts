@@ -49,14 +49,23 @@ export async function ingestOutcomeFile(input: { gameweek: number; inputPath?: s
   }
   const batch = GameweekOutcomeBatchSchema.parse(value);
   if (batch.gameweek !== input.gameweek) throw new Error("Outcome input gameweek does not match --gw.");
+  let excludedUnknownPlayerIds: number[] = [];
+  let ingestedBatch = batch;
   const result = await updatePlayerStoreTransactionally(storePath, {
     appliedAt: batch.observedAt,
     update: (db) => {
-      if (!readGameweekArchive(db, input.gameweek)) throw new Error(`GW${input.gameweek} must be frozen before outcomes are ingested.`);
-      return ingestGameweekOutcomes(db, batch);
+      const archive = readGameweekArchive(db, input.gameweek);
+      if (!archive) throw new Error(`GW${input.gameweek} must be frozen before outcomes are ingested.`);
+      const frozenPlayerIds = new Set(archive.forecasts.map((forecast) => forecast.playerId));
+      excludedUnknownPlayerIds = batch.outcomes.filter((outcome) => !frozenPlayerIds.has(outcome.playerId)).map((outcome) => outcome.playerId);
+      ingestedBatch = GameweekOutcomeBatchSchema.parse({
+        ...batch,
+        outcomes: batch.outcomes.filter((outcome) => frozenPlayerIds.has(outcome.playerId))
+      });
+      return ingestGameweekOutcomes(db, ingestedBatch);
     }
   });
-  return { batch, ...result };
+  return { batch: ingestedBatch, excludedUnknownPlayerIds, ...result };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -68,6 +77,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   } else {
     ingestOutcomeFile({ gameweek, inputPath, finalized: process.argv.includes("--finalized") }).then((result) => {
       console.log(`GW${gameweek} outcomes: ${result.revisions} revision(s), batch ${result.inserted ? "stored" : "already present"}.`);
+      if (result.excludedUnknownPlayerIds.length > 0) console.log(`Excluded ${result.excludedUnknownPlayerIds.length} post-deadline player IDs absent from the frozen archive.`);
     }).catch((error) => { console.error(error instanceof Error ? error.message : error); process.exitCode = 1; });
   }
 }

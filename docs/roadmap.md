@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present through `0.0.22` and the dependency-ordered plan through `0.0.23`.
+This document records the capabilities present through `0.0.23` and the dependency-ordered plan through `0.0.24`.
 
 ## Permanent Decision Boundary
 
@@ -12,7 +12,7 @@ This document records the capabilities present through `0.0.22` and the dependen
 - Tool-produced evidence and candidate artifacts must remain structurally separate from agent-authored decision artifacts.
 - Verification may reject illegal or unsupported decisions, but it must never replace them or choose an alternative.
 
-## Current State: 0.0.22
+## Current State: 0.0.23
 
 ### Workspace
 
@@ -650,7 +650,29 @@ Release gate:
 
 Status: delivered.
 
-### 0.0.23: Multi-Gameweek Decision Workspace
+### 0.0.23: Budgeted Market-Calibrated Projections
+
+Add bookmaker evidence without allowing quota use or missing markets to manufacture precision.
+
+Delivered:
+
+- Ingest API-Football pre-match markets as the primary source and The Odds API as a bounded secondary source, with Football-Data as the final uncredentialed fallback.
+- Retain immutable raw responses, normalized unmatched records, bookmaker prices, quota ledgers, and latest-success manifests.
+- Remove bookmaker overround, deduplicate cross-provider bookmakers, and aggregate outcome probabilities by median.
+- Fit market-implied Poisson goals only from complete, unambiguous evidence with RMSE at most five percentage points.
+- Replace only player goal and eligible clean-sheet components, retain uncapped adjustments, and cap applied conditional-start changes at two points.
+- Preserve the `0.0.13` appearance model and label every heuristic fallback.
+
+Release gate:
+
+- Enforce API-Football limits of 12 requests per run and 24 per UTC day, plus the 50-request reserve.
+- Enforce The Odds API limits of 22 credits per run, 66 per gameweek, 300 per month, three snapshots per gameweek, and a 100-credit reserve.
+- Test parsing, caching, pagination stops, redaction, replay, matching, normalization, fitting, and component isolation.
+- Retain every raw market, normalized record, candidate, and simulation sample.
+
+Status: delivered.
+
+### 0.0.24: Multi-Gameweek Decision Workspace
 
 Replace hard-coded GW1 views with a current and historical workspace for repeated weekly operation.
 
@@ -687,7 +709,8 @@ Release gate:
 | `0.0.20` | resumable discovery and the player-intelligence store | Preserve discovery candidates as untrusted until reviewed; aggregate checkpoints by worklist | Reviewed, source-linked news evidence and incremental readiness |
 | `0.0.21` | reviewed evidence, frozen decisions, and official outcomes | Append outcomes and corrections; never mutate deadline snapshots | Reproducible calibration cohorts and versioned reports |
 | `0.0.22` | archived candidates, calibration, and submitted outcomes | Compare only pre-deadline legal alternatives; require agent approval for model changes | Attributable regret and reversible model proposals |
-| `0.0.23` | versioned gameweek archives and competition state | Replace fixed imports incrementally; preserve provisional and legacy artifacts | Current and historical read-only decision workspace |
+| `0.0.23` | fixture evidence and probabilistic projections | Read odds report v1/v2; retain heuristics as labeled fallback; preserve all provider and simulation inputs | Budgeted market distributions and component-scoped player adjustments |
+| `0.0.24` | versioned gameweek archives and competition state | Replace fixed imports incrementally; preserve provisional and legacy artifacts | Current and historical read-only decision workspace |
 
 Implementation order is strict where the downstream calculation would otherwise manufacture precision. In particular:
 

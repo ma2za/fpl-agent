@@ -53,7 +53,7 @@ export function optimizationPlayers(
   const playerById = new Map(players.map((player) => [player.id, player]));
   return projections.flatMap((projection) => {
     const player = playerById.get(projection.playerId);
-    if (!player) return [];
+    if (!player || player.status === "u") return [];
     const scenarioAdjustment = request.projectionScenarioAdjustments?.find((item) => item.playerId === projection.playerId);
     const adjusted = scenarioAdjustment ? applyProjectionScenarioAdjustment(scenarioAdjustment) : null;
     const horizons = Object.fromEntries(([1, 3, 6] as const).map((horizon) => {

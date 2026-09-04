@@ -12,6 +12,8 @@ export * from "./fixtureHorizon";
 export * from "./markdown";
 export * from "./minutesRisk";
 export * from "./odds";
+export * from "./oddsProviders";
+export * from "./marketOdds";
 export * from "./premierLeagueFixtures";
 export * from "./publicEvidence";
 export * from "./provenance";

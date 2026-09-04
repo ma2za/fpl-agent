@@ -269,6 +269,24 @@ export type ProjectionModelInputs = {
   cohort: string;
 };
 
+export type MarketPlayerProjectionInput = {
+  anytimeScorerProbability: number | null;
+  cleanSheetProbability: number | null;
+  baselineGoalRatePer90: number;
+  baselineCleanSheetProbability: number | null;
+  evidenceIds: string[];
+};
+
+export type MarketProjectionAdjustment = {
+  goalPointsDelta: number;
+  cleanSheetPointsDelta: number;
+  rawConditionalStartDelta: number;
+  appliedConditionalStartDelta: number;
+  conditionalSubstituteDelta: number;
+  capped: boolean;
+  evidenceIds: string[];
+};
+
 export type ProbabilisticProjection = {
   playerId: number;
   appearance: AppearanceStateForecast;
@@ -288,7 +306,9 @@ export type ProbabilisticProjection = {
     evidenceIds: string[];
   }>;
   model: "appearance-state-mixture";
-  modelVersion: "0.0.13";
+  modelVersion: "0.0.13" | "0.0.23";
+  componentVersions?: { appearance: "0.0.13"; points: "0.0.23" };
+  marketAdjustment?: MarketProjectionAdjustment | null;
   inputs: ProjectionModelInputs;
 };
 
@@ -297,7 +317,8 @@ export type ProjectionUncertaintyReport = {
   generatedAt: string;
   gameweek: number;
   model: "appearance-state-mixture";
-  modelVersion: "0.0.13";
+  modelVersion: "0.0.13" | "0.0.23";
+  componentVersions?: { appearance: "0.0.13"; points: "0.0.23" };
   seed: number;
   sampleCount: number;
   items: ProbabilisticProjection[];
