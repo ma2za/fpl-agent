@@ -2,9 +2,10 @@
   "schemaVersion": 1,
   "artifactKind": "agent_decision",
   "generatedAt": "2026-09-04T14:06:40.906Z",
+  "submittedAt": "2026-09-04T16:33:19.4863300+02:00",
   "gameweek": 3,
   "deadline": "2026-09-04T17:30:00Z",
-  "status": "selected",
+  "status": "submitted",
   "optimizationPolicy": "MAX_EXPECTED_POINTS",
   "selectedCandidateId": "gw3-one-free-transfer:out-165:gw1:1",
   "action": {
@@ -22,14 +23,40 @@
   },
   "squad": {
     "playerIds": [82, 109, 4, 418, 8, 88, 204, 397, 427, 542, 260, 212, 346, 106, 411],
-    "startingXI": [82, 204, 4, 88, 8, 397, 260, 427, 411, 106, 346],
-    "benchOrder": [109, 418, 542, 212],
+    "startingXI": [82, 204, 4, 88, 8, 542, 397, 427, 411, 106, 346],
+    "benchOrder": [109, 418, 260, 212],
     "captainPlayerId": 411,
-    "viceCaptainPlayerId": 397,
+    "viceCaptainPlayerId": 106,
     "formation": "4-3-3",
     "cost": 100.0,
     "bank": 0.0
   },
+  "modelRecommendation": {
+    "startingXI": [82, 204, 4, 88, 8, 397, 260, 427, 411, 106, 346],
+    "benchOrder": [109, 418, 542, 212],
+    "captainPlayerId": 411,
+    "viceCaptainPlayerId": 397,
+    "expectedPoints": 73.802
+  },
+  "managerOverrides": [
+    {
+      "type": "starter_swap",
+      "outPlayerId": 260,
+      "outPlayerName": "Harry Wilson",
+      "inPlayerId": 542,
+      "inPlayerName": "Enzo Le Fee",
+      "modelExpectedPointsDelta": -0.9,
+      "reason": "Prefer Le Fee's observed 168 minutes and confirmed number-10 role over Wilson's model-inflated start estimate and new competition for places."
+    },
+    {
+      "type": "vice_captain_swap",
+      "outPlayerId": 397,
+      "outPlayerName": "Antoine Semenyo",
+      "inPlayerId": 106,
+      "inPlayerName": "Igor Thiago",
+      "reason": "Manager-submitted vice-captain selection."
+    }
+  ],
   "deterministicMetrics": {
     "objective": 80.6,
     "unpenalizedObjective": 81.95,
