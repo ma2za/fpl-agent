@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import postmortemJson from "../../content/postmortems/gw-1.json";
+import gw3PostmortemJson from "../../content/postmortems/gw-3.json";
 import { GameweekPostmortemSchema } from "../src/postmortem";
 
 describe("GW1 postmortem", () => {
@@ -19,5 +20,15 @@ describe("GW1 postmortem", () => {
       "Cunha -> Mbeumo",
       "Okafor -> E. Le Fée"
     ]);
+  });
+});
+
+describe("GW3 postmortem", () => {
+  it("reconciles the submitted score and manager override", () => {
+    const postmortem = GameweekPostmortemSchema.parse(gw3PostmortemJson);
+
+    expect(postmortem.manager.totalPoints).toBe(65);
+    expect(postmortem.aiSelection.actualPointsCounterfactual).toBe(57);
+    expect(postmortem.counterfactuals.managerOverrideDelta).toBe(8);
   });
 });

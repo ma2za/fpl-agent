@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "artifactKind": "gameweek_postmortem",
+  "gameweek": 3,
+  "source": "https://fantasy.premierleague.com/en/entry/7407631/event/3",
+  "manager": {
+    "entryId": 7407631,
+    "teamName": "five points",
+    "totalPoints": 65,
+    "overallPoints": 200,
+    "gameweekAverage": 51,
+    "gameweekHighest": 119,
+    "gameweekRank": 1163997,
+    "overallRank": 2346231,
+    "totalPlayers": 10577714,
+    "teamValue": 100.1,
+    "bank": 0,
+    "transfers": 1
+  },
+  "aiSelection": {
+    "candidateId": "gw3-one-free-transfer:out-165:gw1:1",
+    "projectedPoints": 73.802,
+    "actualPointsCounterfactual": 57,
+    "sourcePath": "packages/content/recommendations/gw-3/decision-record.json"
+  },
+  "submittedSelection": {
+    "formation": "4-3-3",
+    "captainPlayerId": 411,
+    "viceCaptainPlayerId": 106,
+    "picks": [
+      { "playerId": 82, "name": "Kelleher", "position": "GKP", "role": "starter", "rawPoints": 2, "multiplier": 1, "countedPoints": 2 },
+      { "playerId": 4, "name": "Gabriel", "position": "DEF", "role": "starter", "rawPoints": 2, "multiplier": 1, "countedPoints": 2 },
+      { "playerId": 8, "name": "Calafiori", "position": "DEF", "role": "starter", "rawPoints": 2, "multiplier": 1, "countedPoints": 2 },
+      { "playerId": 88, "name": "Kayode", "position": "DEF", "role": "starter", "rawPoints": 1, "multiplier": 1, "countedPoints": 1 },
+      { "playerId": 204, "name": "Mitchell", "position": "DEF", "role": "starter", "rawPoints": 15, "multiplier": 1, "countedPoints": 15 },
+      { "playerId": 542, "name": "E.Le Fée", "position": "MID", "role": "starter", "rawPoints": 8, "multiplier": 1, "countedPoints": 8 },
+      { "playerId": 397, "name": "Semenyo", "position": "MID", "role": "starter", "rawPoints": 6, "multiplier": 1, "countedPoints": 6 },
+      { "playerId": 427, "name": "Mbeumo", "position": "MID", "role": "starter", "rawPoints": 8, "multiplier": 1, "countedPoints": 8 },
+      { "playerId": 346, "name": "Calvert-Lewin", "position": "FWD", "role": "starter", "rawPoints": 1, "multiplier": 1, "countedPoints": 1 },
+      { "playerId": 106, "name": "Igor Thiago", "position": "FWD", "role": "starter", "rawPoints": 2, "multiplier": 1, "countedPoints": 2 },
+      { "playerId": 411, "name": "Haaland", "position": "FWD", "role": "starter", "rawPoints": 9, "multiplier": 2, "countedPoints": 18 },
+      { "playerId": 109, "name": "Verbruggen", "position": "GKP", "role": "bench", "rawPoints": 3, "multiplier": 0, "countedPoints": 0 },
+      { "playerId": 418, "name": "Maguire", "position": "DEF", "role": "bench", "rawPoints": 2, "multiplier": 0, "countedPoints": 0 },
+      { "playerId": 260, "name": "Wilson", "position": "MID", "role": "bench", "rawPoints": 0, "multiplier": 0, "countedPoints": 0 },
+      { "playerId": 212, "name": "Hughes", "position": "MID", "role": "bench", "rawPoints": 1, "multiplier": 0, "countedPoints": 0 }
+    ]
+  },
+  "managerOverrides": [
+    {
+      "outPlayerId": 260,
+      "outName": "Wilson",
+      "outPoints": 0,
+      "inPlayerId": 542,
+      "inName": "E.Le Fée",
+      "inPoints": 8,
+      "pointsDelta": 8,
+      "outcomeNote": "The submitted 4-3-3 started Le Fée while the selected 4-3-3 started Wilson. Wilson appeared for 17 minutes, so no automatic substitution applied in the AI counterfactual."
+    }
+  ],
+  "counterfactuals": {
+    "managerOverrideDelta": 8,
+    "viceCaptainAsCaptainPoints": 58,
+    "captaincyDelta": -7,
+    "unusedBenchPoints": 6
+  },
+  "lessons": [
+    "The submitted team scored 65 points, 14 above the gameweek average, and improved the overall rank from 3,976,662 to 2,346,231.",
+    "The Le Fée-over-Wilson lineup override added eight realized points. The model projected Wilson at 5.0 points with a 99.1 percent start probability, but he started on the bench, played 17 minutes, and finished on zero; Le Fée started and scored eight.",
+    "Haaland scored nine raw points and captaincy added nine; switching the armband to vice-captain Thiago would have lost seven points.",
+    "The selected AI candidate scored 57 against a 73.802 expectation and remained inside its retained 54.398 to 93.476 p10-p90 interval.",
+    "The João Pedro-to-Thiago transfer gained one direct realized point, two versus one, but the selected model lineup scored the same 57 points as the retained roll structure.",
+    "The Gakpo runner-up structure scored 60, three more than the selected AI structure. Its pre-deadline simulated deficit was only 0.273 points with a 48.26 percent paired win rate, so the outcome confirms that the decision was a near-tie rather than establishing a meaningful selection edge.",
+    "The manager's lineup override lifted the submitted score five points above the Gakpo runner-up structure despite the model selecting the lower-scoring transfer structure.",
+    "Mitchell's gameweek-high 15 points and returns from Le Fée and Mbeumo supplied 31 of the 56 uncaptained starter points; the remaining eight uncaptained starters supplied 25."
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "name": "fpl-agent",
-  "version": "0.0.23",
+  "version": "0.0.24",
   "private": true,
   "license": "Apache-2.0",
   "engines": {
@@ -11,6 +11,7 @@
     "dev": "corepack pnpm --filter @fpl-agent/web dev",
     "build": "corepack pnpm --filter @fpl-agent/web build",
     "test": "vitest run",
+    "test:workspace-browser": "tsx scripts/test-gameweek-workspace.ts",
     "typecheck": "tsc -p tsconfig.json && tsc -p apps/web/tsconfig.json",
     "benchmark": "tsx scripts/benchmark.ts",
     "benchmark:rules": "tsx scripts/benchmark-rules.ts",

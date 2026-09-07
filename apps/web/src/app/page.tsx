@@ -1,4 +1,9 @@
+import Link from "next/link";
+import { loadWorkspace } from "../lib/gameweek-workspace";
+
 export default function HomePage() {
+  const workspace = loadWorkspace();
+
   return (
     <>
       <section className="hero">
@@ -9,16 +14,16 @@ export default function HomePage() {
           squad state, rules, news, and methodology before writing manual
           recommendations for a human manager.
         </p>
-        <div className="status">No login. No automation. No submitted changes.</div>
+        <div className="status">{workspace.phase.replaceAll("_", " ")} · no authenticated actions</div>
       </section>
 
       <section className="grid">
         <article className="card">
-          <h2>Manual workflow</h2>
+          <h2>Current workspace</h2>
           <p>
-            The agent writes local recommendation files. The human manager reads
-            the checklist and applies any accepted changes inside official FPL.
+            {workspace.activeGameweek ? `GW${workspace.activeGameweek}` : "No active gameweek"} is resolved from official competition state.
           </p>
+          <Link className="evidence-link" href="/gameweeks">Open gameweeks</Link>
         </article>
         <article className="card">
           <h2>Public data first</h2>

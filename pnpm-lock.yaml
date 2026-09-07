@@ -26,9 +26,9 @@ importers:
 
   apps/web:
     dependencies:
-      '@fpl-agent/agent':
+      '@fpl-agent/rules':
         specifier: workspace:*
-        version: link:../../packages/agent
+        version: link:../../packages/rules
       next:
         specifier: 16.2.10
         version: 16.2.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7)

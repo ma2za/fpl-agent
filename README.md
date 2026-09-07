@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.23`
+Version: `0.0.24`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -189,7 +189,7 @@ See `docs/concentration-analysis.md` for the input format.
 
 `pnpm verify -- --gw {n}` re-validates an agent-authored recommendation and weekly strategy, rewrites the legality report, brief, checklist, and risk report, and exits non-zero when the recommendation is missing, illegal, lacks an explicit optimization objective, discards or skips a generated candidate, lacks complete MILP optimality proofs, uses club coverage as a player-pick reason, uses ownership outside a cited rank simulation, claims an unquantified model override, lacks required rationale or pick-versus-alternative analysis, or lacks completed current research coverage for a selected player. Publication requires five distinct relevant public-news articles across the selected squad, published within the preceding 14 days.
 
-Postmortem commands are placeholders until later milestones implement those workflows.
+`pnpm postmortem -- --gw {n}` validates a gameweek-indexed post-mortem and prints its submitted score, average, AI counterfactual, manager override, and captaincy comparison.
 
 ## Configuration
 
@@ -288,7 +288,7 @@ See `docs/cron.md`.
 
 ## Website
 
-The website is read-only and displays project state, methodology, recommendations, squad information, and postmortems.
+The website is read-only and resolves competition state from public FPL data. `/gameweeks` lists the current and historical workspace, while `/gameweeks/{n}` renders recommendation, squad, readiness, triggers, simulation, outcome, regret, calibration lineage, and archive provenance without fixed gameweek imports. Missing, provisional, live, and finalized gameweeks remain visibly distinct.
 
 ```bash
 pnpm dev

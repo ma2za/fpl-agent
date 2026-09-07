@@ -143,6 +143,81 @@ p {
   margin-top: 36px;
 }
 
+.archive-list {
+  display: grid;
+  gap: 10px;
+}
+
+.archive-row {
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 72px 110px 1fr 1fr;
+  padding: 14px 16px;
+}
+
+.archive-row:hover {
+  border-color: var(--accent);
+}
+
+.state {
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 9px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.state-finalized {
+  background: #e8f3f1;
+  color: var(--accent-strong);
+}
+
+.state-live {
+  background: #fff0d6;
+  color: #7a4500;
+}
+
+.state-provisional {
+  background: #e9eef7;
+  color: #344d73;
+}
+
+.state-missing {
+  background: #eeeeec;
+  color: var(--muted);
+}
+
+.notice {
+  background: #e9eef7;
+  border: 1px solid #c7d3e5;
+  border-radius: 8px;
+  color: #344d73;
+  margin-top: 28px;
+  padding: 14px 16px;
+}
+
+.notice-live {
+  background: #fff0d6;
+  border-color: #e4c68f;
+  color: #7a4500;
+}
+
+.gameweek-nav {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.gameweek-nav a {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
 .table-wrap {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -267,5 +342,9 @@ tbody tr:last-child td {
   .topbar-inner {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .archive-row {
+    grid-template-columns: 64px 1fr;
   }
 }

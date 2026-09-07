@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present through `0.0.23` and the dependency-ordered plan through `0.0.24`.
+This document records the capabilities present through `0.0.24`.
 
 ## Permanent Decision Boundary
 
@@ -12,7 +12,7 @@ This document records the capabilities present through `0.0.23` and the dependen
 - Tool-produced evidence and candidate artifacts must remain structurally separate from agent-authored decision artifacts.
 - Verification may reject illegal or unsupported decisions, but it must never replace them or choose an alternative.
 
-## Current State: 0.0.23
+## Current State: 0.0.24
 
 ### Workspace
 
@@ -119,8 +119,12 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 ### Website
 
 - Read-only project overview.
-- Current GW1 recommendation and risk presentation.
-- Squad, methodology, and postmortem pages.
+- Competition-state-derived current and historical gameweek index.
+- Gameweek-indexed recommendation, squad, evidence-readiness, trigger, simulation, outcome, regret, and provenance views.
+- Missing, provisional, live, and finalized states with archive-first historical reads.
+- Calibration cohorts, source freshness, evidence gaps, and model-version lineage.
+- Compatibility redirects for recommendation and squad entry points.
+- Methodology and post-mortem archive pages.
 
 ### Operational State
 
@@ -678,7 +682,7 @@ Status: delivered.
 
 Replace hard-coded GW1 views with a current and historical workspace for repeated weekly operation.
 
-Scope:
+Delivered:
 
 - Resolve current, upcoming, live, and finalized gameweeks from competition state rather than fixed content imports.
 - Add gameweek-indexed recommendation, squad, evidence-readiness, trigger, simulation, and postmortem views.
@@ -693,6 +697,8 @@ Release gate:
 - Test direct navigation, archive ordering, mobile layouts, and empty calibration cohorts.
 - Verify every displayed decision and metric resolves to its archived evidence and model version.
 - Run Playwright checks across current and historical gameweeks without any authenticated FPL access.
+
+Status: implementation complete; browser release-gate verification pending.
 
 ## Delivery Dependencies and Migration
 

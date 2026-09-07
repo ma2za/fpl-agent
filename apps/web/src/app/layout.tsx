@@ -8,8 +8,7 @@ export const metadata = {
 
 const links = [
   { href: "/", label: "Home" },
-  { href: "/recommendations", label: "Recommendations" },
-  { href: "/squad", label: "Squad" },
+  { href: "/gameweeks", label: "Gameweeks" },
   { href: "/methodology", label: "Methodology" },
   { href: "/postmortems", label: "Postmortems" }
 ];
