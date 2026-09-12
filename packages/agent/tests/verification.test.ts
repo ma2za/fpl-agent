@@ -191,6 +191,58 @@ describe("verifyRecommendation", () => {
     expect(result.quality.gates.length).toBeGreaterThan(0);
   });
 
+  it("rejects objective and horizon drift from the canonical policy", () => {
+    const drifted = structuredClone(recommendation);
+    const structure = drifted.decisionEvaluations!.find((item) => item.decisionType === "structure")!;
+    structure.objectiveId = "different-objective";
+    structure.horizon = "GW1-3";
+
+    const result = verifyRecommendation(drifted);
+
+    expect(result.errors).toContain("Decision dec:structure objective must match the canonical decision policy.");
+    expect(result.errors).toContain("Decision dec:structure horizon must match the canonical decision policy.");
+  });
+
+  it("defaults a transfer-versus-roll near-tie to rolling", () => {
+    const transferDecision = structuredClone(recommendation);
+    const evaluation = transferDecision.decisionEvaluations!.find((item) => item.decisionType === "transfers")!;
+    const roll = evaluation.candidateScores[0]!;
+    const transfer = { ...roll, candidateId: "action:transfer:7>99", rawExpectedPoints: 1.1, objectiveScore: 1.1 };
+    evaluation.candidateScores = [transfer, roll];
+    evaluation.selectedCandidateId = transfer.candidateId;
+    evaluation.objectiveLeaderCandidateId = transfer.candidateId;
+    evaluation.comparisonStatus = "NEAR_TIE";
+    evaluation.nearTieCandidateIds = [transfer.candidateId, roll.candidateId];
+
+    expect(verifyRecommendation(transferDecision).errors).toContain(
+      "Decision dec:transfers must roll when a transfer is tied with the roll baseline unless a quantified override is recorded."
+    );
+  });
+
+  it("accepts the roll policy default inside a transfer near-tie", () => {
+    const rollDecision = structuredClone(recommendation);
+    const evaluation = rollDecision.decisionEvaluations!.find((item) => item.decisionType === "transfers")!;
+    const roll = evaluation.candidateScores[0]!;
+    const transfer = { ...roll, candidateId: "action:transfer:7>99", rawExpectedPoints: 1.1, objectiveScore: 1.1 };
+    evaluation.candidateScores = [transfer, roll];
+    evaluation.selectedBy = "policy_default";
+    evaluation.objectiveLeaderCandidateId = transfer.candidateId;
+    evaluation.comparisonStatus = "NEAR_TIE";
+    evaluation.nearTieCandidateIds = [transfer.candidateId, roll.candidateId];
+
+    expect(verifyRecommendation(rollDecision).errors).toEqual([]);
+  });
+
+  it("rejects clear-winner language for a numerical near-tie", () => {
+    const overstated = structuredClone(recommendation);
+    const captaincy = overstated.decisionEvaluations!.find((item) => item.decisionType === "captaincy")!;
+    captaincy.uncertainty = "The selected captain is clearly better than the tied alternative.";
+
+    expect(verifyRecommendation(overstated).errors).toContain(
+      "Decision dec:captaincy uses clear-winner language for a material near-tie."
+    );
+  });
+
   it("blocks incomplete selected-player research coverage", () => {
     const result = verifyRecommendation(recommendation, {
       selectedPlayerEvidence: recommendation.squadBefore.players.map((player) => ({
@@ -236,7 +288,7 @@ describe("verifyRecommendation", () => {
     );
   });
 
-  it("does not allow an explicit override to bypass the declared objective", () => {
+  it("rejects an unquantified explicit override", () => {
     const overridden = structuredClone(recommendation);
     const captaincy = overridden.decisionEvaluations!.find((item) => item.decisionType === "captaincy")!;
     captaincy.candidateScores = captaincy.candidateScores.map((candidate) => ({
@@ -246,16 +298,44 @@ describe("verifyRecommendation", () => {
     }));
     captaincy.selectedBy = "explicit_override";
     captaincy.overrideReason = "Prefer the midfielder despite the lower declared score.";
+    captaincy.objectiveLeaderCandidateId = captaincy.candidateScores.find((candidate) => candidate.objectiveScore === 5.8)!.candidateId;
+    captaincy.comparisonStatus = "CLEAR";
+    captaincy.nearTieCandidateIds = [captaincy.objectiveLeaderCandidateId];
 
     const result = verifyRecommendation(overridden);
 
     expect(result.publicationGate.publicationStatus).toBe("invalid");
     expect(result.errors).toContain(
-      "Decision dec:captaincy selected player:8 with score 5.5, below the declared-objective maximum 5.8."
+      "Decision dec:captaincy explicit override must quantify the objective-score tradeoff."
     );
-    expect(result.errors).toContain(
-      "Decision dec:captaincy uses a discretionary explicit override; final decisions must maximize their declared objective."
+  });
+
+  it("accepts a quantified explicit override", () => {
+    const overridden = structuredClone(recommendation);
+    const captaincy = overridden.decisionEvaluations!.find((item) => item.decisionType === "captaincy")!;
+    captaincy.candidateScores = captaincy.candidateScores.map((candidate) => ({
+      ...candidate,
+      rawExpectedPoints: candidate.candidateId === "player:8" ? 5.5 : 5.8,
+      objectiveScore: candidate.candidateId === "player:8" ? 5.5 : 5.8
+    }));
+    captaincy.selectedBy = "explicit_override";
+    captaincy.overrideReason = "Current role evidence supports accepting the measured objective tradeoff.";
+    captaincy.overrideTradeoff = { objectiveScoreDelta: 0.3, evidenceIds: ["fact:test"] };
+    captaincy.objectiveLeaderCandidateId = captaincy.candidateScores.find((candidate) => candidate.objectiveScore === 5.8)!.candidateId;
+    captaincy.comparisonStatus = "CLEAR";
+    captaincy.nearTieCandidateIds = [captaincy.objectiveLeaderCandidateId];
+    overridden.canonicalState!.playerProjections = overridden.canonicalState!.playerProjections.map((projection) =>
+      projection.playerId === 8 ? { ...projection, projectedPoints: 5.5 } :
+        projection.playerId === 13 ? { ...projection, projectedPoints: 5.8 } : projection
     );
+    overridden.canonicalState!.uncaptainedXIProjection = overridden.pickTeam.startingXI.reduce((sum, playerId) =>
+      sum + overridden.canonicalState!.playerProjections.find((projection) => projection.playerId === playerId)!.projectedPoints, 0
+    );
+    overridden.pickTeam.projectedPoints = overridden.canonicalState!.uncaptainedXIProjection;
+    overridden.canonicalState!.captainMarginalProjection = 5.5;
+    overridden.canonicalState!.captainedTeamProjection = overridden.canonicalState!.uncaptainedXIProjection + 5.5;
+
+    expect(verifyRecommendation(overridden).errors).toEqual([]);
   });
 
   it("rejects one-candidate optimized evaluations and orphaned structural counterfactuals", () => {
@@ -286,6 +366,14 @@ describe("verifyRecommendation", () => {
 
   it("rejects undecomposed non-raw objective scores", () => {
     const invalid = structuredClone(recommendation);
+    invalid.decisionPolicy!.objectiveMetric = "structural_utility";
+    for (const evaluation of invalid.decisionEvaluations!) {
+      evaluation.objectiveMetric = "structural_utility";
+      evaluation.candidateScores = evaluation.candidateScores.map((candidate) => ({
+        ...candidate,
+        scoreComponents: [{ name: "structural objective", value: candidate.objectiveScore, evidenceIds: ["fact:test"] }]
+      }));
+    }
     const structure = invalid.decisionEvaluations!.find((item) => item.decisionType === "structure")!;
     delete structure.candidateScores[0]!.scoreComponents;
 

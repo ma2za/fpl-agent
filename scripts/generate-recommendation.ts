@@ -348,7 +348,10 @@ The coding agent must read the evidence files, reason from current public inform
 - Fill claimLedger v3 with explicit OBSERVATION, DERIVED_FACT, ASSUMPTION, FORECAST, and DECISION kinds; list every authored decision in decisionIds.
 - Build one immutable evidenceSnapshot and reference its snapshotId from every observation, forecast, DecisionEvaluation, canonical state, and factual claim.
 - Add canonical DecisionEvaluation records for squad, structure, starting XI, bench order, captaincy, transfers, and chip selection.
-- Select the highest eligible objectiveScore. Discretionary overrides are invalid, including when prose preferences contradict raw expected points.
+- Declare one decisionPolicy with a stable policyId, objective, horizon, risk mode, materiality floor, and near-tie transfer default. Reference it from optimizationPolicy and every DecisionEvaluation.
+- Classify each comparison as CLEAR, NEAR_TIE, or UNRESOLVED. A small positive estimate inside the materiality threshold is not a clear winner.
+- Select the objective leader unless an explicit override records its reason, exact objective-score delta, and supporting evidence IDs.
+- When a transfer and roll are a near-tie, select the roll unless a quantified explicit override supports the transfer.
 - Declare optimizationPolicy explicitly. MAX_EXPECTED_POINTS excludes ownership; rank-aware modes require a cited simulated field distribution.
 - Quantify every model adjustment as a feature-level points delta with uncertainty and evidence IDs. Never apply a feature already present in the base projection.
 - Never use club "coverage" to select or omit a player. Compare independently optimized with-player and without-player squads.

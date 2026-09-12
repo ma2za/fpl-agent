@@ -99,6 +99,21 @@ describe("artifact schemas", () => {
     expect(CandidateArtifactSchema.safeParse(decision).success).toBe(false);
   });
 
+  it("keeps pre-0.0.25 decision artifacts readable", () => {
+    const legacy = structuredClone(variantRecommendation());
+    delete legacy.decisionPolicy;
+    delete legacy.optimizationPolicy!.policyId;
+    for (const evaluation of legacy.decisionEvaluations!) {
+      delete evaluation.policyId;
+      delete evaluation.comparisonStatus;
+      delete evaluation.objectiveLeaderCandidateId;
+      delete evaluation.materialityThreshold;
+      delete evaluation.nearTieCandidateIds;
+    }
+
+    expect(AgentDecisionArtifactSchema.safeParse(legacy).success).toBe(true);
+  });
+
   it("does not parse player-intelligence evidence as an agent decision", () => {
     const readiness = EvidenceReadinessReportSchema.parse({
       schemaVersion: 1,
@@ -259,6 +274,7 @@ describe("artifact schemas", () => {
       "counterfactualSet",
       "currentRoleReport",
       "decisionMarginReport",
+      "decisionPolicy",
       "draftDeltaReport",
       "evidenceReport",
       "evidenceSnapshot",
@@ -375,6 +391,21 @@ describe("artifact schemas", () => {
       }
     } as const;
     expect(StructureSimulationReportSchema.parse(retained)).toEqual(retained);
+
+    const policyBound = {
+      ...retained,
+      modelVersion: "0.0.25",
+      decisionStability: { ...retained.decisionStability, status: "CLEAR" },
+      decisionPolicyRef: {
+        policyId: "policy:gw1",
+        objectiveId: "expected-points",
+        horizon: "GW1",
+        riskMode: "MAX_EXPECTED_POINTS",
+        minimumObjectiveMargin: 0.15,
+        confidenceLevel: 0.95
+      }
+    } as const;
+    expect(StructureSimulationReportSchema.parse(policyBound)).toEqual(policyBound);
   });
 });
 

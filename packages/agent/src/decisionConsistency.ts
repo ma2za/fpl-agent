@@ -136,6 +136,21 @@ function decisionValidation(recommendation: WeeklyRecommendation) {
   const evaluationIds = new Set<string>();
   const tolerance = recommendation.canonicalState?.floatingPointTolerance ?? 0.000001;
   const optimizedDecisionTypes = new Set<DecisionType>(["squad", "structure", "starting_xi", "captaincy"]);
+  const policy = recommendation.decisionPolicy;
+
+  if (!policy) {
+    errors.push("Final recommendation must include a canonical decision policy.");
+  } else {
+    if (recommendation.optimizationPolicy?.policyId !== policy.policyId) {
+      errors.push("Optimization policy must reference the canonical decision policy.");
+    }
+    if (recommendation.optimizationPolicy?.horizon !== policy.horizon) {
+      errors.push("Optimization policy horizon must match the canonical decision policy.");
+    }
+    if (recommendation.optimizationPolicy?.mode !== policy.riskMode) {
+      errors.push("Optimization policy mode must match the canonical decision policy.");
+    }
+  }
 
   for (const type of REQUIRED_DECISIONS) {
     if (!byType.has(type)) errors.push(`Canonical DecisionEvaluation is required for ${type}.`);
@@ -145,6 +160,10 @@ function decisionValidation(recommendation: WeeklyRecommendation) {
     if (evaluationIds.has(evaluation.decisionId)) errors.push(`Duplicate DecisionEvaluation ID ${evaluation.decisionId}.`);
     evaluationIds.add(evaluation.decisionId);
     if (!declaredDecisionIds.has(evaluation.decisionId)) errors.push(`DecisionEvaluation ${evaluation.decisionId} is not a declared decision dependency.`);
+    if (policy && evaluation.policyId !== policy.policyId) errors.push(`Decision ${evaluation.decisionId} references a different decision policy.`);
+    if (policy && evaluation.objectiveId !== policy.objectiveId) errors.push(`Decision ${evaluation.decisionId} objective must match the canonical decision policy.`);
+    if (policy && evaluation.objectiveMetric !== policy.objectiveMetric) errors.push(`Decision ${evaluation.decisionId} objective metric must match the canonical decision policy.`);
+    if (policy && evaluation.horizon !== policy.horizon) errors.push(`Decision ${evaluation.decisionId} horizon must match the canonical decision policy.`);
     const candidateIds = new Set<string>();
     for (const candidate of evaluation.candidateScores) {
       if (candidateIds.has(candidate.candidateId)) errors.push(`Decision ${evaluation.decisionId} contains duplicate candidate ${candidate.candidateId}.`);
@@ -169,19 +188,68 @@ function decisionValidation(recommendation: WeeklyRecommendation) {
     if (optimizedDecisionTypes.has(evaluation.decisionType) && eligible.length < 2) {
       errors.push(`Optimized decision ${evaluation.decisionId} must contain at least two meaningful eligible candidates.`);
     }
-    const bestScore = Math.max(...eligible.map((candidate) => candidate.objectiveScore));
-    if (bestScore - selected.objectiveScore > tolerance) {
+    const ranked = [...eligible].sort((left, right) => right.objectiveScore - left.objectiveScore || left.candidateId.localeCompare(right.candidateId));
+    const leader = ranked[0];
+    if (!leader) continue;
+    const bestScore = leader.objectiveScore;
+    const objectiveScoreDelta = bestScore - selected.objectiveScore;
+    const materialityThreshold = evaluation.materialityThreshold ?? 0;
+    const nearTieCandidates = ranked.filter((candidate) => bestScore - candidate.objectiveScore <= materialityThreshold + tolerance);
+    const expectedComparisonStatus = ranked.length < 2
+      ? "UNRESOLVED"
+      : bestScore - ranked[1].objectiveScore > materialityThreshold + tolerance
+        ? "CLEAR"
+        : "NEAR_TIE";
+
+    if (evaluation.objectiveLeaderCandidateId !== leader.candidateId) {
+      errors.push(`Decision ${evaluation.decisionId} records ${evaluation.objectiveLeaderCandidateId} as leader; expected ${leader.candidateId}.`);
+    }
+    if (evaluation.comparisonStatus !== expectedComparisonStatus) {
+      errors.push(`Decision ${evaluation.decisionId} comparison status is ${evaluation.comparisonStatus}; expected ${expectedComparisonStatus}.`);
+    }
+    if (evaluation.comparisonStatus === "NEAR_TIE" && /\b(?:clear(?:ly)?\s+(?:winner|better)|best|strongest|superior|wins?)\b/i.test(evaluation.uncertainty)) {
+      errors.push(`Decision ${evaluation.decisionId} uses clear-winner language for a material near-tie.`);
+    }
+    if (policy && materialityThreshold + tolerance < policy.minimumObjectiveMargin) {
+      errors.push(`Decision ${evaluation.decisionId} materiality threshold is below the canonical policy minimum.`);
+    }
+    const expectedNearTieIds = nearTieCandidates.map((candidate) => candidate.candidateId).sort();
+    const recordedNearTieIds = [...new Set(evaluation.nearTieCandidateIds ?? [])].sort();
+    if (expectedNearTieIds.join(",") !== recordedNearTieIds.join(",")) {
+      errors.push(`Decision ${evaluation.decisionId} near-tie candidates do not match its scores and materiality threshold.`);
+    }
+
+    const rollCandidate = nearTieCandidates.find((candidate) => candidate.candidateId.startsWith("action:roll:"));
+    const appliesRollDefault = policy?.nearTieTransferDefault === "ROLL" && evaluation.decisionType === "transfers" &&
+      evaluation.comparisonStatus === "NEAR_TIE" && rollCandidate?.candidateId === selected.candidateId;
+    const overridesRollDefault = policy?.nearTieTransferDefault === "ROLL" && evaluation.decisionType === "transfers" &&
+      evaluation.comparisonStatus === "NEAR_TIE" && rollCandidate !== undefined && selected.candidateId !== rollCandidate.candidateId;
+
+    if (objectiveScoreDelta > tolerance && evaluation.selectedBy !== "explicit_override" && evaluation.selectedBy !== "policy_default") {
       errors.push(`Decision ${evaluation.decisionId} selected ${selected.candidateId} with score ${selected.objectiveScore}, below the declared-objective maximum ${bestScore}.`);
     }
+    if (evaluation.selectedBy === "policy_default" && !appliesRollDefault) {
+      errors.push(`Decision ${evaluation.decisionId} uses the roll policy default outside a transfer near-tie.`);
+    }
     if (evaluation.selectedBy === "explicit_override") {
-      errors.push(`Decision ${evaluation.decisionId} uses a discretionary explicit override; final decisions must maximize their declared objective.`);
+      if (objectiveScoreDelta <= tolerance && !overridesRollDefault) errors.push(`Decision ${evaluation.decisionId} marks the objective leader as an explicit override.`);
+      if (!evaluation.overrideReason?.trim()) errors.push(`Decision ${evaluation.decisionId} explicit override requires a reason.`);
+      if (!evaluation.overrideTradeoff || Math.abs(evaluation.overrideTradeoff.objectiveScoreDelta - objectiveScoreDelta) > tolerance) {
+        errors.push(`Decision ${evaluation.decisionId} explicit override must quantify the objective-score tradeoff.`);
+      }
+      if (!evaluation.overrideTradeoff?.evidenceIds.length) {
+        errors.push(`Decision ${evaluation.decisionId} explicit override requires supporting evidence.`);
+      }
+    } else if (evaluation.overrideReason !== null || evaluation.overrideTradeoff) {
+      errors.push(`Decision ${evaluation.decisionId} records override evidence without selecting by explicit override.`);
     }
-    if (evaluation.overrideReason !== null) {
-      errors.push(`Decision ${evaluation.decisionId} records an override reason; discretionary overrides are invalid.`);
+
+    if (overridesRollDefault && evaluation.selectedBy !== "explicit_override") {
+      errors.push(`Decision ${evaluation.decisionId} must roll when a transfer is tied with the roll baseline unless a quantified override is recorded.`);
     }
-    const tiedBest = eligible.filter((candidate) => Math.abs(bestScore - candidate.objectiveScore) <= tolerance);
-    if (evaluation.tieBreakersApplied.length > 0 && tiedBest.length < 2) {
-      errors.push(`Decision ${evaluation.decisionId} applies tie-breakers without an objective-score tie.`);
+
+    if (evaluation.tieBreakersApplied.length > 0 && nearTieCandidates.length < 2) {
+      errors.push(`Decision ${evaluation.decisionId} applies tie-breakers without a material near-tie.`);
     }
 
     if (evaluation.decisionType === "squad" || evaluation.decisionType === "starting_xi" || evaluation.decisionType === "structure") {

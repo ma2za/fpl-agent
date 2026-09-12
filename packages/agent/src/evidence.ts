@@ -147,6 +147,19 @@ export function buildEvidencePack(input: BuildEvidencePackInput): EvidencePack {
         agent: "<agent name>",
         authoredAt: "<ISO timestamp>"
       },
+      decisionPolicy: {
+        schemaVersion: 1,
+        artifactKind: "decision_policy",
+        policyId: `<policy:gw${input.gameweek}>`,
+        createdAt: input.createdAt,
+        objectiveId: "<objective ID>",
+        objectiveMetric: "<raw_expected_points | risk_adjusted_utility | structural_utility | rules_utility>",
+        horizon: "<GW1 | GW1-3 | GW1-5 | GW1-6 | season | structural>",
+        riskMode: "<MAX_EXPECTED_POINTS | MAX_EXPECTED_RANK | MINI_LEAGUE_DEFEND | MINI_LEAGUE_CHASE>",
+        minimumObjectiveMargin: 0.15,
+        confidenceLevel: 0.95,
+        nearTieTransferDefault: "ROLL"
+      },
       requiredProvenance: {
         claimLedger: {
           schemaVersion: 3,
@@ -177,7 +190,10 @@ export function buildEvidencePack(input: BuildEvidencePackInput): EvidencePack {
         factualClaims: [],
         rules: [
           "Use one snapshot for observations, forecasts, decisions, and factual claims.",
-          "Select the highest eligible objective score. Discretionary overrides are invalid.",
+          "Reference one canonical decision policy from optimization and every decision evaluation.",
+          "Classify comparisons as CLEAR, NEAR_TIE, or UNRESOLVED from the declared materiality threshold.",
+          "Select the objective leader unless an explicit override quantifies the score delta and cites supporting evidence.",
+          "Default a transfer-versus-roll near-tie to rolling unless a quantified override is recorded.",
           "Persist multiple meaningful legal candidates for squad, structure, starting XI, and captaincy decisions.",
           "Persist material structural counterfactual compositions and comparable metrics directly in candidateScores.",
           "Decompose every non-raw objectiveScore into evidenced scoreComponents.",

@@ -41,6 +41,7 @@ export type OptimizationRequest = {
   artifactKind: "tool_evidence";
   generatedAt: string;
   requestId: string;
+  decisionPolicyId?: string;
   gameweek: number;
   horizons: OptimizationHorizon[];
   scenarios: OptimizationScenario[];

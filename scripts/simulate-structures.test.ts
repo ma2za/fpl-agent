@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rejectCandidateTruncation, simulationCandidatesForHorizon } from "./simulate-structures";
+import { assertDecisionPolicyChain, rejectCandidateTruncation, simulationCandidatesForHorizon } from "./simulate-structures";
 
 describe("simulation frontier retention", () => {
   it("keeps every persisted candidate even when squads have identical players", () => {
@@ -20,5 +20,14 @@ describe("simulation frontier retention", () => {
   it("rejects requests that ask to truncate the simulation frontier", () => {
     expect(() => rejectCandidateTruncation({ maximumCandidates: 100 })).toThrow("truncation is prohibited");
     expect(() => rejectCandidateTruncation({})).not.toThrow();
+  });
+
+  it("requires counterfactual generation and simulation to share a policy ID", () => {
+    const request = { decisionPolicy: { policyId: "policy:gw3" } };
+    expect(() => assertDecisionPolicyChain(request, { request: { decisionPolicyId: "policy:gw3" } })).not.toThrow();
+    expect(() => assertDecisionPolicyChain(request, { request: { decisionPolicyId: "policy:gw1" } })).toThrow(
+      "must reference the same decision policy"
+    );
+    expect(() => assertDecisionPolicyChain({}, { request: {} })).not.toThrow();
   });
 });

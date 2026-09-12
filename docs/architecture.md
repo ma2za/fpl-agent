@@ -26,18 +26,23 @@ normalized data
 rules validation
 source-grounded current-role observations
 deterministic start, substitute, and no-appearance distributions
+pre-optimization starter, bench, and emergency eligibility
 quota-controlled bookmaker responses and normalized fair probabilities
 market-implied Poisson goals or labeled FPL-strength fallback
 role-adjusted projections with separate evidence uncertainty and football variance
+canonical objective, horizon, risk mode, and transfer posture
+complete legal frontier including the roll baseline
+paired simulation and clear, near-tie, or unresolved classification
 manual context notes
 schema-v2 coding-agent-authored decision with claim-ledger v3 epistemic lineage and manual checklist
 legality and quality verification
-human manually applies accepted changes
-postmortem records outcome
 deadline archive freezes every retained artifact and forecast row
+human manually applies accepted changes
+public submitted-state capture records the actual post-deadline team
 official outcomes append revisions and feed descriptive calibration
-frozen legal candidates replay into additive decision-regret components
+frozen legal candidates replay into additive model, agent, and manager decision-regret components
 approved model proposals create reversible version-adoption events
+decision reliability scorecard separates process quality from realized points
 ```
 
 Fixture evidence keeps the validated FPL schedule primary. The legacy ticker remains unchanged, while the additive horizon report separates attack and defence difficulty, records strength fallbacks and confidence, and never silently merges the separate Premier League fixture-release evidence.

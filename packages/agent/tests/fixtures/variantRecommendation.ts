@@ -50,6 +50,21 @@ export function withDecisionConsistency(recommendation: WeeklyRecommendation) {
   }));
   const captainProjection = pointValue;
 
+  recommendation.decisionPolicy = {
+    schemaVersion: 1,
+    artifactKind: "decision_policy",
+    policyId: `policy:gw${recommendation.gameweek}`,
+    createdAt: recommendation.createdAt,
+    objectiveId: "test-raw-ev",
+    objectiveMetric: "raw_expected_points",
+    horizon: "GW1",
+    riskMode: "MAX_EXPECTED_POINTS",
+    minimumObjectiveMargin: 0.15,
+    confidenceLevel: 0.95,
+    nearTieTransferDefault: "ROLL"
+  };
+  if (recommendation.optimizationPolicy) recommendation.optimizationPolicy.policyId = recommendation.decisionPolicy.policyId;
+
   recommendation.evidenceSnapshot = {
     snapshotId,
     createdAt: recommendation.createdAt,
@@ -98,29 +113,46 @@ export function withDecisionConsistency(recommendation: WeeklyRecommendation) {
     selectedCandidateId: string,
     candidateScores = [candidate(selectedCandidateId)],
     objectiveMetric: "raw_expected_points" | "structural_utility" = "raw_expected_points"
-  ) => ({
-    decisionId,
-    decisionType,
-    snapshotId,
-    objectiveId: objectiveMetric === "raw_expected_points" ? "test-raw-ev" : "test-structural-utility",
-    objectiveMetric,
-    horizon: decisionType === "squad" || decisionType === "structure" ? "structural" as const : "GW1" as const,
-    candidateScores: candidateScores.map((item) => objectiveMetric === "raw_expected_points" ? item : {
+  ) => {
+    const scored = candidateScores.map((item) => objectiveMetric === "raw_expected_points" ? item : {
       ...item,
       scoreComponents: [
         { name: "gw1 expected points term", value: item.objectiveScore - 0.5, evidenceIds: ["fact:test"] },
         { name: "horizon adjustment", value: 0.5, evidenceIds: ["fact:test"] }
       ]
-    }),
+    });
+    const ranked = [...scored].filter((item) => item.eligible)
+      .sort((left, right) => right.objectiveScore - left.objectiveScore || left.candidateId.localeCompare(right.candidateId));
+    const leader = ranked[0];
+    const materialityThreshold = 0.15;
+    return ({
+    decisionId,
+    decisionType,
+    snapshotId,
+    policyId: recommendation.decisionPolicy!.policyId,
+    objectiveId: "test-raw-ev",
+    objectiveMetric,
+    horizon: "GW1" as const,
+    candidateScores: scored,
     selectedCandidateId,
     selectedBy: "objective_score" as const,
     overrideReason: null,
+    overrideTradeoff: null,
+    comparisonStatus: ranked.length < 2
+      ? "UNRESOLVED" as const
+      : leader.objectiveScore - ranked[1].objectiveScore > materialityThreshold
+        ? "CLEAR" as const
+        : "NEAR_TIE" as const,
+    objectiveLeaderCandidateId: leader.candidateId,
+    materialityThreshold,
+    nearTieCandidateIds: ranked.filter((item) => leader.objectiveScore - item.objectiveScore <= materialityThreshold).map((item) => item.candidateId),
     constraintsApplied: ["test constraints"],
     riskAdjustments: [],
     uncertainty: "test uncertainty",
     tieBreakersApplied: [],
     evidenceIds: ["fact:test"]
   });
+  };
   const squadId = squadCandidateId(playerIds);
   const alternativePlayerIds = [...playerIds.slice(0, -1), 999];
   const secondAlternativePlayerIds = [...playerIds.slice(0, -2), 998, playerIds.at(-1)!];
@@ -139,7 +171,7 @@ export function withDecisionConsistency(recommendation: WeeklyRecommendation) {
       candidate("structure:balanced", 3, selectedState, { gw1ExpectedPoints: 60, gw1To3ExpectedPoints: 180 }),
       candidate("test:premium:gw1:1", 2, alternativeState, { gw1ExpectedPoints: 59, gw1To3ExpectedPoints: 179 }),
       candidate("test:bench:gw1:1", 1, secondAlternativeState, { gw1ExpectedPoints: 58, gw1To3ExpectedPoints: 178 })
-    ], "structural_utility"),
+    ]),
     evaluation("dec:starting-xi", "starting_xi", startingXiCandidateId(recommendation.pickTeam.startingXI), [
       candidate(startingXiCandidateId(recommendation.pickTeam.startingXI), 2, { ...selectedState, playerIds: recommendation.pickTeam.startingXI }),
       candidate(startingXiCandidateId(alternativeXi), 1, { ...selectedState, playerIds: alternativeXi })
@@ -247,12 +279,26 @@ export function variantRecommendation(gameweek = 1, replacedPlayerId?: number): 
     },
     claimLedger: testClaimLedger(),
     decisionIds: decisionAreas.map((area) => `dec:${area}`),
+    decisionPolicy: {
+      schemaVersion: 1,
+      artifactKind: "decision_policy",
+      policyId: "policy:test-gw1",
+      createdAt: "2026-08-01T00:00:00.000Z",
+      objectiveId: "test-raw-ev",
+      objectiveMetric: "raw_expected_points",
+      horizon: "GW1",
+      riskMode: "MAX_EXPECTED_POINTS",
+      minimumObjectiveMargin: 0.15,
+      confidenceLevel: 0.95,
+      nearTieTransferDefault: "ROLL"
+    },
     gameweek,
     createdAt: "2026-08-01T00:00:00.000Z",
     deadline: "2026-08-15T10:00:00.000Z",
     deadlineStatus: "open",
     dataMode: "official",
     optimizationPolicy: {
+      policyId: "policy:test-gw1",
       mode: "MAX_EXPECTED_POINTS",
       horizon: "GW1",
       ownershipTreatment: "excluded",

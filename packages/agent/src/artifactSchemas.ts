@@ -319,6 +319,20 @@ export const EvidenceSnapshotSchema = looseObject({
   }))
 });
 
+export const DecisionPolicySchema = z.object({
+  schemaVersion: z.literal(1),
+  artifactKind: z.literal("decision_policy"),
+  policyId: z.string().min(1),
+  createdAt: z.string().min(1),
+  objectiveId: z.string().min(1),
+  objectiveMetric: z.enum(["raw_expected_points", "risk_adjusted_utility", "structural_utility", "rules_utility"]),
+  horizon: z.enum(["GW1", "GW1-3", "GW1-5", "GW1-6", "season", "structural"]),
+  riskMode: z.enum(["MAX_EXPECTED_POINTS", "MAX_EXPECTED_RANK", "MINI_LEAGUE_DEFEND", "MINI_LEAGUE_CHASE"]),
+  minimumObjectiveMargin: z.number().positive(),
+  confidenceLevel: z.literal(0.95),
+  nearTieTransferDefault: z.literal("ROLL")
+}).strict();
+
 const candidateScore = looseObject({
   candidateId: z.string().min(1),
   rawExpectedPoints: z.number().nullable(),
@@ -344,13 +358,22 @@ const decisionEvaluation = looseObject({
   decisionId: z.string().min(1),
   decisionType: z.enum(["squad", "structure", "starting_xi", "bench_order", "captaincy", "transfers", "chip"]),
   snapshotId: z.string().min(1),
+  policyId: z.string().min(1).optional(),
   objectiveId: z.string().min(1),
   objectiveMetric: z.enum(["raw_expected_points", "risk_adjusted_utility", "structural_utility", "rules_utility"]),
-  horizon: z.enum(["GW1", "GW1-3", "GW1-5", "GW1-6", "structural"]),
+  horizon: z.enum(["GW1", "GW1-3", "GW1-5", "GW1-6", "season", "structural"]),
   candidateScores: z.array(candidateScore).min(1),
   selectedCandidateId: z.string().min(1),
-  selectedBy: z.enum(["objective_score", "explicit_override"]),
+  selectedBy: z.enum(["objective_score", "policy_default", "explicit_override"]),
   overrideReason: z.string().nullable(),
+  overrideTradeoff: looseObject({
+    objectiveScoreDelta: z.number().nonnegative(),
+    evidenceIds: z.array(z.string().min(1)).min(1)
+  }).nullable().optional(),
+  comparisonStatus: z.enum(["CLEAR", "NEAR_TIE", "UNRESOLVED"]).optional(),
+  objectiveLeaderCandidateId: z.string().min(1).optional(),
+  materialityThreshold: z.number().nonnegative().optional(),
+  nearTieCandidateIds: z.array(z.string().min(1)).min(1).optional(),
   constraintsApplied: stringArray,
   riskAdjustments: stringArray,
   uncertainty: z.string(),
@@ -402,6 +425,7 @@ const materialRiskPolicy = looseObject({
 });
 
 const optimizationPolicy = looseObject({
+  policyId: z.string().min(1).optional(),
   mode: z.enum(["MAX_EXPECTED_POINTS", "MAX_EXPECTED_RANK", "MINI_LEAGUE_DEFEND", "MINI_LEAGUE_CHASE"]),
   horizon: z.enum(["GW1", "GW1-3", "GW1-5", "GW1-6", "season"]),
   ownershipTreatment: z.enum(["excluded", "simulated_field_distribution"]),
@@ -450,6 +474,7 @@ const recommendationFields = {
   deadline: z.string(),
   deadlineStatus,
   dataMode,
+  decisionPolicy: DecisionPolicySchema.optional(),
   evidenceSnapshot: EvidenceSnapshotSchema.optional(),
   decisionEvaluations: z.array(decisionEvaluation).optional(),
   canonicalState: canonicalDecisionState.optional(),
@@ -1557,12 +1582,52 @@ export const StructureSimulationReportSchema = z.union([
     }).strict().optional(),
     objectiveDefinition: structureSimulationObjectiveDefinition,
     searchScope: structureSimulationSearchScope
+  }).strict(),
+  z.object({
+    ...structureSimulationReportBase,
+    modelVersion: z.literal("0.0.25"),
+    results: z.array(structureSimulationResultV19).min(2),
+    fieldResults: z.array(structureSimulationResultV19),
+    inputs: z.object({
+      candidates: z.array(structureSimulationCandidate).min(2),
+      fieldCandidates: z.array(structureSimulationFieldCandidate),
+      playerDistributions: z.array(structureSimulationPlayerDistribution).min(1),
+      fixtureDistributions: z.array(structureSimulationFixtureDistribution),
+      maximumSquadCost: z.number().positive().optional()
+    }).strict(),
+    retention: z.object({
+      candidateInputs: z.literal("ALL"),
+      simulationSamples: z.literal("ALL_CANDIDATE_TOTALS"),
+      truncationApplied: z.literal(false),
+      replayableFromSeedAndInputs: z.literal(true)
+    }).strict(),
+    decisionStability: z.object({
+      leaderCandidateId: z.string().min(1),
+      runnerUpCandidateId: z.string().min(1),
+      objectiveMargin: z.number().nonnegative(),
+      minimumMaterialMargin: z.number().positive(),
+      pairedStandardError: z.number().nonnegative(),
+      materialityThreshold: z.number().positive(),
+      status: z.enum(["CLEAR", "NEAR_TIE"]),
+      nearTieCandidateIds: z.array(z.string().min(1)).min(1),
+      method: z.literal("PAIRED_COMMON_RANDOM_NUMBERS_95CI")
+    }).strict().optional(),
+    decisionPolicyRef: z.object({
+      policyId: z.string().min(1),
+      objectiveId: z.string().min(1),
+      horizon: z.enum(["GW1", "GW1-3", "GW1-5", "GW1-6", "season", "structural"]),
+      riskMode: z.enum(["MAX_EXPECTED_POINTS", "MAX_EXPECTED_RANK", "MINI_LEAGUE_DEFEND", "MINI_LEAGUE_CHASE"]),
+      minimumObjectiveMargin: z.number().positive(),
+      confidenceLevel: z.literal(0.95)
+    }).strict(),
+    objectiveDefinition: structureSimulationObjectiveDefinition,
+    searchScope: structureSimulationSearchScope
   }).strict()
 ]);
 
 export const DecisionMarginReportSchema = z.object({
   schemaVersion: z.literal(1),
-  modelVersion: z.union([z.literal("0.0.18"), z.literal("0.0.19")]),
+  modelVersion: z.union([z.literal("0.0.18"), z.literal("0.0.19"), z.literal("0.0.25")]),
   selectedCandidateId: z.string().min(1),
   rivalCandidateId: z.string().min(1),
   baseObjectiveMargin: z.number(),
@@ -1808,6 +1873,7 @@ export const OptimizationRequestSchema = z.object({
   artifactKind: z.literal("tool_evidence"),
   generatedAt: z.string(),
   requestId: z.string().min(1),
+  decisionPolicyId: z.string().min(1).optional(),
   gameweek: z.number().int().positive(),
   horizons: z.array(optimizationHorizon).min(1),
   scenarios: z.array(optimizationScenario).min(1),
@@ -2010,6 +2076,7 @@ export const ArtifactSchemas = {
   robustnessReport: RobustnessReportSchema,
   draftDeltaReport: DraftDeltaReportSchema,
   decisionMarginReport: DecisionMarginReportSchema,
+  decisionPolicy: DecisionPolicySchema,
   riskReport: SquadRiskReportSchema,
   scenarioComparison: ScenarioComparisonSchema,
   setPieceReport: SetPieceReportSchema,

@@ -121,10 +121,19 @@ export type StructureSimulationFixtureDistribution = {
 
 export type StructureSimulationFieldCandidate = StructureSimulationCandidate & { weight: number };
 
+export type SimulationDecisionPolicyReference = {
+  policyId: string;
+  objectiveId: string;
+  horizon: "GW1" | "GW1-3" | "GW1-5" | "GW1-6" | "season" | "structural";
+  riskMode: OptimizationMode;
+  minimumObjectiveMargin: number;
+  confidenceLevel: 0.95;
+};
+
 export type StructureSimulationReport = {
   schemaVersion: 1;
   model: "shared-player-monte-carlo";
-  modelVersion: "0.0.17" | "0.0.18" | "0.0.19";
+  modelVersion: "0.0.17" | "0.0.18" | "0.0.19" | "0.0.25";
   mode: OptimizationMode;
   seed: number;
   sampleCount: number;
@@ -182,10 +191,11 @@ export type StructureSimulationReport = {
     minimumMaterialMargin: number;
     pairedStandardError: number;
     materialityThreshold: number;
-    status: "clear" | "near_tie";
+    status: "clear" | "near_tie" | "CLEAR" | "NEAR_TIE";
     nearTieCandidateIds: string[];
     method: "PAIRED_COMMON_RANDOM_NUMBERS_95CI";
   };
+  decisionPolicyRef?: SimulationDecisionPolicyReference;
   objectiveDefinition?: {
     captainDoubling: boolean;
     viceCaptainFallback: boolean;
@@ -222,7 +232,7 @@ export type DecisionMargin = {
 
 export type DecisionMarginReport = {
   schemaVersion: 1;
-  modelVersion: "0.0.18" | "0.0.19";
+  modelVersion: "0.0.18" | "0.0.19" | "0.0.25";
   selectedCandidateId: string;
   rivalCandidateId: string;
   baseObjectiveMargin: number;

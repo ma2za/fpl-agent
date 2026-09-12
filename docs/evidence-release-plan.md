@@ -1,6 +1,23 @@
 # Evidence Automation Status
 
-This document records the evidence capabilities currently implemented in `fpl-agent`. It contains no planned releases.
+This document records the evidence capabilities currently implemented in `fpl-agent`. Planned correctness work is defined in `docs/roadmap.md`.
+
+## Prioritized Correctness Work
+
+The next ten releases are ordered by dependency and decision impact:
+
+1. `0.0.25` delivers one canonical objective, honest near-tie language, and quantified override validation.
+2. `0.0.26` adds the roll baseline and future transfer option value.
+3. `0.0.27` adds recent-role contradiction guardrails and high-probability evidence requirements.
+4. `0.0.28` removes unavailable and role-ineligible players before optimization.
+5. `0.0.29` freezes the complete decision-grade candidate frontier.
+6. `0.0.30` normalizes public submitted-state and outcome capture.
+7. `0.0.31` closes every week with attributable, archive-backed regret.
+8. `0.0.32` measures squad resilience, bench coverage, and replacement liquidity.
+9. `0.0.33` governs calibrated champion-challenger model changes.
+10. `0.0.34` gates releases on process reliability without using realized points as a quality score.
+
+Until those releases ship, the immediate operating rules in the roadmap and methodology are mandatory for agent-authored recommendations.
 
 ## Decision Boundary
 

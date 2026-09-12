@@ -46,6 +46,15 @@ export function rejectCandidateTruncation(request: { maximumCandidates?: number 
   }
 }
 
+export function assertDecisionPolicyChain(
+  request: { decisionPolicy?: { policyId: string } },
+  counterfactualSet: { request?: { decisionPolicyId?: string } } | null
+) {
+  if (request.decisionPolicy && counterfactualSet?.request?.decisionPolicyId !== request.decisionPolicy.policyId) {
+    throw new Error("Counterfactual generation and simulation must reference the same decision policy.");
+  }
+}
+
 async function streamJson(filePath: string, value: Record<string, unknown>) {
   await mkdir(path.dirname(filePath), { recursive: true });
   const stream = createWriteStream(filePath, { encoding: "utf8" });
@@ -84,6 +93,7 @@ async function main() {
   const counterfactualSet = request.counterfactualSetPath
     ? JSON.parse(await readFile(request.counterfactualSetPath, "utf8"))
     : null;
+  assertDecisionPolicyChain(request, counterfactualSet);
   if (!request.projectionScenarioAdjustments && counterfactualSet?.request?.projectionScenarioAdjustments) {
     request.projectionScenarioAdjustments = counterfactualSet.request.projectionScenarioAdjustments;
   }
@@ -181,6 +191,7 @@ async function main() {
   if ((request.sensitivityPlayerIds?.length ?? 0) > 0) {
     const marginReport = analyzeDecisionMargins({
       mode: "MAX_EXPECTED_POINTS",
+      decisionPolicy: request.decisionPolicy,
       candidates,
       playerDistributions,
       fixtureDistributions: request.fixtureDistributions,

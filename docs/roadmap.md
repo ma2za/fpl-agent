@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present through `0.0.24`.
+This document records the capabilities present through `0.0.25` and the prioritized correctness program through `0.0.34`.
 
 ## Permanent Decision Boundary
 
@@ -12,7 +12,7 @@ This document records the capabilities present through `0.0.24`.
 - Tool-produced evidence and candidate artifacts must remain structurally separate from agent-authored decision artifacts.
 - Verification may reject illegal or unsupported decisions, but it must never replace them or choose an alternative.
 
-## Current State: 0.0.24
+## Current State: 0.0.25
 
 ### Workspace
 
@@ -91,6 +91,9 @@ The exact covered and uncovered rule behavior is listed in `docs/rules-coverage.
 - Start-probability intervals expose estimation uncertainty separately from the probability estimate.
 - Shared-player simulations compare complete structures with EV, p10, p50, p90, and optional rank utility.
 - Quality gates reject club-coverage pick logic, unsupported ownership logic, and unquantified model overrides.
+- Canonical decision-policy artifacts bind objective, horizon, risk mode, materiality floor, and transfer posture across optimization, simulation, evaluation, and recommendation.
+- Decision evaluations classify comparisons as `CLEAR`, `NEAR_TIE`, or `UNRESOLVED`, reject clear-winner language for near-ties, and permit only quantified evidence-backed overrides.
+- Transfer decisions default to rolling when the roll baseline remains inside the near-tie set.
 
 ### Evidence Sources
 
@@ -128,7 +131,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Operational State
 
-- The local release suite contains 56 test files and 400 tests, all passing.
+- The local release suite contains 59 test files and 432 tests, all passing.
 - Type-check, production build, cached offline refresh, store validation, worklist generation, and dossier generation pass.
 - The accepted 600-player store baseline is 156.779 ms initial ingestion, 78.167 ms idempotent re-ingestion, 1150.416 ms dossier-index generation, and 2.302 ms individual dossier query on Node 24.14.1, Windows x64.
 - A bounded live adapter smoke completed 48 of 50 configured UK football-news sources. The Times and talkSPORT were retained as explicit robots-blocked results; no blocked source was bypassed or counted as completed coverage.
@@ -700,6 +703,231 @@ Release gate:
 
 Status: implementation complete; browser release-gate verification pending.
 
+## Correctness Program: 0.0.25 to 0.0.34
+
+The first three submitted gameweeks produced 200 points against a combined gameweek average of 182. That result does not excuse the process failures exposed by the review:
+
+- The GW3 recommendation did not follow its declared three-gameweek objective. The selected Thiago structure scored `232.384`; the Mbeumo-to-Gakpo leader scored `233.489` under that same objective.
+- Margins of `0.003` expected points in GW2 and `0.273` in GW3 were presented with more confidence than the evidence supported.
+- The model assigned Wilson a `99.1%` start probability despite recent 65- and 45-minute appearances and visible competition. He then played 17 minutes in GW3.
+- GW2 retained 175 unavailable candidates instead of removing them before optimization.
+- GW1 retained only one candidate, and GW3 did not produce a complete archive-backed regret report.
+- Transfer optionality was assigned zero value even though two transfers improved the direct submitted result by only one point in total.
+
+This program optimizes decision integrity, not retrospective points. No release may claim that it would have recovered realized points without a frozen pre-deadline candidate and replayable evidence.
+
+### Immediate Operating Policy
+
+These rules apply to every recommendation before the releases below are implemented:
+
+1. One canonical objective and horizon must be declared and used by candidate generation, simulation, comparison, and the final decision. Any agent override must quantify the tradeoff against that objective.
+2. A numerical leader inside the simulation stability band is a tie, not a superior pick. If a transfer and a roll are tied, default to rolling unless a documented non-model consideration justifies the transfer.
+3. A start probability above `0.90` requires current, independent role evidence. Recent non-starts, reduced minutes, or unresolved competition must remain explicit and cannot be erased by historical minutes.
+4. Unavailable and decision-ineligible players are removed before candidate generation. An emergency bench candidate must be labeled separately from a credible starter.
+5. Every transfer decision must include the legal roll alternative and the effect on next-gameweek transfer capacity.
+6. Every final decision must retain all generated legal candidates needed to calculate regret. If that frontier is incomplete, publication is provisional.
+7. Manager overrides are recorded as separate decisions and treated as evidence in the postmortem, not folded into model performance.
+
+### 0.0.25: Objective Integrity and Near-Tie Policy
+
+Prevent the final decision from silently changing the question after optimization.
+
+Scope:
+
+- Add a canonical decision-policy artifact containing objective, horizon, risk mode, materiality threshold, and transfer posture.
+- Require candidate generation, simulation, recommendation, and verification to reference the same policy ID.
+- Classify paired simulation results as `CLEAR`, `NEAR_TIE`, or `UNRESOLVED` from uncertainty and a declared materiality floor.
+- Require an agent-authored, quantified override when the final decision does not follow the declared objective leader.
+- Default a transfer-versus-roll near-tie to `ROLL` unless the agent records a non-model reason.
+
+Release gate:
+
+- Reproduce the GW3 horizon mismatch and reject the unquantified Thiago selection.
+- Reproduce the GW2 `0.003` margin and prohibit clear-winner language.
+- Preserve agent ownership by rejecting inconsistent decisions without selecting a replacement.
+
+Status: delivered.
+
+### 0.0.26: Transfer Optionality and Roll Baseline
+
+Stop treating a free transfer as worthless when immediate expected points are nearly equal.
+
+Scope:
+
+- Generate a legal roll candidate for every transfer-window decision.
+- Model current free transfers, the five-transfer cap, hits, bank, selling prices, and next-gameweek reachable squads.
+- Report immediate gain, multi-gameweek gain, option value, replacement liquidity, and downside separately.
+- Compare transfers over the declared horizon rather than only the next deadline.
+- Keep the option-value model versioned and visible as an assumption, not a fact.
+
+Release gate:
+
+- Replay GW2 and GW3 with the roll alternative retained and no zero-valued optionality assumption.
+- Verify that a transfer below the near-tie threshold cannot be justified by decimal EV alone.
+- Cover one-transfer, two-transfer, hit, capped-roll, and chip interactions.
+
+Status: planned, priority 2.
+
+### 0.0.27: Role Probability Guardrails
+
+Make role estimates respond to recent evidence and admit uncertainty.
+
+Scope:
+
+- Add recent-start, recent-minutes, substitute-use, competition, availability, and source-conflict features to role probability inputs.
+- Shrink sparse early-season estimates toward explicit cohorts.
+- Block start probabilities above `0.90` without qualifying current-role evidence.
+- Add contradiction findings when recent usage and the probability estimate materially disagree.
+- Separate credible starter, likely substitute, emergency bench, and unknown-role states.
+
+Release gate:
+
+- Pin Wilson's GW3 inputs as a regression fixture and reject the unsupported `99.1%` estimate.
+- Verify that historical minutes cannot override two recent non-start signals without current evidence.
+- Report probability calibration and evidence coverage separately.
+
+Status: planned, priority 3.
+
+### 0.0.28: Pre-Optimization Eligibility Gate
+
+Keep impossible and unsuitable players out of the candidate frontier.
+
+Scope:
+
+- Evaluate availability, suspension, registration, fixture participation, current-role sufficiency, and scenario constraints before optimization.
+- Give starter, bench, and emergency-only roles distinct eligibility policies.
+- Persist every exclusion with its evidence, rule, and timestamp.
+- Fail closed when required eligibility evidence is stale or contradictory.
+- Prevent post-hoc cleanup from changing an already optimized frontier.
+
+Release gate:
+
+- Replay the GW2 pool and reduce retained unavailable candidates from 175 to zero.
+- Prove every optimized candidate was legal and eligible at the evidence snapshot time.
+- Keep exclusions inspectable without allowing the tool to select the final squad.
+
+Status: planned, priority 4.
+
+### 0.0.29: Complete Decision Frontier
+
+Make every weekly decision auditable before the deadline.
+
+Scope:
+
+- Define the minimum frontier for hold, transfer, captaincy, starting XI, bench order, and chip decisions.
+- Retain the selected candidate, the objective leader, every near-tie, the roll baseline, and every materially discussed alternative.
+- Add archive completeness and simulation coverage checks before publication.
+- Record why a legal candidate was excluded from analysis without inventing a score for it.
+- Make incomplete frontiers visibly provisional.
+
+Release gate:
+
+- Reproduce the GW1 one-candidate archive and block a claim of measurable decision regret.
+- Reject publication when generated candidates are discarded or discussed alternatives are absent.
+- Guarantee replayability from frozen inputs and seeds.
+
+Status: planned, priority 5.
+
+### 0.0.30: Submitted-State and Outcome Capture
+
+Remove manual ambiguity about what was actually entered and what actually scored.
+
+Scope:
+
+- Normalize the public manager picks, transfer history, entry history, and chip responses.
+- Capture submitted XI, bench, captain, vice-captain, transfers, hits, chip, and bank after the deadline.
+- Reconcile the submitted state with the agent recommendation and explicit manager overrides.
+- Ingest provisional and finalized outcomes with correction lineage.
+- Preserve the read-only boundary and use only public endpoints.
+
+Release gate:
+
+- Reconstruct GW1 to GW3 submitted states from public data or report precise missing fields.
+- Make repeated capture and outcome ingestion idempotent.
+- Never infer a submitted action from a recommendation file.
+
+Status: planned, priority 6.
+
+### 0.0.31: Closed-Loop Weekly Regret
+
+Produce a complete, attributable review before the next decision cycle.
+
+Scope:
+
+- Join frozen forecasts, the complete legal frontier, submitted state, manager overrides, and finalized outcomes.
+- Decompose regret into candidate generation, model ordering, agent override, manager override, captaincy, XI, bench, transfer cost, and luck-sensitive residuals.
+- Distinguish process errors from hindsight-only alternatives.
+- Generate calibration and regret reports automatically after finalization.
+- Require unresolved archive gaps to remain explicit.
+
+Release gate:
+
+- Produce comparable formal reports for GW1, GW2, and GW3, with non-comparable gaps labeled rather than estimated.
+- Reconcile every component to submitted points and the best frozen legal candidate.
+- Complete the prior-gameweek review before the next recommendation can be final.
+
+Status: planned, priority 7.
+
+### 0.0.32: Squad Resilience and Bench Liquidity
+
+Reduce dependence on fragile starters and unusable bench slots.
+
+Scope:
+
+- Measure credible starters, formation-safe substitutions, role-secure bench coverage, replacement liquidity, and forced-transfer exposure.
+- Add squad-level limits for unknown-role and emergency-only players.
+- Price the effect of a weak bench under realistic starter-absence scenarios.
+- Expose cheap-player savings separately from resilience cost.
+- Require an agent rationale for squads below the declared resilience floor.
+
+Release gate:
+
+- Replay the Wilson and Hughes role states as a combined squad-resilience regression fixture.
+- Verify all valid formations under one and two starter absences.
+- Keep resilience as a metric vector and policy constraint, not a hidden overall score.
+
+Status: planned, priority 8.
+
+### 0.0.33: Calibration and Champion-Challenger Governance
+
+Turn repeated role and projection errors into controlled model improvement.
+
+Scope:
+
+- Add Brier score, calibration error, log loss, and interval coverage for appearance forecasts.
+- Segment projection error by position, role state, evidence coverage, model version, and early-season sample size.
+- Compare champion and challenger models on identical frozen archives.
+- Require minimum evidence, declared expected benefit, rollback criteria, and coding-agent approval before adoption.
+- Track whether changes improve ordering and calibration, not only mean absolute point error.
+
+Release gate:
+
+- Demonstrate that the Wilson regression fixture contributes to the relevant role cohort without directly fitting its realized outcome.
+- Reject a challenger that improves aggregate error while worsening decision ordering or high-confidence calibration.
+- Preserve reversible adoption and rollback history.
+
+Status: planned, priority 9.
+
+### 0.0.34: Decision Reliability Scorecard and Release Gate
+
+Make process quality visible and prevent regression into elaborate but unauditable analysis.
+
+Scope:
+
+- Publish weekly measures for objective consistency, near-tie language, role calibration, invalid-candidate count, frontier completeness, archive completeness, override attribution, and postmortem timeliness.
+- Separate process measures from realized points and rank.
+- Add trend views across gameweeks and model versions.
+- Convert critical correctness measures into final-publication and release gates.
+- Complete the outstanding browser verification for the multi-gameweek workspace against these measures.
+
+Release gate:
+
+- Require zero objective mismatches, zero retained ineligible candidates, and complete override attribution.
+- Display incomplete or non-comparable weeks without manufacturing a score.
+- Verify current, historical, provisional, and finalized views with Playwright and no authenticated FPL access.
+
+Status: planned, priority 10.
+
 ## Delivery Dependencies and Migration
 
 | Release | Depends on | Migration rule | Exit artifact used by next release |
@@ -719,6 +947,16 @@ Status: implementation complete; browser release-gate verification pending.
 | `0.0.22` | archived candidates, calibration, and submitted outcomes | Compare only pre-deadline legal alternatives; require agent approval for model changes | Attributable regret and reversible model proposals |
 | `0.0.23` | fixture evidence and probabilistic projections | Read odds report v1/v2; retain heuristics as labeled fallback; preserve all provider and simulation inputs | Budgeted market distributions and component-scoped player adjustments |
 | `0.0.24` | versioned gameweek archives and competition state | Replace fixed imports incrementally; preserve provisional and legacy artifacts | Current and historical read-only decision workspace |
+| `0.0.25` | decision policies, paired simulations, and agent-authored decisions | Preserve existing objectives; require canonical policy references on newly verified decisions | Objective-consistent decisions and near-tie classifications |
+| `0.0.26` | objective integrity and transfer rules | Keep immediate-EV output visible; add roll and future reachability as separate components | Transfer option-value comparisons |
+| `0.0.27` | current-role evidence and frozen outcomes | Preserve prior probability versions for replay; apply guardrails only to new forecasts | Guarded and contradiction-aware role probabilities |
+| `0.0.28` | guarded role probabilities and phase rules | Retain excluded-player evidence; do not rewrite historical frontiers | Pre-optimization eligibility decisions |
+| `0.0.29` | eligibility and exact candidate generation | Historical incomplete frontiers remain explicitly non-comparable | Publication-grade frozen frontiers |
+| `0.0.30` | public manager endpoints and archives | Normalize additively; never infer submissions from recommendations | Public submitted-state snapshots |
+| `0.0.31` | complete frontiers, submitted state, and outcomes | Preserve existing postmortems; label missing historical components | Closed-loop attributable regret |
+| `0.0.32` | role states and substitution utility | Keep existing utility vectors; add policy constraints without hidden scoring | Resilience and liquidity evidence |
+| `0.0.33` | frozen forecasts, outcomes, and regret | Challenger models never mutate historical forecasts | Governed calibration improvements |
+| `0.0.34` | all correctness releases and multi-gameweek workspace | Keep points and rank outside process-quality gates | Decision reliability scorecard |
 
 Implementation order is strict where the downstream calculation would otherwise manufacture precision. In particular:
 
@@ -726,6 +964,8 @@ Implementation order is strict where the downstream calculation would otherwise 
 - Concentration penalties do not ship before independently optimized double-up and triple-up candidates exist.
 - Readiness triggers do not ship before their metrics have stable, versioned definitions.
 - Calibration does not alter model parameters automatically.
+- Decision scorecards do not reward or punish realized points.
+- Historical gaps are labeled, not repaired with hindsight.
 
 Review-derived regression fixtures remain pinned through the migration:
 

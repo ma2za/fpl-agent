@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.24`
+Version: `0.0.25`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -64,6 +64,8 @@ human reads manual-checklist.md
 human manually applies accepted changes in FPL
 later refreshes append final performance and postmortems compare frozen decisions to outcomes
 ```
+
+The active correctness policy requires one objective and horizon across the full decision pipeline, honest near-tie classification, a roll baseline for every transfer decision, current evidence for start probabilities above `0.90`, pre-optimization eligibility filtering, and a complete frozen frontier. See `docs/methodology.md` and the prioritized `0.0.25` to `0.0.34` program in `docs/roadmap.md`.
 
 ## Install
 
@@ -305,6 +307,7 @@ pnpm dev
 - The repo captures selected public evidence pages, including official Premier League Scout articles, but does not log in or scrape authenticated FPL pages.
 - Public manager endpoints exist in the API client but are not wired into recommendation flow yet.
 - Venue-specific FPL attack/defence strengths can be unavailable or zero; horizon evidence then labels lower-confidence overall-strength or raw-FDR fallbacks instead of treating zero as real strength.
+- Transfer optionality, pre-optimization eligibility, complete frontier enforcement, normalized submitted-state capture, and automatic closed-loop regret are planned in `0.0.26` to `0.0.31`; until delivered, the documented operating policy is a manual gate.
 
 ## Project Status
 

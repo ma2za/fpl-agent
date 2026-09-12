@@ -8,6 +8,7 @@
   "artifactKind": "tool_evidence",
   "generatedAt": "2026-08-12T19:00:00.000Z",
   "requestId": "gw1-structures",
+  "decisionPolicyId": "policy:gw1-three-week",
   "gameweek": 1,
   "horizons": [1, 3, 6],
   "topCandidateLimit": 100,
@@ -70,3 +71,11 @@ The command writes the normalized request, candidate set, optimization proofs, c
 Every optimization scenario must declare both `minimumStartProbability` and
 `bench.maximumCost`. This prevents cameo probability from being mistaken for
 starter security and prevents unused budget from being parked on the bench.
+
+## Decision-Grade Frontier Policy
+
+The planned correctness program adds a pre-optimization eligibility gate and a canonical decision-policy reference. Unavailable or decision-ineligible players must not enter the solver pool. Starter, bench, and emergency-only eligibility remain separate.
+
+For transfer-window decisions, the frontier must include the legal roll baseline. The frozen decision set must also retain the objective leader, selected candidate, every candidate in the paired simulation stability band, and every materially discussed alternative. A small numerical lead inside that band is a `NEAR_TIE`, not a winner.
+
+The final recommendation may differ from the objective leader only through an agent-authored quantified tradeoff. The optimizer and simulator continue to produce neutral evidence and never select the final action.

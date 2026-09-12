@@ -122,6 +122,35 @@ describe("decision mathematics", () => {
     });
   });
 
+  it("binds simulation output to a canonical decision policy", () => {
+    const decisionPolicy = {
+      policyId: "policy:gw3-three-week",
+      objectiveId: "three-gameweek-expected-points",
+      horizon: "GW1-3" as const,
+      riskMode: "MAX_EXPECTED_POINTS" as const,
+      minimumObjectiveMargin: 0.2,
+      confidenceLevel: 0.95 as const
+    };
+    const report = simulateStructures({
+      mode: "MAX_EXPECTED_POINTS",
+      decisionPolicy,
+      sampleCount: 100,
+      candidates: [
+        { candidateId: "leader", playerIds: [1], captainPlayerId: null },
+        { candidateId: "near", playerIds: [2], captainPlayerId: null }
+      ],
+      playerDistributions: [
+        { playerId: 1, mean: 5, standardDeviation: 0 },
+        { playerId: 2, mean: 4.9, standardDeviation: 0 }
+      ]
+    });
+
+    expect(report.modelVersion).toBe("0.0.25");
+    expect(report.decisionPolicyRef).toEqual(decisionPolicy);
+    expect(report.decisionStability?.status).toBe("NEAR_TIE");
+    expect(report.decisionStability?.materialityThreshold).toBe(0.2);
+  });
+
   it("requires a simulated field for rank objectives", () => {
     expect(() => simulateStructures({
       mode: "MAX_EXPECTED_RANK",

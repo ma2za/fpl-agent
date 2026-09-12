@@ -23,6 +23,23 @@ The current recommendation model is simple, transparent, and replaceable.
 - Use phase-aware warnings, including budget-path language instead of price-rise or transfer-hit warnings during preseason drafting.
 - Trace every current-role claim to a root publisher and observation while retaining per-dimension disagreement and missing coverage.
 
+## Weekly Decision Policy
+
+Every gameweek uses one canonical policy covering the objective, horizon, risk mode, materiality threshold, and transfer posture. Candidate generation, simulation, comparison, and the final recommendation must answer that same question.
+
+Release `0.0.25` represents this policy as a versioned `decision_policy` artifact and requires its policy ID on optimization and decision-evaluation records. Policy-bound simulations emit model version `0.0.25` with `CLEAR` or `NEAR_TIE` stability status; evaluations without enough comparison evidence use `UNRESOLVED`.
+
+- A final decision that differs from the declared objective leader requires an agent-authored quantified tradeoff. Verification rejects an unexplained mismatch but never selects the replacement.
+- Paired simulations inside the declared stability band are `NEAR_TIE`. Small positive point estimates are not evidence of a clear winner.
+- Every transfer comparison includes the legal roll alternative, current and future free-transfer capacity, hits, bank, selling prices, and next-gameweek squad reachability.
+- When a transfer and roll are a near-tie, the operating default is to roll. The agent may override that default with a documented non-model reason.
+- Unavailable and decision-ineligible players are excluded before candidate generation. Starter, bench, and emergency-only eligibility are distinct.
+- A start probability above `0.90` requires current independent role evidence. Historical minutes cannot erase recent non-starts, reduced minutes, competition, or source conflict.
+- The frozen frontier retains the selected candidate, objective leader, roll baseline, every near-tie, and every materially discussed alternative.
+- A recommendation is provisional when its objective is inconsistent, its eligibility evidence is unresolved, or its frontier cannot support archive-backed regret.
+
+Realized points evaluate outcomes, not whether the pre-deadline process was sound. Model and process changes require frozen evidence and must not be justified with hindsight-only alternatives.
+
 ## Projection Model
 
 The legacy conditional projection remains visible for comparison:

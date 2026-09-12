@@ -115,6 +115,7 @@ export function applyProjectionScenarioAdjustment(input: ProjectionScenarioAdjus
 
 export function simulateStructures(input: {
   mode: OptimizationMode;
+  decisionPolicy?: import("./types").SimulationDecisionPolicyReference;
   candidates: StructureSimulationCandidate[];
   fieldCandidates?: StructureSimulationFieldCandidate[];
   playerDistributions: StructureSimulationPlayerDistribution[];
@@ -127,6 +128,12 @@ export function simulateStructures(input: {
   const seed = input.seed ?? 170017;
   const sampleCount = input.sampleCount ?? 10_000;
   const maximumSquadCost = input.maximumSquadCost ?? 100;
+  if (input.decisionPolicy && input.decisionPolicy.riskMode !== input.mode) {
+    throw new Error("Simulation mode must match the canonical decision policy.");
+  }
+  if (input.decisionPolicy && (!(input.decisionPolicy.minimumObjectiveMargin > 0) || input.decisionPolicy.confidenceLevel !== 0.95)) {
+    throw new Error("Decision policy requires a positive materiality floor and 95% confidence.");
+  }
   if (!Number.isInteger(sampleCount) || sampleCount <= 0) throw new Error("Sample count must be a positive integer.");
   if (!Number.isFinite(maximumSquadCost) || maximumSquadCost <= 0) throw new Error("Maximum squad cost must be positive and finite.");
   if (input.candidates.length < 2) throw new Error("At least two competing structures are required.");
@@ -326,7 +333,7 @@ export function simulateStructures(input: {
     .filter((result) => !managerCandidateIds.has(result.candidateId))
     .map((result) => ({ ...result, expectedRankUtility: null, objectiveScore: result.expectedPoints }))
     .sort((a, b) => a.candidateId.localeCompare(b.candidateId));
-  const minimumMaterialMargin = 0.15;
+  const minimumMaterialMargin = input.decisionPolicy?.minimumObjectiveMargin ?? 0.15;
   const leader = results[0];
   const runnerUp = results[1];
   const runnerUpStandardError = pairedStandardError(leader.samplePoints, runnerUp.samplePoints);
@@ -338,7 +345,9 @@ export function simulateStructures(input: {
     minimumMaterialMargin,
     pairedStandardError: round(runnerUpStandardError),
     materialityThreshold: round(materialityThreshold),
-    status: leader.objectiveScore - runnerUp.objectiveScore > materialityThreshold ? "clear" as const : "near_tie" as const,
+    status: input.decisionPolicy
+      ? leader.objectiveScore - runnerUp.objectiveScore > materialityThreshold ? "CLEAR" as const : "NEAR_TIE" as const
+      : leader.objectiveScore - runnerUp.objectiveScore > materialityThreshold ? "clear" as const : "near_tie" as const,
     nearTieCandidateIds: results.filter((candidate) => {
       const threshold = Math.max(minimumMaterialMargin, 1.96 * pairedStandardError(leader.samplePoints, candidate.samplePoints));
       return leader.objectiveScore - candidate.objectiveScore <= threshold;
@@ -348,7 +357,7 @@ export function simulateStructures(input: {
   return {
     schemaVersion: 1,
     model: "shared-player-monte-carlo",
-    modelVersion: "0.0.19",
+    modelVersion: input.decisionPolicy ? "0.0.25" : "0.0.19",
     mode: input.mode,
     seed,
     sampleCount,
@@ -368,6 +377,7 @@ export function simulateStructures(input: {
       replayableFromSeedAndInputs: true
     },
     decisionStability,
+    ...(input.decisionPolicy ? { decisionPolicyRef: input.decisionPolicy } : {}),
     objectiveDefinition: {
       captainDoubling: true,
       viceCaptainFallback: true,
@@ -403,6 +413,7 @@ export function simulateStructures(input: {
 
 export function analyzeDecisionMargins(input: {
   mode: "MAX_EXPECTED_POINTS";
+  decisionPolicy?: import("./types").SimulationDecisionPolicyReference;
   candidates: StructureSimulationCandidate[];
   playerDistributions: StructureSimulationPlayerDistribution[];
   fixtureDistributions?: StructureSimulationFixtureDistribution[];
@@ -444,7 +455,7 @@ export function analyzeDecisionMargins(input: {
   });
   return {
     schemaVersion: 1,
-    modelVersion: "0.0.19",
+    modelVersion: input.decisionPolicy ? "0.0.25" : "0.0.19",
     selectedCandidateId: selected.candidateId,
     rivalCandidateId: rival.candidateId,
     baseObjectiveMargin: round(baseObjectiveMargin),

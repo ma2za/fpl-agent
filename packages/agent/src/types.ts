@@ -93,6 +93,28 @@ export type DecisionType =
   | "transfers"
   | "chip";
 
+export type DecisionObjectiveMetric =
+  | "raw_expected_points"
+  | "risk_adjusted_utility"
+  | "structural_utility"
+  | "rules_utility";
+
+export type DecisionHorizon = "GW1" | "GW1-3" | "GW1-5" | "GW1-6" | "season" | "structural";
+
+export type DecisionPolicy = {
+  schemaVersion: 1;
+  artifactKind: "decision_policy";
+  policyId: string;
+  createdAt: string;
+  objectiveId: string;
+  objectiveMetric: DecisionObjectiveMetric;
+  horizon: DecisionHorizon;
+  riskMode: "MAX_EXPECTED_POINTS" | "MAX_EXPECTED_RANK" | "MINI_LEAGUE_DEFEND" | "MINI_LEAGUE_CHASE";
+  minimumObjectiveMargin: number;
+  confidenceLevel: 0.95;
+  nearTieTransferDefault: "ROLL";
+};
+
 export type DecisionCandidateScore = {
   candidateId: string;
   rawExpectedPoints: number | null;
@@ -118,13 +140,22 @@ export type DecisionEvaluation = {
   decisionId: string;
   decisionType: DecisionType;
   snapshotId: string;
+  policyId?: string;
   objectiveId: string;
-  objectiveMetric: "raw_expected_points" | "risk_adjusted_utility" | "structural_utility" | "rules_utility";
-  horizon: "GW1" | "GW1-3" | "GW1-5" | "GW1-6" | "structural";
+  objectiveMetric: DecisionObjectiveMetric;
+  horizon: DecisionHorizon;
   candidateScores: DecisionCandidateScore[];
   selectedCandidateId: string;
-  selectedBy: "objective_score" | "explicit_override";
+  selectedBy: "objective_score" | "policy_default" | "explicit_override";
   overrideReason: string | null;
+  overrideTradeoff?: {
+    objectiveScoreDelta: number;
+    evidenceIds: string[];
+  } | null;
+  comparisonStatus?: "CLEAR" | "NEAR_TIE" | "UNRESOLVED";
+  objectiveLeaderCandidateId?: string;
+  materialityThreshold?: number;
+  nearTieCandidateIds?: string[];
   constraintsApplied: string[];
   riskAdjustments: string[];
   uncertainty: string;
@@ -176,6 +207,7 @@ export type MaterialRiskPolicy = {
 };
 
 export type OptimizationPolicy = {
+  policyId?: string;
   mode: "MAX_EXPECTED_POINTS" | "MAX_EXPECTED_RANK" | "MINI_LEAGUE_DEFEND" | "MINI_LEAGUE_CHASE";
   horizon: "GW1" | "GW1-3" | "GW1-5" | "GW1-6" | "season";
   ownershipTreatment: "excluded" | "simulated_field_distribution";
@@ -276,6 +308,7 @@ export type WeeklyRecommendation = {
   decisionContext?: CompetitionState;
   claimLedger?: ClaimLedger;
   decisionIds?: string[];
+  decisionPolicy?: DecisionPolicy;
   evidenceSnapshot?: EvidenceSnapshot;
   decisionEvaluations?: DecisionEvaluation[];
   canonicalState?: CanonicalDecisionState;
