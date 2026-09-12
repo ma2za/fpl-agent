@@ -176,6 +176,20 @@ function appearanceForecast(
   if (role?.manualOverride === "opposes_start") conditionalStart = 0.02;
   if (role?.disagreement) conditionalStart = prior * 0.5 + conditionalStart * 0.5;
 
+  const recentStarts = history.filter((sample) => sample.started).length;
+  const qualifyingCurrentEvidence = role?.currentEvidencePresent === true &&
+    role.manualOverride !== "opposes_start" &&
+    !role.disagreement &&
+    role.confidence >= 0.85 &&
+    role.supportScore >= 0.85;
+  const calibratedStartCeiling = qualifyingCurrentEvidence && recentStarts >= 8
+    ? 0.98
+    : qualifyingCurrentEvidence && recentStarts >= 4
+      ? 0.95
+      : 0.9;
+  const startProbabilityCeilingApplied = conditionalStart > calibratedStartCeiling;
+  conditionalStart = Math.min(conditionalStart, calibratedStartCeiling);
+
   const conditionalSub = player.position === "GKP"
     ? 0
     : clamp((1 - conditionalStart) * (0.45 + historicalRoleConfidence * 0.25), 0.02, 0.45);
@@ -228,6 +242,7 @@ function appearanceForecast(
       ...(history.length > 0 ? ["current_season_start_update"] : []),
       ...(role?.disagreement ? ["conflicting_role_evidence"] : []),
       ...(!role?.currentEvidencePresent ? ["missing_current_role_evidence"] : []),
+      ...(startProbabilityCeilingApplied ? ["calibrated_start_probability_ceiling"] : []),
       ...((player.minutes ?? 0) === 0 ? ["cohort_minutes_fallback"] : [])
     ]
   };
@@ -349,8 +364,8 @@ export function probabilisticProjection(input: {
       }] : [])
     ],
     model: "appearance-state-mixture",
-    modelVersion: "0.0.23",
-    componentVersions: { appearance: "0.0.13", points: "0.0.23" },
+    modelVersion: "0.0.26",
+    componentVersions: { appearance: "0.0.26", points: "0.0.23" },
     marketAdjustment: market,
     inputs: {
       seed,
@@ -407,8 +422,8 @@ export function buildProjectionUncertaintyReport(input: {
     generatedAt: input.generatedAt,
     gameweek: input.gameweek,
     model: "appearance-state-mixture",
-    modelVersion: "0.0.23",
-    componentVersions: { appearance: "0.0.13", points: "0.0.23" },
+    modelVersion: "0.0.26",
+    componentVersions: { appearance: "0.0.26", points: "0.0.23" },
     seed,
     sampleCount,
     items,

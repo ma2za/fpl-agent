@@ -203,6 +203,15 @@ describe("verifyRecommendation", () => {
     expect(result.errors).toContain("Decision dec:structure horizon must match the canonical decision policy.");
   });
 
+  it("rejects multi-gameweek selection claims under a one-gameweek policy", () => {
+    const overstated = structuredClone(recommendation);
+    overstated.recommendedAction.explanation = "This player leads the three-week shortlist.";
+
+    expect(verifyRecommendation(overstated).errors).toContain(
+      "Recommendation claims multi-gameweek selection logic but the canonical decision policy horizon is GW1."
+    );
+  });
+
   it("defaults a transfer-versus-roll near-tie to rolling", () => {
     const transferDecision = structuredClone(recommendation);
     const evaluation = transferDecision.decisionEvaluations!.find((item) => item.decisionType === "transfers")!;

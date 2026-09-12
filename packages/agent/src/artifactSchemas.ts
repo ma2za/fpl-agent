@@ -1388,9 +1388,9 @@ const probabilisticProjection = z.object({
     evidenceIds: stringArray
   }).strict()).optional(),
   model: z.literal("appearance-state-mixture"),
-  modelVersion: z.enum(["0.0.13", "0.0.23"]),
+  modelVersion: z.enum(["0.0.13", "0.0.23", "0.0.26"]),
   componentVersions: looseObject({
-    appearance: z.literal("0.0.13"),
+    appearance: z.enum(["0.0.13", "0.0.26"]),
     points: z.literal("0.0.23")
   }).optional(),
   marketAdjustment: looseObject({
@@ -1428,8 +1428,8 @@ export const ProjectionUncertaintyReportSchema = z.object({
   generatedAt: z.string(),
   gameweek: z.number().int().positive(),
   model: z.literal("appearance-state-mixture"),
-  modelVersion: z.enum(["0.0.13", "0.0.23"]),
-  componentVersions: looseObject({ appearance: z.literal("0.0.13"), points: z.literal("0.0.23") }).optional(),
+  modelVersion: z.enum(["0.0.13", "0.0.23", "0.0.26"]),
+  componentVersions: looseObject({ appearance: z.enum(["0.0.13", "0.0.26"]), points: z.literal("0.0.23") }).optional(),
   seed: z.number().int().nonnegative(),
   sampleCount: z.number().int().positive(),
   items: ProbabilisticProjectionArraySchema,

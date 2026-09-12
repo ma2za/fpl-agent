@@ -779,14 +779,16 @@ Scope:
 - Block start probabilities above `0.90` without qualifying current-role evidence.
 - Add contradiction findings when recent usage and the probability estimate materially disagree.
 - Separate credible starter, likely substitute, emergency bench, and unknown-role states.
+- Require a selected or submitted manager decision record before a new gameweek archive can be frozen; archive verification remains idempotent after freezing.
 
 Release gate:
 
 - Pin Wilson's GW3 inputs as a regression fixture and reject the unsupported `99.1%` estimate.
 - Verify that historical minutes cannot override two recent non-start signals without current evidence.
 - Report probability calibration and evidence coverage separately.
+- Reject an unavailable decision record at the archive boundary and preserve already frozen archives unchanged.
 
-Status: planned, priority 3.
+Status: in progress, priority 1. Sparse-sample probability ceilings, one-gameweek/multi-gameweek claim consistency, and the archive decision gate are implemented; richer role features and calibration reporting remain open.
 
 ### 0.0.28: Pre-Optimization Eligibility Gate
 

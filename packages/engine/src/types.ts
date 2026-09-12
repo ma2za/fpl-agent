@@ -327,8 +327,8 @@ export type ProbabilisticProjection = {
     evidenceIds: string[];
   }>;
   model: "appearance-state-mixture";
-  modelVersion: "0.0.13" | "0.0.23";
-  componentVersions?: { appearance: "0.0.13"; points: "0.0.23" };
+  modelVersion: "0.0.13" | "0.0.23" | "0.0.26";
+  componentVersions?: { appearance: "0.0.13" | "0.0.26"; points: "0.0.23" };
   marketAdjustment?: MarketProjectionAdjustment | null;
   inputs: ProjectionModelInputs;
 };
@@ -338,8 +338,8 @@ export type ProjectionUncertaintyReport = {
   generatedAt: string;
   gameweek: number;
   model: "appearance-state-mixture";
-  modelVersion: "0.0.13" | "0.0.23";
-  componentVersions?: { appearance: "0.0.13"; points: "0.0.23" };
+  modelVersion: "0.0.13" | "0.0.23" | "0.0.26";
+  componentVersions?: { appearance: "0.0.13" | "0.0.26"; points: "0.0.23" };
   seed: number;
   sampleCount: number;
   items: ProbabilisticProjection[];

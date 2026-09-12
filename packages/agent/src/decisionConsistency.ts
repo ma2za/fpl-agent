@@ -138,6 +138,13 @@ function decisionValidation(recommendation: WeeklyRecommendation) {
   const optimizedDecisionTypes = new Set<DecisionType>(["squad", "structure", "starting_xi", "captaincy"]);
   const policy = recommendation.decisionPolicy;
 
+  function authoredDecisionText(value: unknown): string[] {
+    if (typeof value === "string") return [value];
+    if (Array.isArray(value)) return value.flatMap(authoredDecisionText);
+    if (value && typeof value === "object") return Object.values(value).flatMap(authoredDecisionText);
+    return [];
+  }
+
   if (!policy) {
     errors.push("Final recommendation must include a canonical decision policy.");
   } else {
@@ -149,6 +156,17 @@ function decisionValidation(recommendation: WeeklyRecommendation) {
     }
     if (recommendation.optimizationPolicy?.mode !== policy.riskMode) {
       errors.push("Optimization policy mode must match the canonical decision policy.");
+    }
+    if (policy.horizon === "GW1") {
+      const multiGameweekSelectionClaim = /(?:three[- ](?:week|gameweek).*(?:objective|shortlist|comparison|leader|selects?)|(?:objective|shortlist|comparison|leader|selects?).*three[- ](?:week|gameweek))/i;
+      const claims = authoredDecisionText([
+        recommendation.recommendedAction,
+        recommendation.topTransferCandidates,
+        recommendation.decisionAnalysis
+      ]);
+      if (claims.some((claim) => multiGameweekSelectionClaim.test(claim))) {
+        errors.push("Recommendation claims multi-gameweek selection logic but the canonical decision policy horizon is GW1.");
+      }
     }
   }
 

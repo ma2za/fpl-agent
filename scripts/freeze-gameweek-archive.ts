@@ -38,6 +38,29 @@ function artifactKind(filePath: string) {
   return "supporting" as const;
 }
 
+export async function assertManagerDecisionRecorded(sourceDir: string, gameweek: number) {
+  let decision: unknown;
+  try {
+    decision = JSON.parse(await readFile(path.join(sourceDir, "decision-record.json"), "utf8"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new Error("Archive requires decision-record.json with an explicit selected or submitted manager decision.");
+    }
+    throw error;
+  }
+
+  const record = decision as Record<string, unknown>;
+  if (
+    record.artifactKind !== "agent_decision" ||
+    record.gameweek !== gameweek ||
+    !["selected", "submitted"].includes(String(record.status)) ||
+    typeof record.selectedCandidateId !== "string" ||
+    record.selectedCandidateId.trim().length === 0
+  ) {
+    throw new Error("Archive requires decision-record.json with an explicit selected or submitted manager decision for this gameweek.");
+  }
+}
+
 export async function freezeGameweekArchive(input: {
   gameweek: number;
   sourceDir?: string;
@@ -62,6 +85,7 @@ export async function freezeGameweekArchive(input: {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
+  await assertManagerDecisionRecorded(sourceDir, input.gameweek);
   const [refresh, projections, readiness, role] = await Promise.all([
     readFile(path.join(sourceDir, "refresh-manifest.json"), "utf8").then((value) => RefreshManifestSchema.parse(JSON.parse(value))),
     readFile(path.join(sourceDir, "probabilistic-projections.json"), "utf8").then((value) => ProbabilisticProjectionArraySchema.parse(JSON.parse(value))),

@@ -83,10 +83,11 @@ describe("probabilistic projections", () => {
       priorAppearance: prior
     });
 
-    expect(projection.appearance.startProbability).toBeGreaterThan(prior.startProbability);
-    expect(projection.appearance.startProbability).toBeGreaterThan(0.9);
+    expect(projection.appearance.startProbability).toBe(prior.startProbability);
+    expect(projection.appearance.startProbability).toBe(0.9);
     expect(projection.appearance.reasonCodes).toContain("previous_gameweek_prior");
     expect(projection.appearance.reasonCodes).toContain("current_season_start_update");
+    expect(projection.appearance.reasonCodes).toContain("calibrated_start_probability_ceiling");
   });
 
   it("uses a labeled cohort when conditional history is insufficient", () => {
@@ -164,7 +165,7 @@ describe("probabilistic projections", () => {
     expect(market.marketAdjustment?.goalPointsDelta).toBeGreaterThan(0);
     expect(market.marketAdjustment?.cleanSheetPointsDelta).toBe(1);
     expect(market.marketAdjustment?.appliedConditionalStartDelta).toBeLessThanOrEqual(2);
-    expect(market.componentVersions).toEqual({ appearance: "0.0.13", points: "0.0.23" });
+    expect(market.componentVersions).toEqual({ appearance: "0.0.26", points: "0.0.23" });
   });
 
   it("lowers role-adjusted points when start probability falls without changing conditional-start points", () => {
@@ -221,10 +222,40 @@ describe("probabilistic projections", () => {
     });
 
     expect(profiles).toEqual([
-      { playerId: 9, source: "current_role", cohort: "mid-established-starter", startProbability: 0.95, roleAdjustedProjection: 5.9 },
+      { playerId: 9, source: "current_role", cohort: "mid-established-starter", startProbability: 0.9, roleAdjustedProjection: 5.7 },
       { playerId: 10, source: "current_role", cohort: "mid-role-challenger", startProbability: 0.3, roleAdjustedProjection: 2.6 },
       { playerId: 11, source: "current_role", cohort: "mid-role-challenger", startProbability: 0.65, roleAdjustedProjection: 5.6 },
       { playerId: 12, source: "cohort_fallback", cohort: "def-new-player", startProbability: 0.18, roleAdjustedProjection: 1 }
     ]);
+  });
+
+  it("does not turn sparse early-season evidence or a manual belief into near-certainty", () => {
+    const subject = player(17, 270, 18);
+    const sparseHistory = Array.from({ length: 3 }, () => ({ started: true, minutes: 90, points: 6 }));
+    const evidence = { ...role(17, 1), manualOverride: "supports_start" as const };
+    const projection = probabilisticProjection({
+      player: subject,
+      rawProjection: projectPlayer(subject),
+      roleEvidence: evidence,
+      history: sparseHistory
+    });
+
+    expect(projection.appearance.startProbability).toBe(0.9);
+    expect(projection.appearance.roleClass).toBe("LIKELY_STARTER");
+    expect(projection.appearance.reasonCodes).toContain("calibrated_start_probability_ceiling");
+  });
+
+  it("permits higher estimates only after enough starts and qualifying current evidence", () => {
+    const subject = player(18, 720, 48);
+    const establishedHistory = Array.from({ length: 8 }, () => ({ started: true, minutes: 90, points: 6 }));
+    const projection = probabilisticProjection({
+      player: subject,
+      rawProjection: projectPlayer(subject),
+      roleEvidence: role(18, 0.98, 0.95),
+      history: establishedHistory
+    });
+
+    expect(projection.appearance.startProbability).toBeGreaterThan(0.9);
+    expect(projection.appearance.startProbability).toBeLessThanOrEqual(0.98);
   });
 });
