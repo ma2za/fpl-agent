@@ -352,6 +352,7 @@ The coding agent must read the evidence files, reason from current public inform
 - Classify each comparison as CLEAR, NEAR_TIE, or UNRESOLVED. A small positive estimate inside the materiality threshold is not a clear winner.
 - Select the objective leader unless an explicit override records its reason, exact objective-score delta, and supporting evidence IDs.
 - When a transfer and roll are a near-tie, select the roll unless a quantified explicit override supports the transfer.
+- For every transfer, hit, or roll decision, publish exactly five distinct, legal transfer options ranked over the canonical decision horizon, plus one legal roll baseline. The recommended action must be one of those six options.
 - Declare optimizationPolicy explicitly. MAX_EXPECTED_POINTS excludes ownership; rank-aware modes require a cited simulated field distribution.
 - Quantify every model adjustment as a feature-level points delta with uncertainty and evidence IDs. Never apply a feature already present in the base projection.
 - Never use club "coverage" to select or omit a player. Compare independently optimized with-player and without-player squads.

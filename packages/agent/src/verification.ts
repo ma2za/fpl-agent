@@ -150,6 +150,59 @@ function actionErrors(recommendation: WeeklyRecommendation) {
     errors.push("Recommendation must require manual execution.");
   }
 
+  if (
+    recommendation.decisionContext?.phase === "TRANSFER_WINDOW" &&
+    ["transfer", "hit", "roll"].includes(recommendation.recommendedAction.type)
+  ) {
+    const options = recommendation.topTransferCandidates;
+    const transfers = options.filter((candidate) => ["transfer", "hit"].includes(candidate.type));
+    const rolls = options.filter((candidate) => candidate.type === "roll");
+    if (transfers.length !== 5 || rolls.length !== 1 || options.length !== 6) {
+      errors.push("Transfer-window recommendations must publish five ranked transfer options plus one roll baseline.");
+    }
+    if (options.some((candidate) => !candidate.isLegal)) {
+      errors.push("Published transfer options must all be legal.");
+    }
+    if (new Set(options.map((candidate) => candidate.id)).size !== options.length) {
+      errors.push("Published transfer options must have unique candidate IDs.");
+    }
+    const moveSignatures = options.map((candidate) => candidate.moves
+      .map((move) => `${move.sellPlayerId}>${move.buyPlayerId}`)
+      .sort()
+      .join(",") || "roll");
+    if (new Set(moveSignatures).size !== moveSignatures.length) {
+      errors.push("Published transfer options must represent distinct actions.");
+    }
+    const gain = (candidate: WeeklyRecommendation["topTransferCandidates"][number]) =>
+      recommendation.decisionPolicy?.horizon === "GW1"
+        ? candidate.expectedGain1GW
+        : recommendation.decisionPolicy?.horizon === "GW1-3"
+          ? candidate.expectedGain3GW
+          : candidate.expectedGain5GW;
+    if (transfers.some((candidate, index) => index > 0 && gain(transfers[index - 1]!) < gain(candidate))) {
+      errors.push("The five transfer options must be ranked by expected gain over the canonical decision horizon.");
+    }
+    const selectedSignature = recommendation.recommendedAction.transfers
+      .map((move) => `${move.sellPlayerId}>${move.buyPlayerId}`)
+      .sort()
+      .join(",") || "roll";
+    if (!moveSignatures.includes(selectedSignature)) {
+      errors.push("The recommended action must appear in the published transfer options.");
+    }
+    const evaluated = new Set(
+      recommendation.decisionEvaluations
+        ?.find((evaluation) => evaluation.decisionType === "transfers")
+        ?.candidateScores.map((candidate) => candidate.candidateId) ?? []
+    );
+    const unevaluated = options.filter((candidate) => {
+      const signature = candidate.moves.map((move) => `${move.sellPlayerId}>${move.buyPlayerId}`).join(",");
+      return !evaluated.has(`action:${candidate.type}:${signature || "none"}`);
+    });
+    if (unevaluated.length > 0) {
+      errors.push("Every published transfer option must appear in the canonical transfer evaluation.");
+    }
+  }
+
   for (const transfer of recommendation.recommendedAction.transfers) {
     if (squadIds.has(transfer.sellPlayerId)) {
       errors.push(`Transfer sell player id ${transfer.sellPlayerId} remains in the selected squad.`);

@@ -12,6 +12,36 @@ import {
   type WeeklyStrategy
 } from "../../src";
 
+export function rankedTransferOptions(sellPlayerId = 12): WeeklyRecommendation["topTransferCandidates"] {
+  return [...[-1, -2, -3, -4, -5].map((expectedGain1GW, index) => ({
+    id: `transfer-option-${index + 1}`,
+    type: "transfer" as const,
+    moves: [{ sellPlayerId, buyPlayerId: 101 + index }],
+    transferCost: 0,
+    expectedGain1GW,
+    expectedGain3GW: expectedGain1GW * 3,
+    expectedGain5GW: expectedGain1GW * 5,
+    risk: "medium" as const,
+    reasons: [`Option ${index + 1} test case.`],
+    concerns: ["Test uncertainty."],
+    isLegal: true,
+    legalityErrors: []
+  })), {
+    id: "roll-baseline",
+    type: "roll" as const,
+    moves: [],
+    transferCost: 0,
+    expectedGain1GW: 0,
+    expectedGain3GW: 0,
+    expectedGain5GW: 0,
+    risk: "low" as const,
+    reasons: ["Preserve the transfer."],
+    concerns: ["No immediate squad improvement."],
+    isLegal: true,
+    legalityErrors: []
+  }];
+}
+
 export function publicNewsArticlesFor(
   players: Array<{ id: number; name: string }>,
   selectedAt = "2026-08-01T00:00:00.000Z"
@@ -181,7 +211,17 @@ export function withDecisionConsistency(recommendation: WeeklyRecommendation) {
       candidate(captainId, captainProjection),
       candidate(viceId, captainProjection)
     ]),
-    evaluation("dec:transfers", "transfers", transferCandidateId(recommendation)),
+    evaluation(
+      "dec:transfers",
+      "transfers",
+      transferCandidateId(recommendation),
+      recommendation.decisionContext?.phase === "TRANSFER_WINDOW"
+        ? recommendation.topTransferCandidates.map((option) => {
+          const moves = option.moves.map((move) => `${move.sellPlayerId}>${move.buyPlayerId}`).join(",");
+          return candidate(`action:${option.type}:${moves || "none"}`, option.expectedGain1GW);
+        })
+        : [candidate(transferCandidateId(recommendation))]
+    ),
     evaluation("dec:chip", "chip", `chip:${recommendation.chip.chip}`)
   ];
   recommendation.materialRiskPolicy = { startProbabilityThreshold: 0.78, selectedStarterCoverage: [] };
@@ -341,7 +381,7 @@ export function variantRecommendation(gameweek = 1, replacedPlayerId?: number): 
       reasons: ["No chip clears the authored threshold."],
       warnings: []
     },
-    topTransferCandidates: [],
+    topTransferCandidates: rankedTransferOptions(ids[11]),
     confidence: {
       score: 0.6,
       label: "medium",

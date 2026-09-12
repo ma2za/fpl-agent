@@ -759,14 +759,16 @@ Scope:
 - Report immediate gain, multi-gameweek gain, option value, replacement liquidity, and downside separately.
 - Compare transfers over the declared horizon rather than only the next deadline.
 - Keep the option-value model versioned and visible as an assumption, not a fact.
+- Publish five ranked, distinct, legal transfer options for manager choice plus the roll baseline; require the selected action to appear in that set.
 
 Release gate:
 
 - Replay GW2 and GW3 with the roll alternative retained and no zero-valued optionality assumption.
 - Verify that a transfer below the near-tie threshold cannot be justified by decimal EV alone.
 - Cover one-transfer, two-transfer, hit, capped-roll, and chip interactions.
+- Reject short, duplicated, illegal, misranked, or selected-action-missing option sets.
 
-Status: planned, priority 2.
+Status: in progress, priority 2. Five-option publication and selection consistency are implemented; transfer reachability and option-value modeling remain open.
 
 ### 0.0.27: Role Probability Guardrails
 

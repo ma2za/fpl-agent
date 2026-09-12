@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { startingXiCandidateId, verifyRecommendation, type WeeklyRecommendation } from "../src";
-import { publicNewsArticlesFor, testClaimLedger, withDecisionConsistency } from "./fixtures/variantRecommendation";
+import { publicNewsArticlesFor, rankedTransferOptions, testClaimLedger, withDecisionConsistency } from "./fixtures/variantRecommendation";
 
 const recommendation: WeeklyRecommendation = {
   schemaVersion: 2,
@@ -82,7 +82,7 @@ const recommendation: WeeklyRecommendation = {
     reasons: ["No chip clears threshold."],
     warnings: []
   },
-  topTransferCandidates: [],
+  topTransferCandidates: rankedTransferOptions(12),
   confidence: {
     score: 0.7,
     label: "medium",
@@ -212,12 +212,49 @@ describe("verifyRecommendation", () => {
     );
   });
 
+  it("requires five ranked transfer choices plus the roll baseline", () => {
+    const incomplete = structuredClone(recommendation);
+    incomplete.topTransferCandidates = incomplete.topTransferCandidates.slice(0, 4);
+    expect(verifyRecommendation(incomplete).errors).toContain(
+      "Transfer-window recommendations must publish five ranked transfer options plus one roll baseline."
+    );
+
+    const misranked = structuredClone(recommendation);
+    [misranked.topTransferCandidates[0], misranked.topTransferCandidates[1]] =
+      [misranked.topTransferCandidates[1]!, misranked.topTransferCandidates[0]!];
+    expect(verifyRecommendation(misranked).errors).toContain(
+      "The five transfer options must be ranked by expected gain over the canonical decision horizon."
+    );
+
+    const unevaluated = structuredClone(recommendation);
+    unevaluated.topTransferCandidates[0]!.moves[0]!.buyPlayerId = 999;
+    expect(verifyRecommendation(unevaluated).errors).toContain(
+      "Every published transfer option must appear in the canonical transfer evaluation."
+    );
+
+    const illegal = structuredClone(recommendation);
+    illegal.topTransferCandidates[0]!.isLegal = false;
+    expect(verifyRecommendation(illegal).errors).toContain("Published transfer options must all be legal.");
+
+    const duplicated = structuredClone(recommendation);
+    duplicated.topTransferCandidates[1]!.id = duplicated.topTransferCandidates[0]!.id;
+    expect(verifyRecommendation(duplicated).errors).toContain("Published transfer options must have unique candidate IDs.");
+
+    const missingSelection = structuredClone(recommendation);
+    missingSelection.recommendedAction.type = "transfer";
+    missingSelection.recommendedAction.transfers = [{ sellPlayerId: 12, buyPlayerId: 999 }];
+    expect(verifyRecommendation(missingSelection).errors).toContain(
+      "The recommended action must appear in the published transfer options."
+    );
+  });
+
   it("defaults a transfer-versus-roll near-tie to rolling", () => {
     const transferDecision = structuredClone(recommendation);
     const evaluation = transferDecision.decisionEvaluations!.find((item) => item.decisionType === "transfers")!;
-    const roll = evaluation.candidateScores[0]!;
-    const transfer = { ...roll, candidateId: "action:transfer:7>99", rawExpectedPoints: 1.1, objectiveScore: 1.1 };
-    evaluation.candidateScores = [transfer, roll];
+    const roll = evaluation.candidateScores.find((candidate) => candidate.candidateId === "action:roll:none")!;
+    const transfer = evaluation.candidateScores.find((candidate) => candidate.candidateId.startsWith("action:transfer:"))!;
+    Object.assign(transfer, { rawExpectedPoints: 0.1, objectiveScore: 0.1, lowerBound: -0.9, upperBound: 1.1 });
+    transferDecision.topTransferCandidates[0]!.expectedGain1GW = 0.1;
     evaluation.selectedCandidateId = transfer.candidateId;
     evaluation.objectiveLeaderCandidateId = transfer.candidateId;
     evaluation.comparisonStatus = "NEAR_TIE";
@@ -231,9 +268,10 @@ describe("verifyRecommendation", () => {
   it("accepts the roll policy default inside a transfer near-tie", () => {
     const rollDecision = structuredClone(recommendation);
     const evaluation = rollDecision.decisionEvaluations!.find((item) => item.decisionType === "transfers")!;
-    const roll = evaluation.candidateScores[0]!;
-    const transfer = { ...roll, candidateId: "action:transfer:7>99", rawExpectedPoints: 1.1, objectiveScore: 1.1 };
-    evaluation.candidateScores = [transfer, roll];
+    const roll = evaluation.candidateScores.find((candidate) => candidate.candidateId === "action:roll:none")!;
+    const transfer = evaluation.candidateScores.find((candidate) => candidate.candidateId.startsWith("action:transfer:"))!;
+    Object.assign(transfer, { rawExpectedPoints: 0.1, objectiveScore: 0.1, lowerBound: -0.9, upperBound: 1.1 });
+    rollDecision.topTransferCandidates[0]!.expectedGain1GW = 0.1;
     evaluation.selectedBy = "policy_default";
     evaluation.objectiveLeaderCandidateId = transfer.candidateId;
     evaluation.comparisonStatus = "NEAR_TIE";
