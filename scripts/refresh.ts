@@ -36,6 +36,7 @@ import {
   renderSetPieceReportMarkdown,
   renderTeamNewsReportMarkdown,
   runRefresh,
+  validateActiveDecisionManifestIfPresent,
   type EvidenceSource,
   type EvidenceSnapshotComponentKind,
   type AgentRoleEvidenceInput,
@@ -1044,7 +1045,7 @@ function buildStages(input: {
             oddsReport?.summary.matchedFixtures ?? 0
           ),
           component("projection_model", path.join(outputDir, "projections.json"), "src:projection-model", "0.0.23", input.generatedAt),
-          component("appearance_model", path.join(outputDir, "projection-uncertainty-report.json"), "src:appearance-model", "0.0.13", input.generatedAt),
+          component("appearance_model", path.join(outputDir, "projection-uncertainty-report.json"), "src:appearance-model", "0.0.27", input.generatedAt),
           input.agentRoleEvidence
             ? {
                 kind: "manual_overrides" as const,
@@ -1167,10 +1168,13 @@ export async function refresh(input: {
     deadline,
     concurrency: input.concurrency ?? 3,
     runId,
+    validateStaged: async (stagingDir) => {
+      await validateActiveDecisionManifestIfPresent(stagingDir, gameweek, deadline.time);
+    },
     beforePromote: data.publish,
     sidecars,
     cleanUnmanaged: true,
-    preserveUnmanagedPaths: ["player-dossiers", "raw-sources", "variants"]
+    preserveUnmanagedPaths: ["active-decision.json", "player-dossiers", "raw-sources", "variants"]
   });
 
   return { ...result, gameweek, targetDir };

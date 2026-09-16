@@ -1,7 +1,12 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { CurrentRoleReportSchema, ProbabilisticProjectionArraySchema, RefreshManifestSchema } from "../packages/agent/src";
+import {
+  CurrentRoleReportSchema,
+  ProbabilisticProjectionArraySchema,
+  RefreshManifestSchema,
+  validateActiveDecisionManifest
+} from "../packages/agent/src";
 import {
   EvidenceReadinessReportSchema,
   GameweekArchiveManifestSchema,
@@ -38,26 +43,17 @@ function artifactKind(filePath: string) {
   return "supporting" as const;
 }
 
-export async function assertManagerDecisionRecorded(sourceDir: string, gameweek: number) {
-  let decision: unknown;
+export async function assertManagerDecisionRecorded(sourceDir: string, gameweek: number, deadline?: string | null) {
   try {
-    decision = JSON.parse(await readFile(path.join(sourceDir, "decision-record.json"), "utf8"));
+    const manifest = await validateActiveDecisionManifest(sourceDir, gameweek, deadline);
+    if (!["selected", "submitted"].includes(manifest.status)) {
+      throw new Error("Archive requires an active selected or submitted decision.");
+    }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      throw new Error("Archive requires decision-record.json with an explicit selected or submitted manager decision.");
+      throw new Error("Archive requires a hash-verified active-decision.json manifest.");
     }
     throw error;
-  }
-
-  const record = decision as Record<string, unknown>;
-  if (
-    record.artifactKind !== "agent_decision" ||
-    record.gameweek !== gameweek ||
-    !["selected", "submitted"].includes(String(record.status)) ||
-    typeof record.selectedCandidateId !== "string" ||
-    record.selectedCandidateId.trim().length === 0
-  ) {
-    throw new Error("Archive requires decision-record.json with an explicit selected or submitted manager decision for this gameweek.");
   }
 }
 
@@ -85,7 +81,6 @@ export async function freezeGameweekArchive(input: {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
-  await assertManagerDecisionRecorded(sourceDir, input.gameweek);
   const [refresh, projections, readiness, role] = await Promise.all([
     readFile(path.join(sourceDir, "refresh-manifest.json"), "utf8").then((value) => RefreshManifestSchema.parse(JSON.parse(value))),
     readFile(path.join(sourceDir, "probabilistic-projections.json"), "utf8").then((value) => ProbabilisticProjectionArraySchema.parse(JSON.parse(value))),
@@ -94,6 +89,7 @@ export async function freezeGameweekArchive(input: {
   ]);
   if (refresh.gameweek !== input.gameweek || readiness.gameweek !== input.gameweek || role.gameweek !== input.gameweek) throw new Error("Archive inputs do not agree on gameweek.");
   if (!refresh.deadline.time) throw new Error("Archive requires a known deadline.");
+  await assertManagerDecisionRecorded(sourceDir, input.gameweek, refresh.deadline.time);
   const readinessByPlayer = new Map(readiness.items.map((item) => [item.playerId, item]));
   const roleByPlayer = new Map(role.items.map((item) => [item.playerId, item]));
   const adapterVersions = new Map<number, Set<string>>();

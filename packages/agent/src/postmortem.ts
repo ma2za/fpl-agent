@@ -13,6 +13,7 @@ const PickSchema = z.object({
 export const GameweekPostmortemSchema = z.object({
   schemaVersion: z.literal(1),
   artifactKind: z.literal("gameweek_postmortem"),
+  outcomeStatus: z.enum(["provisional", "finalized"]),
   gameweek: z.number().int().min(1).max(38),
   source: z.string().url(),
   manager: z.object({

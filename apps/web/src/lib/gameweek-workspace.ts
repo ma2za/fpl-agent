@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { deriveCompetitionState, type CompetitionPhase } from "@fpl-agent/rules";
@@ -69,7 +70,7 @@ export function calibrationSummary(calibration: Json | null) {
 }
 
 export function resolveGameweekStatus(input: {
-  hasPostmortem: boolean;
+  postmortemStatus: "provisional" | "finalized" | null;
   hasWorkspace: boolean;
   finished: boolean;
   isCurrent: boolean;
@@ -77,8 +78,9 @@ export function resolveGameweekStatus(input: {
   deadline: string | null;
   now: number;
 }): GameweekStatus {
-  if (input.hasPostmortem) return "finalized";
+  if (input.postmortemStatus === "finalized") return "finalized";
   if (input.isCurrent && !input.finished && input.deadline && Date.parse(input.deadline) <= input.now) return "live";
+  if (input.postmortemStatus === "provisional") return "provisional";
   if (input.hasWorkspace || input.isCurrent || input.isNext) return "provisional";
   return "missing";
 }
@@ -99,6 +101,39 @@ function artifact(root: string, gameweek: number, name: string) {
   if (existsSync(archivePath)) return { value: json(archivePath), source: path.relative(root, archivePath).replaceAll("\\", "/") };
   if (existsSync(currentPath)) return { value: json(currentPath), source: path.relative(root, currentPath).replaceAll("\\", "/") };
   return { value: null, source: null };
+}
+
+function activeDecisionArtifacts(root: string, gameweek: number) {
+  const workspaceRoot = path.join(root, "packages", "content", "recommendations", `gw-${gameweek}`);
+  const manifestPath = path.join(workspaceRoot, "active-decision.json");
+  const manifest = json(manifestPath);
+  if (!manifest) return null;
+  if (manifest.gameweek !== gameweek || typeof manifest.recommendationPath !== "string" || typeof manifest.decisionRecordPath !== "string") {
+    throw new Error(`GW${gameweek} active decision manifest is invalid.`);
+  }
+  const readReference = (logicalPath: string, expectedHash: unknown) => {
+    const filePath = path.resolve(root, logicalPath);
+    const resolvedWorkspace = path.resolve(workspaceRoot);
+    if (!filePath.startsWith(`${resolvedWorkspace}${path.sep}`)) {
+      throw new Error(`GW${gameweek} active decision reference escapes its workspace.`);
+    }
+    const bytes = readFileSync(filePath);
+    if (createHash("sha256").update(bytes).digest("hex") !== expectedHash) {
+      throw new Error(`GW${gameweek} active decision hash mismatch for ${logicalPath}.`);
+    }
+    return { value: JSON.parse(bytes.toString("utf8")) as Json, source: logicalPath.replaceAll("\\", "/") };
+  };
+  const recommendation = readReference(manifest.recommendationPath, manifest.recommendationSha256);
+  const decision = readReference(manifest.decisionRecordPath, manifest.decisionRecordSha256);
+  if (decision.value.selectedCandidateId !== manifest.selectedCandidateId ||
+      !recommendation.value.decisionEvaluations?.some((evaluation: Json) => evaluation.selectedCandidateId === manifest.selectedCandidateId)) {
+    throw new Error(`GW${gameweek} active decision does not match its selected candidate.`);
+  }
+  return {
+    recommendation,
+    decision,
+    source: path.relative(root, manifestPath).replaceAll("\\", "/")
+  };
 }
 
 function projectionModelVersion(recommendation: Json | null, decision: Json | null) {
@@ -132,8 +167,9 @@ export function loadWorkspace(root = repositoryRoot(), now = Date.now()): Worksp
 
   const gameweeks = [...discovered].sort((a, b) => b - a).map((gameweek) => {
     const event = events.find((item) => Number(item.id) === gameweek);
-    const recommendation = artifact(root, gameweek, "recommendation.json");
-    const decision = artifact(root, gameweek, "decision-record.json");
+    const activeDecision = activeDecisionArtifacts(root, gameweek);
+    const recommendation = activeDecision?.recommendation ?? artifact(root, gameweek, "recommendation.json");
+    const decision = activeDecision?.decision ?? artifact(root, gameweek, "decision-record.json");
     const readiness = artifact(root, gameweek, "evidence-readiness-report.json");
     const triggers = artifact(root, gameweek, "trigger-evaluation.json");
     const postmortemPath = path.join(postmortemRoot, `gw-${gameweek}.json`);
@@ -141,14 +177,14 @@ export function loadWorkspace(root = repositoryRoot(), now = Date.now()): Worksp
     const postmortem = json(postmortemPath);
     const regret = json(regretPath);
     const archived = existsSync(path.join(archiveRoot, `gw-${gameweek}`, "archive-manifest.json"));
-    const sources = [recommendation.source, decision.source, readiness.source, triggers.source];
+    const sources = [activeDecision?.source, recommendation.source, decision.source, readiness.source, triggers.source];
     if (postmortem) sources.push(path.relative(root, postmortemPath).replaceAll("\\", "/"));
     if (regret) sources.push(path.relative(root, regretPath).replaceAll("\\", "/"));
     const hasWorkspace = Boolean(recommendation.value || decision.value || readiness.value || triggers.value || archived);
     return {
       gameweek,
       status: resolveGameweekStatus({
-        hasPostmortem: Boolean(postmortem),
+        postmortemStatus: postmortem?.outcomeStatus ?? null,
         hasWorkspace,
         finished: Boolean(event?.finished),
         isCurrent: Boolean(event?.is_current),

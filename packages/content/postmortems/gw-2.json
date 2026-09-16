@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "artifactKind": "gameweek_postmortem",
+  "outcomeStatus": "finalized",
   "gameweek": 2,
   "source": "https://fantasy.premierleague.com/en/entry/7407631/event/2",
   "manager": {

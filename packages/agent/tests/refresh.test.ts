@@ -301,6 +301,30 @@ describe("refresh orchestrator", () => {
     expect(result.manifest.errors).toEqual(["validated: artifact is invalid"]);
   });
 
+  it("preserves the target when promotion validation fails", async () => {
+    const root = await temporaryDirectory();
+    const targetDir = path.join(root, "gw-4");
+    await mkdir(targetDir, { recursive: true });
+    await writeFile(path.join(targetDir, "previous.txt"), "valid\n", "utf8");
+    const stage: RefreshStage = {
+      id: "required",
+      required: true,
+      artifacts: [{ relativePath: "required.json" }],
+      run: ({ outputDir }) => writeArtifact(outputDir, "required.json", { ok: true })
+    };
+
+    const result = await runRefresh({
+      ...baseInput(targetDir, [stage]),
+      validateStaged: async () => {
+        throw new Error("active decision hash mismatch");
+      }
+    });
+
+    expect(result.promoted).toBe(false);
+    expect(result.manifest.errors).toContain("promotion-validation: active decision hash mismatch");
+    expect(await readFile(path.join(targetDir, "previous.txt"), "utf8")).toBe("valid\n");
+  });
+
   it("preserves the target when shared input publication fails", async () => {
     const root = await temporaryDirectory();
     const targetDir = path.join(root, "gw-4");

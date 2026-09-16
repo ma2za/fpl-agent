@@ -31,7 +31,8 @@ function role(playerId: number, supportScore: number, confidence = 1): RoleEvide
     confidence,
     currentEvidencePresent: true,
     manualOverride: null,
-    disagreement: false
+    disagreement: false,
+    evidenceIds: [`role-observation:${playerId}`]
   };
 }
 
@@ -165,7 +166,7 @@ describe("probabilistic projections", () => {
     expect(market.marketAdjustment?.goalPointsDelta).toBeGreaterThan(0);
     expect(market.marketAdjustment?.cleanSheetPointsDelta).toBe(1);
     expect(market.marketAdjustment?.appliedConditionalStartDelta).toBeLessThanOrEqual(2);
-    expect(market.componentVersions).toEqual({ appearance: "0.0.26", points: "0.0.23" });
+    expect(market.componentVersions).toEqual({ appearance: "0.0.27", points: "0.0.23" });
   });
 
   it("lowers role-adjusted points when start probability falls without changing conditional-start points", () => {
@@ -243,6 +244,39 @@ describe("probabilistic projections", () => {
     expect(projection.appearance.startProbability).toBe(0.9);
     expect(projection.appearance.roleClass).toBe("LIKELY_STARTER");
     expect(projection.appearance.reasonCodes).toContain("calibrated_start_probability_ceiling");
+  });
+
+  it("does not double-count untraceable current-season role evidence", () => {
+    const subject = player(19, 1800, 100);
+    const rawProjection = projectPlayer(subject);
+    const baseline = probabilisticProjection({ player: subject, rawProjection });
+    const projection = probabilisticProjection({
+      player: subject,
+      rawProjection,
+      roleEvidence: { ...role(19, 1), evidenceIds: [] }
+    });
+
+    expect(projection.appearance.startProbability).toBe(baseline.appearance.startProbability);
+    expect(projection.appearance.reasonCodes).toContain("role_evidence_not_independently_traceable");
+  });
+
+  it("uses sparse current-season minutes without pretending they are a full empirical distribution", () => {
+    const subject = player(20, 2400, 140);
+    const rawProjection = projectPlayer(subject);
+    const reducedMinutes = probabilisticProjection({
+      player: subject,
+      rawProjection,
+      history: [70, 75, 80].map((minutes) => ({ started: true, minutes, points: 2 }))
+    });
+    const fullMinutes = probabilisticProjection({
+      player: subject,
+      rawProjection,
+      history: [90, 90, 90].map((minutes) => ({ started: true, minutes, points: 2 }))
+    });
+
+    expect(reducedMinutes.minutes.sampleSource).toBe("shrunken_empirical");
+    expect(reducedMinutes.minutes.startMinutesMean).toBeLessThan(fullMinutes.minutes.startMinutesMean);
+    expect(reducedMinutes.minutes.expectedMinutes).toBeLessThan(fullMinutes.minutes.expectedMinutes);
   });
 
   it("permits higher estimates only after enough starts and qualifying current evidence", () => {

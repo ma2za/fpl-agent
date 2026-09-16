@@ -74,7 +74,9 @@ describe("refresh command integration", () => {
       rawDir,
       processedDir: path.join(root, "processed"),
       recommendationsDir,
-      temporaryRoot: path.join(root, "refresh-inputs")
+      temporaryRoot: path.join(root, "refresh-inputs"),
+      decisionStatusesPath: path.join(root, "decision-statuses.json"),
+      triggerPlanPath: path.join(root, "trigger-plan.json")
     };
 
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network forbidden"));
@@ -131,6 +133,8 @@ describe("refresh command integration", () => {
       processedDir: path.join(root, "processed"),
       recommendationsDir: path.join(root, "recommendations"),
       temporaryRoot: path.join(root, "refresh-inputs"),
+      decisionStatusesPath: path.join(root, "decision-statuses.json"),
+      triggerPlanPath: path.join(root, "trigger-plan.json"),
       fetchImpl: mockedFetch(bootstrap, fixtures, calls)
     });
 
@@ -197,7 +201,9 @@ describe("refresh command integration", () => {
       runId: `deadline-${expectedStatus}`,
       rawDir,
       processedDir: path.join(root, "processed"),
-      recommendationsDir: path.join(root, "recommendations")
+      recommendationsDir: path.join(root, "recommendations"),
+      decisionStatusesPath: path.join(root, "decision-statuses.json"),
+      triggerPlanPath: path.join(root, "trigger-plan.json")
     });
 
     expect(result.manifest.deadline.status).toBe(expectedStatus);

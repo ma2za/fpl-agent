@@ -120,6 +120,8 @@ export type DecisionCandidateScore = {
   rawExpectedPoints: number | null;
   objectiveScore: number;
   eligible: boolean;
+  eligibilityKind?: "eligible" | "repository_ineligible" | "preference_excluded";
+  preferenceConstraintIds?: string[];
   ineligibilityReasons: string[];
   lowerBound: number | null;
   upperBound: number | null;
@@ -147,6 +149,12 @@ export type DecisionEvaluation = {
   candidateScores: DecisionCandidateScore[];
   selectedCandidateId: string;
   selectedBy: "objective_score" | "policy_default" | "explicit_override";
+  selectionScope?: "unconstrained" | "preference_constrained";
+  unconstrainedObjectiveLeaderCandidateId?: string;
+  preferenceTradeoff?: {
+    objectiveScoreDelta: number;
+    constraintIds: string[];
+  } | null;
   overrideReason: string | null;
   overrideTradeoff?: {
     objectiveScoreDelta: number;

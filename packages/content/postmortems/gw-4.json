@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "artifactKind": "gameweek_postmortem",
+  "outcomeStatus": "provisional",
+  "gameweek": 4,
+  "source": "https://fantasy.premierleague.com/en/entry/7407631/event/4",
+  "manager": {
+    "entryId": 7407631,
+    "teamName": "five points",
+    "totalPoints": 61,
+    "overallPoints": 261,
+    "gameweekAverage": 69,
+    "gameweekHighest": 151,
+    "gameweekRank": 7592060,
+    "overallRank": 3647848,
+    "totalPlayers": 10673913,
+    "teamValue": 99.6,
+    "bank": 0.4,
+    "transfers": 1
+  },
+  "aiSelection": {
+    "candidateId": "action:transfer:260>41",
+    "projectedPoints": 64.9,
+    "actualPointsCounterfactual": 61,
+    "sourcePath": "packages/content/recommendations/gw-4/variants/emiliano-buendia/decision-record.json"
+  },
+  "submittedSelection": {
+    "formation": "4-3-3",
+    "captainPlayerId": 411,
+    "viceCaptainPlayerId": 106,
+    "picks": [
+      { "playerId": 109, "name": "Verbruggen", "position": "GKP", "role": "starter", "rawPoints": 8, "multiplier": 1, "countedPoints": 8 },
+      { "playerId": 4, "name": "Gabriel", "position": "DEF", "role": "starter", "rawPoints": 9, "multiplier": 1, "countedPoints": 9 },
+      { "playerId": 8, "name": "Calafiori", "position": "DEF", "role": "starter", "rawPoints": 6, "multiplier": 1, "countedPoints": 6 },
+      { "playerId": 88, "name": "Kayode", "position": "DEF", "role": "starter", "rawPoints": 1, "multiplier": 1, "countedPoints": 1 },
+      { "playerId": 204, "name": "Mitchell", "position": "DEF", "role": "starter", "rawPoints": 1, "multiplier": 1, "countedPoints": 1 },
+      { "playerId": 41, "name": "Buendía", "position": "MID", "role": "starter", "rawPoints": 2, "multiplier": 1, "countedPoints": 2 },
+      { "playerId": 397, "name": "Semenyo", "position": "MID", "role": "starter", "rawPoints": 3, "multiplier": 1, "countedPoints": 3 },
+      { "playerId": 427, "name": "Mbeumo", "position": "MID", "role": "starter", "rawPoints": 2, "multiplier": 1, "countedPoints": 2 },
+      { "playerId": 346, "name": "Calvert-Lewin", "position": "FWD", "role": "starter", "rawPoints": 10, "multiplier": 1, "countedPoints": 10 },
+      { "playerId": 106, "name": "Thiago", "position": "FWD", "role": "starter", "rawPoints": 1, "multiplier": 1, "countedPoints": 1 },
+      { "playerId": 411, "name": "Haaland", "position": "FWD", "role": "starter", "rawPoints": 9, "multiplier": 2, "countedPoints": 18 },
+      { "playerId": 82, "name": "Kelleher", "position": "GKP", "role": "bench", "rawPoints": 3, "multiplier": 0, "countedPoints": 0 },
+      { "playerId": 418, "name": "Maguire", "position": "DEF", "role": "bench", "rawPoints": 1, "multiplier": 0, "countedPoints": 0 },
+      { "playerId": 542, "name": "E.Le Fée", "position": "MID", "role": "bench", "rawPoints": 0, "multiplier": 0, "countedPoints": 0 },
+      { "playerId": 212, "name": "Hughes", "position": "MID", "role": "bench", "rawPoints": 1, "multiplier": 0, "countedPoints": 0 }
+    ]
+  },
+  "managerOverrides": [],
+  "counterfactuals": {
+    "managerOverrideDelta": 0,
+    "viceCaptainAsCaptainPoints": 53,
+    "captaincyDelta": -8,
+    "unusedBenchPoints": 5
+  },
+  "lessons": [
+    "All ten GW4 fixtures are finished, but the official FPL event still reports finished=false and data_checked=false. The 61-point score, ranks, average and highest score are provisional until FPL completes its data check.",
+    "The submitted team scored 61 points, eight below the current 69-point gameweek average, and the overall rank moved from 2,346,231 to 3,647,848.",
+    "The official transfer and submitted starting XI match the selected Buendía plan. The only submission difference is Thiago rather than Gabriel as vice-captain, which had no realized effect because Haaland played.",
+    "Haaland scored nine raw points and captaincy added nine. Replacing him with submitted vice-captain Thiago would have reduced the score by eight points; the recommended vice-captain Gabriel also scored nine.",
+    "Buendía started, played 62 minutes and scored two points. He beat the one-point Wilson roll baseline by one realized point, so the transfer decision itself did not cause the below-average score.",
+    "Among the active pre-deadline shortlist, George would have produced 62 total points, Lavia or Wharton 61, Tel or rolling 60, and Barnes 61. The selected Buendía outcome was one point behind the best active-shortlist result.",
+    "Earlier pre-deadline alternatives Tavernier and Kamada each scored eight points and would have produced 67 total points. Tavernier was later excluded by the manager's GW4-only Bournemouth constraint; this is six points of realized constraint regret, not proof that the constraint was wrong ex ante.",
+    "The selected team scored 61 against a 64.9 expectation. The largest negative player errors were Thiago at minus 5.4, Mitchell at minus 3.9, Buendía at minus 3.7 and Kayode at minus 2.9; Calvert-Lewin, Verbruggen, Haaland captaincy and Gabriel offset most of them.",
+    "The model assigned every reviewed outfield candidate except Hughes the same 90 percent start probability and approximately 72 expected minutes. Kayode, Tel and Wilson were benched, showing that the probability cap removed useful role discrimination; Kayode's cameo caused no realized bench cost because first substitute Maguire also scored one.",
+    "The frozen GW4 archive predates the active Buendía decision, contains decision_record_unavailable, and retains no active counterfactual frontier. A decision-grade regret report cannot be reproduced from that archive even though the later local recommendation and official submission can be compared manually."
+  ]
+}

@@ -180,6 +180,7 @@ export async function runRefresh(input: {
   runId?: string;
   now?: () => Date;
   timer?: () => number;
+  validateStaged?: (stagingDir: string) => Promise<void>;
   beforePromote?: () => Promise<void>;
   sidecars?: RefreshSidecar[];
   renameForPromotion?: typeof rename;
@@ -338,6 +339,18 @@ export async function runRefresh(input: {
   await writeJsonAtomic(path.join(stagingDir, "refresh-manifest.json"), manifest);
 
   if (requiredFailure) {
+    return { manifest, promoted: false, stagingDir };
+  }
+
+  try {
+    await input.validateStaged?.(stagingDir);
+  } catch (error) {
+    const message = `promotion-validation: ${error instanceof Error ? error.message : String(error)}`;
+    manifest.status = "failed";
+    manifest.errors.push(message);
+    manifest.endedAt = now().toISOString();
+    manifest.durationMs = Number((timer() - startedTimer).toFixed(3));
+    await writeJsonAtomic(path.join(stagingDir, "refresh-manifest.json"), manifest);
     return { manifest, promoted: false, stagingDir };
   }
 

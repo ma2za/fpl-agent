@@ -10,6 +10,7 @@ async function main() {
 
   console.log(JSON.stringify({
     gameweek: postmortem.gameweek,
+    outcomeStatus: postmortem.outcomeStatus,
     totalPoints: postmortem.manager.totalPoints,
     averagePoints: postmortem.manager.gameweekAverage,
     aiSelectionCounterfactual: postmortem.aiSelection.actualPointsCounterfactual,

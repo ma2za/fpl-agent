@@ -351,6 +351,7 @@ The coding agent must read the evidence files, reason from current public inform
 - Declare one decisionPolicy with a stable policyId, objective, horizon, risk mode, materiality floor, and near-tie transfer default. Reference it from optimizationPolicy and every DecisionEvaluation.
 - Classify each comparison as CLEAR, NEAR_TIE, or UNRESOLVED. A small positive estimate inside the materiality threshold is not a clear winner.
 - Select the objective leader unless an explicit override records its reason, exact objective-score delta, and supporting evidence IDs.
+- Keep manager-preference exclusions in candidateScores as preference_excluded candidates. Label the selected leader preference-constrained, identify the unconstrained leader, and quantify the exact objective-score cost and constraint IDs.
 - When a transfer and roll are a near-tie, select the roll unless a quantified explicit override supports the transfer.
 - For every transfer, hit, or roll decision, publish exactly five distinct, legal transfer options ranked over the canonical decision horizon, plus one legal roll baseline. The recommended action must be one of those six options.
 - Declare optimizationPolicy explicitly. MAX_EXPECTED_POINTS excludes ownership; rank-aware modes require a cited simulated field distribution.
@@ -466,6 +467,12 @@ export async function generateRecommendationEvidence(input: {
     path.join(outputDir, "current-role-report.json"),
     CurrentRoleReportSchema
   );
+  const projectionRoleEvidence = currentRoleReport?.items.map((item) => ({
+    ...item,
+    evidenceIds: [...new Set(Object.values(item.dimensions).flat()
+      .filter((record) => record.signal !== "neutral" && record.sourceKind !== "current_season_minutes")
+      .flatMap((record) => record.observationIds))]
+  }));
   const historyByPlayerId = await loadConditionalHistory();
   const priorProjections: ProbabilisticProjection[] | null = gameweek > 1
     ? await readArtifactFileIfExists(path.join(
@@ -513,7 +520,7 @@ export async function generateRecommendationEvidence(input: {
     gameweek,
     players: projectionPlayers,
     rawProjections,
-    roleEvidence: currentRoleReport?.items,
+    roleEvidence: projectionRoleEvidence,
     historyByPlayerId,
     priorAppearanceByPlayerId: new Map((priorProjections ?? []).map((projection) => [projection.playerId, projection.appearance])),
     marketInputsByPlayerId

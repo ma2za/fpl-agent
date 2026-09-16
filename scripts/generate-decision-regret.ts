@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { GameweekPostmortemSchema } from "../packages/agent/src/postmortem";
 import {
   DEFAULT_PLAYER_STORE_PATH,
@@ -27,6 +28,42 @@ type FrontierCandidate = {
   benchOrder: number[];
   constraints: { budget: number };
 };
+
+export async function findRetainedCounterfactual(
+  directory: string,
+  artifacts: Array<{ path: string; contentHash: string }>,
+  gameweek: number,
+  selectedCandidateId: string
+) {
+  const matches = [] as Array<{
+    path: string;
+    contentHash: string;
+    value: { generatedAt: string; request?: { gameweek?: number }; candidates: FrontierCandidate[] };
+  }>;
+  for (const artifact of artifacts.filter((item) => item.path.endsWith("/counterfactual-set.json") || item.path === "counterfactual-set.json")) {
+    const value = JSON.parse(await readFile(path.join(directory, artifact.path), "utf8")) as {
+      generatedAt?: unknown;
+      request?: { gameweek?: unknown };
+      candidates?: FrontierCandidate[];
+    };
+    if (value.request?.gameweek !== undefined && value.request.gameweek !== gameweek) continue;
+    if (typeof value.generatedAt !== "string" || !Array.isArray(value.candidates)) continue;
+    if (!value.candidates.some((candidate) => candidate.horizon === 1 && candidate.candidateId === selectedCandidateId)) continue;
+    matches.push({ path: artifact.path, contentHash: artifact.contentHash, value: value as typeof matches[number]["value"] });
+  }
+  if (matches.length === 0) {
+    throw new Error(`GW${gameweek} frozen archive has no retained horizon-one counterfactual frontier containing ${selectedCandidateId}.`);
+  }
+  if (matches.length > 1) {
+    throw new Error(`GW${gameweek} frozen archive has multiple retained counterfactual frontiers containing ${selectedCandidateId}.`);
+  }
+  const match = matches[0];
+  const simulationPath = `${path.posix.dirname(match.path)}/structure-simulation.json`;
+  return {
+    ...match,
+    simulationPath: artifacts.some((artifact) => artifact.path === simulationPath) ? simulationPath : null
+  };
+}
 
 function collectPlayers(value: unknown, players = new Map<number, PoolPlayer>()) {
   if (Array.isArray(value)) {
@@ -74,12 +111,20 @@ async function derivedRequest(gameweek: number, db: ReturnType<typeof openPlayer
   const archive = readGameweekArchive(db, gameweek);
   if (!archive) throw new Error(`GW${gameweek} must be archived before regret analysis.`);
   const postmortem = GameweekPostmortemSchema.parse(JSON.parse(await readFile(path.join("packages", "content", "postmortems", `gw-${gameweek}.json`), "utf8")));
+  if (postmortem.outcomeStatus !== "finalized") {
+    throw new Error(`GW${gameweek} postmortem is provisional; regret analysis requires finalized outcomes.`);
+  }
+  const latest = db.prepare("SELECT MAX(observed_at) AS observed_at FROM gameweek_outcome_batches WHERE gameweek = ? AND finalized = 1").get(gameweek) as { observed_at: string | null };
+  if (!latest.observed_at) throw new Error(`GW${gameweek} has no finalized outcome batch.`);
   const players = collectPlayers(JSON.parse(await readFile(path.join(directory, "budget-tiers.json"), "utf8")));
-  const counterfactualPath = "counterfactuals/gw2-one-free-transfer/counterfactual-set.json";
-  const counterfactual = JSON.parse(await readFile(path.join(directory, counterfactualPath), "utf8")) as {
-    generatedAt: string;
-    candidates: FrontierCandidate[];
-  };
+  const retainedCounterfactual = await findRetainedCounterfactual(
+    directory,
+    archive.artifacts,
+    gameweek,
+    postmortem.aiSelection.candidateId
+  );
+  const counterfactualPath = retainedCounterfactual.path;
+  const counterfactual = retainedCounterfactual.value;
   const projections = JSON.parse(await readFile(path.join(directory, "probabilistic-projections.json"), "utf8")) as Array<{
     playerId: number;
     roleAdjustedProjection: number;
@@ -91,11 +136,8 @@ async function derivedRequest(gameweek: number, db: ReturnType<typeof openPlayer
   ], archive.deadline, players);
   const legalFrontier = frontier.filter((candidate) => candidate.playerIds.every((playerId) => players.get(playerId)?.status !== "u"));
   const excludedUnavailableCandidates = frontier.length - legalFrontier.length;
-  const latest = db.prepare("SELECT MAX(observed_at) AS observed_at FROM gameweek_outcome_batches WHERE gameweek = ? AND finalized = 1").get(gameweek) as { observed_at: string | null };
-  if (!latest.observed_at) throw new Error(`GW${gameweek} has no finalized outcome batch.`);
   const chips = ["wildcard", "free_hit", "bench_boost", "triple_captain"] as const;
-  const counterfactualHash = archive.artifacts.find((artifact) => artifact.path === counterfactualPath)?.contentHash;
-  if (!counterfactualHash) throw new Error("Frozen archive is missing the retained counterfactual set.");
+  const counterfactualHash = retainedCounterfactual.contentHash;
   const projectionById = new Map(projections.map((projection) => [projection.playerId, projection.roleAdjustedProjection]));
   const retainedCandidates = legalFrontier.map((candidate) => {
     const captains = [...candidate.startingXI].sort((a, b) =>
@@ -118,7 +160,7 @@ async function derivedRequest(gameweek: number, db: ReturnType<typeof openPlayer
     };
   });
   const agent = retainedCandidates.find((candidate) => candidate.candidateId === postmortem.aiSelection.candidateId);
-  if (!agent) throw new Error("Selected GW2 candidate is missing from the retained horizon-one frontier.");
+  if (!agent) throw new Error(`Selected GW${gameweek} candidate is missing from the retained horizon-one frontier.`);
   const submittedIds = postmortem.submittedSelection.picks.map((pick) => pick.playerId);
   const submittedBench = postmortem.submittedSelection.picks.filter((pick) => pick.role === "bench").map((pick) => pick.playerId);
   const submitted = {
@@ -158,8 +200,8 @@ async function derivedRequest(gameweek: number, db: ReturnType<typeof openPlayer
       { stage: "assumption", status: "not_applicable", evidenceIds: [], note: "No assumption-specific miss is established by the outcome alone." },
       { stage: "forecast", status: "supported", evidenceIds: ["probabilistic-projections.json"], note: `The selected candidate scored ${postmortem.aiSelection.actualPointsCounterfactual} against ${postmortem.aiSelection.projectedPoints} projected points, but the model ranked it above a retained candidate that realized ${comparator.actualPoints}.` },
       { stage: "candidate_generation", status: excludedUnavailableCandidates === 0 ? "supported" : "unsupported", evidenceIds: [counterfactualPath], note: excludedUnavailableCandidates === 0 ? `All ${retainedCandidates.length} retained horizon-one legal candidates were replayed.` : `${excludedUnavailableCandidates} retained candidates contained an unavailable player and were excluded from the legal comparator; ${retainedCandidates.length} legal candidates were replayed.` },
-      { stage: "simulation", status: "supported", evidenceIds: ["counterfactuals/gw2-one-free-transfer/structure-simulation.json"], note: "The full pre-deadline simulation and its sample-level candidate totals remain archived." },
-      { stage: "evidence_gap", status: "not_applicable", evidenceIds: ["archive-manifest.json"], note: "The retained horizon-one frontier is complete for the declared candidate-generation request." },
+      { stage: "simulation", status: retainedCounterfactual.simulationPath ? "supported" : "unsupported", evidenceIds: retainedCounterfactual.simulationPath ? [retainedCounterfactual.simulationPath] : [], note: retainedCounterfactual.simulationPath ? "The full pre-deadline simulation and its sample-level candidate totals remain archived." : "The archive does not retain the sample-level structure simulation for this frontier." },
+      { stage: "evidence_gap", status: retainedCounterfactual.simulationPath ? "not_applicable" : "supported", evidenceIds: ["archive-manifest.json"], note: retainedCounterfactual.simulationPath ? "The retained horizon-one frontier is complete for the declared candidate-generation request." : "Simulation-level attribution is limited because only the retained frontier is available." },
       { stage: "agent_decision", status: comparator.candidateId === agent.candidateId ? "not_applicable" : "supported", evidenceIds: ["decision-record.json", counterfactualPath], note: comparator.candidateId === agent.candidateId ? "The selected agent candidate tied or led the retained frontier on realized points." : "A better realized result existed in the frozen frontier; this is measured without adding hindsight-only players." },
       { stage: "manager_override", status: "supported", evidenceIds: [postmortem.source], note: "The submitted manager overrides are measured independently from the agent selection." },
       { stage: "normal_outcome_variance", status: "supported", evidenceIds: ["official-finalized-outcomes"], note: "Single-gameweek realized points remain noisy relative to pre-deadline forecasts." }
@@ -187,4 +229,9 @@ async function main() {
   }
 }
 
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}

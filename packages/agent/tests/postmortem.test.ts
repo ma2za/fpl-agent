@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import postmortemJson from "../../content/postmortems/gw-1.json";
 import gw3PostmortemJson from "../../content/postmortems/gw-3.json";
+import gw4PostmortemJson from "../../content/postmortems/gw-4.json";
 import { GameweekPostmortemSchema } from "../src/postmortem";
 
 describe("GW1 postmortem", () => {
@@ -30,5 +31,14 @@ describe("GW3 postmortem", () => {
     expect(postmortem.manager.totalPoints).toBe(65);
     expect(postmortem.aiSelection.actualPointsCounterfactual).toBe(57);
     expect(postmortem.counterfactuals.managerOverrideDelta).toBe(8);
+  });
+});
+
+describe("GW4 postmortem", () => {
+  it("stays provisional until the official outcome batch is finalized", () => {
+    const postmortem = GameweekPostmortemSchema.parse(gw4PostmortemJson);
+
+    expect(postmortem.outcomeStatus).toBe("provisional");
+    expect(postmortem.manager.totalPoints).toBe(61);
   });
 });

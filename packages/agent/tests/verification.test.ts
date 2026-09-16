@@ -280,6 +280,31 @@ describe("verifyRecommendation", () => {
     expect(verifyRecommendation(rollDecision).errors).toEqual([]);
   });
 
+  it("requires the unconstrained leader and objective cost for manager preference exclusions", () => {
+    const constrained = structuredClone(recommendation);
+    const evaluation = constrained.decisionEvaluations!.find((item) => item.decisionType === "transfers")!;
+    evaluation.candidateScores.push({
+      candidateId: "action:transfer:12>68",
+      rawExpectedPoints: 0.3,
+      objectiveScore: 0.3,
+      eligible: false,
+      eligibilityKind: "preference_excluded",
+      preferenceConstraintIds: ["manager:no-bournemouth"],
+      ineligibilityReasons: ["Manager excluded Bournemouth targets."],
+      lowerBound: null,
+      upperBound: null
+    });
+
+    expect(verifyRecommendation(constrained).errors).toContain(
+      "Decision dec:transfers selects a preference-constrained objective leader without declaring the constrained scope."
+    );
+
+    evaluation.selectionScope = "preference_constrained";
+    evaluation.unconstrainedObjectiveLeaderCandidateId = "action:transfer:12>68";
+    evaluation.preferenceTradeoff = { objectiveScoreDelta: 0.3, constraintIds: ["manager:no-bournemouth"] };
+    expect(verifyRecommendation(constrained).errors).toEqual([]);
+  });
+
   it("rejects clear-winner language for a numerical near-tie", () => {
     const overstated = structuredClone(recommendation);
     const captaincy = overstated.decisionEvaluations!.find((item) => item.decisionType === "captaincy")!;

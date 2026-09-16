@@ -338,6 +338,8 @@ const candidateScore = looseObject({
   rawExpectedPoints: z.number().nullable(),
   objectiveScore: z.number(),
   eligible: z.boolean(),
+  eligibilityKind: z.enum(["eligible", "repository_ineligible", "preference_excluded"]).optional(),
+  preferenceConstraintIds: z.array(z.string().min(1)).min(1).optional(),
   ineligibilityReasons: stringArray,
   lowerBound: z.number().nullable(),
   upperBound: z.number().nullable(),
@@ -365,6 +367,12 @@ const decisionEvaluation = looseObject({
   candidateScores: z.array(candidateScore).min(1),
   selectedCandidateId: z.string().min(1),
   selectedBy: z.enum(["objective_score", "policy_default", "explicit_override"]),
+  selectionScope: z.enum(["unconstrained", "preference_constrained"]).optional(),
+  unconstrainedObjectiveLeaderCandidateId: z.string().min(1).optional(),
+  preferenceTradeoff: looseObject({
+    objectiveScoreDelta: z.number().nonnegative(),
+    constraintIds: z.array(z.string().min(1)).min(1)
+  }).nullable().optional(),
   overrideReason: z.string().nullable(),
   overrideTradeoff: looseObject({
     objectiveScoreDelta: z.number().nonnegative(),
@@ -1338,6 +1346,8 @@ const appearanceStateForecast = z.object({
   overallEvidenceConfidence: z.number().min(0).max(1),
   evidenceUncertainty: z.number().min(0).max(1),
   startProbabilityUncertainty: z.number().min(0).max(1).optional(),
+  preCeilingStartProbability: z.number().min(0).max(1).optional(),
+  startProbabilityCeiling: z.number().min(0).max(1).optional(),
   startProbabilityInterval: z.object({
     lower: z.number().min(0).max(1),
     upper: z.number().min(0).max(1)
@@ -1365,7 +1375,7 @@ const minutesDistribution = z.object({
   standardDeviation: z.number().nonnegative(),
   startMinutesMean: z.number(),
   substituteMinutesMean: z.number(),
-  sampleSource: z.enum(["empirical", "cohort"]),
+  sampleSource: z.enum(["empirical", "shrunken_empirical", "cohort"]),
   cohort: z.string()
 }).strict();
 
@@ -1388,9 +1398,9 @@ const probabilisticProjection = z.object({
     evidenceIds: stringArray
   }).strict()).optional(),
   model: z.literal("appearance-state-mixture"),
-  modelVersion: z.enum(["0.0.13", "0.0.23", "0.0.26"]),
+  modelVersion: z.enum(["0.0.13", "0.0.23", "0.0.26", "0.0.27"]),
   componentVersions: looseObject({
-    appearance: z.enum(["0.0.13", "0.0.26"]),
+    appearance: z.enum(["0.0.13", "0.0.26", "0.0.27"]),
     points: z.literal("0.0.23")
   }).optional(),
   marketAdjustment: looseObject({
@@ -1428,8 +1438,8 @@ export const ProjectionUncertaintyReportSchema = z.object({
   generatedAt: z.string(),
   gameweek: z.number().int().positive(),
   model: z.literal("appearance-state-mixture"),
-  modelVersion: z.enum(["0.0.13", "0.0.23", "0.0.26"]),
-  componentVersions: looseObject({ appearance: z.enum(["0.0.13", "0.0.26"]), points: z.literal("0.0.23") }).optional(),
+  modelVersion: z.enum(["0.0.13", "0.0.23", "0.0.26", "0.0.27"]),
+  componentVersions: looseObject({ appearance: z.enum(["0.0.13", "0.0.26", "0.0.27"]), points: z.literal("0.0.23") }).optional(),
   seed: z.number().int().nonnegative(),
   sampleCount: z.number().int().positive(),
   items: ProbabilisticProjectionArraySchema,

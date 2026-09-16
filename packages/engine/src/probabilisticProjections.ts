@@ -150,6 +150,13 @@ function empiricalMeans(history: ConditionalAppearanceSample[]) {
   };
 }
 
+function shrunkenMean(values: number[], fallback: number) {
+  if (values.length === 0) return fallback;
+  const priorWeight = 3;
+  return (values.reduce((sum, value) => sum + value, 0) + fallback * priorWeight) /
+    (values.length + priorWeight);
+}
+
 function appearanceForecast(
   player: PlayerForEngine,
   raw: PlayerProjection,
@@ -163,13 +170,15 @@ function appearanceForecast(
     priorAppearance?.historicalRoleConfidence ?? 0
   );
   const currentConfidence = role?.currentEvidencePresent ? clamp(role.confidence) : 0;
+  const hasTraceableRoleEvidence = (role?.evidenceIds?.length ?? 0) > 0;
+  const traceableCurrentConfidence = hasTraceableRoleEvidence ? currentConfidence : 0;
   const previousPrior = priorAppearance?.startProbability ?? historicalStartPrior(raw.expectedMinutes);
   const priorWeight = 4;
   const prior = history.length > 0
     ? (previousPrior * priorWeight + history.filter((sample) => sample.started).length) / (priorWeight + history.length)
     : previousPrior;
   let conditionalStart = role?.currentEvidencePresent
-    ? prior * (1 - currentConfidence) + clamp(role.supportScore) * currentConfidence
+    ? prior * (1 - traceableCurrentConfidence) + clamp(role.supportScore) * traceableCurrentConfidence
     : prior;
 
   if (role?.manualOverride === "supports_start") conditionalStart = 0.98;
@@ -178,6 +187,7 @@ function appearanceForecast(
 
   const recentStarts = history.filter((sample) => sample.started).length;
   const qualifyingCurrentEvidence = role?.currentEvidencePresent === true &&
+    hasTraceableRoleEvidence &&
     role.manualOverride !== "opposes_start" &&
     !role.disagreement &&
     role.confidence >= 0.85 &&
@@ -187,6 +197,7 @@ function appearanceForecast(
     : qualifyingCurrentEvidence && recentStarts >= 4
       ? 0.95
       : 0.9;
+  const preCeilingStartProbability = conditionalStart;
   const startProbabilityCeilingApplied = conditionalStart > calibratedStartCeiling;
   conditionalStart = Math.min(conditionalStart, calibratedStartCeiling);
 
@@ -198,7 +209,7 @@ function appearanceForecast(
   const noAppearanceProbability = clamp(1 - startProbability - subAppearanceProbability);
   const availabilityConfidence = typeof player.chanceOfPlayingNextRound === "number" || player.status !== "a" ? 1 : 0.8;
   const overallEvidenceConfidence = clamp(
-    historicalRoleConfidence * 0.35 + currentConfidence * 0.45 + availabilityConfidence * 0.2
+    historicalRoleConfidence * 0.35 + traceableCurrentConfidence * 0.45 + availabilityConfidence * 0.2
   );
   const startProbabilityUncertainty = clamp(0.02 + (1 - overallEvidenceConfidence) * 0.16, 0.02, 0.18);
   const roleClass = conditionalStart >= 0.93
@@ -228,6 +239,8 @@ function appearanceForecast(
     overallEvidenceConfidence: round(overallEvidenceConfidence),
     evidenceUncertainty: round(1 - overallEvidenceConfidence),
     startProbabilityUncertainty: round(startProbabilityUncertainty),
+    preCeilingStartProbability: round(availability * clamp(preCeilingStartProbability)),
+    startProbabilityCeiling: round(availability * calibratedStartCeiling),
     startProbabilityInterval: {
       lower: round(clamp(startProbability - startProbabilityUncertainty)),
       upper: round(clamp(startProbability + startProbabilityUncertainty))
@@ -242,6 +255,7 @@ function appearanceForecast(
       ...(history.length > 0 ? ["current_season_start_update"] : []),
       ...(role?.disagreement ? ["conflicting_role_evidence"] : []),
       ...(!role?.currentEvidencePresent ? ["missing_current_role_evidence"] : []),
+      ...(role?.currentEvidencePresent && !hasTraceableRoleEvidence ? ["role_evidence_not_independently_traceable"] : []),
       ...(startProbabilityCeilingApplied ? ["calibrated_start_probability_ceiling"] : []),
       ...((player.minutes ?? 0) === 0 ? ["cohort_minutes_fallback"] : [])
     ]
@@ -270,8 +284,10 @@ export function probabilisticProjection(input: {
   const cohort = cohortFor(input.player, input.rawProjection.expectedMinutes, input.roleEvidence);
   const empirical = empiricalMeans(input.history ?? []);
   const cohortValues = cohortMinutes(input.player.position, cohort, input.rawProjection.expectedMinutes);
-  const startMinutesMean = empirical?.startMinutes ?? cohortValues.start;
-  const substituteMinutesMean = empirical?.substituteMinutes ?? cohortValues.substitute;
+  const startMinuteSamples = (input.history ?? []).filter((sample) => sample.started && sample.minutes > 0).map((sample) => sample.minutes);
+  const substituteMinuteSamples = (input.history ?? []).filter((sample) => !sample.started && sample.minutes > 0).map((sample) => sample.minutes);
+  const startMinutesMean = empirical?.startMinutes ?? shrunkenMean(startMinuteSamples, cohortValues.start);
+  const substituteMinutesMean = empirical?.substituteMinutes ?? shrunkenMean(substituteMinuteSamples, cohortValues.substitute);
   const conditionalPer90 = input.rawProjection.basePointsPer90 *
     input.rawProjection.fixtureDifficultyFactor * input.rawProjection.formFactor;
   const usesOutputCohort = (input.player.minutes ?? 0) < 700;
@@ -328,7 +344,7 @@ export function probabilisticProjection(input: {
     standardDeviation: round(standardDeviation(minutes, expectedMinutes), 2),
     startMinutesMean: round(startMinutesMean, 1),
     substituteMinutesMean: round(substituteMinutesMean, 1),
-    sampleSource: empirical ? "empirical" : "cohort",
+    sampleSource: empirical ? "empirical" : startMinuteSamples.length > 0 || substituteMinuteSamples.length > 0 ? "shrunken_empirical" : "cohort",
     cohort
   };
   const projectionStandardDeviation = standardDeviation(points, simulatedMean);
@@ -364,8 +380,8 @@ export function probabilisticProjection(input: {
       }] : [])
     ],
     model: "appearance-state-mixture",
-    modelVersion: "0.0.26",
-    componentVersions: { appearance: "0.0.26", points: "0.0.23" },
+    modelVersion: "0.0.27",
+    componentVersions: { appearance: "0.0.27", points: "0.0.23" },
     marketAdjustment: market,
     inputs: {
       seed,
@@ -422,14 +438,17 @@ export function buildProjectionUncertaintyReport(input: {
     generatedAt: input.generatedAt,
     gameweek: input.gameweek,
     model: "appearance-state-mixture",
-    modelVersion: "0.0.26",
-    componentVersions: { appearance: "0.0.26", points: "0.0.23" },
+    modelVersion: "0.0.27",
+    componentVersions: { appearance: "0.0.27", points: "0.0.23" },
     seed,
     sampleCount,
     items,
     warnings: [
       ...(items.some((item) => item.minutes.sampleSource === "cohort")
         ? ["Some players use labeled cohort minutes because empirical conditional samples are insufficient."]
+        : []),
+      ...(items.some((item) => item.minutes.sampleSource === "shrunken_empirical")
+        ? ["Some players use current-season conditional minutes shrunk toward a labeled cohort because sample sizes are small."]
         : []),
       ...(items.some((item) => item.appearance.source !== "current_role")
         ? ["Some players lack current-role evidence; historical or cohort priors remain visible in each item."]

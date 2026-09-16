@@ -46,6 +46,8 @@ export type AppearanceStateForecast = {
   overallEvidenceConfidence: number;
   evidenceUncertainty: number;
   startProbabilityUncertainty?: number;
+  preCeilingStartProbability?: number;
+  startProbabilityCeiling?: number;
   startProbabilityInterval?: { lower: number; upper: number };
   roleClass?: "SECURE_STARTER" | "LIKELY_STARTER" | "UNCERTAIN_STARTER" | "ROTATION_OPTION" | "BENCH_OPTION";
   probabilityMethod?: "HISTORICAL_PRIOR_WITH_ROLE_EVIDENCE_BLEND";
@@ -252,7 +254,7 @@ export type MinutesDistribution = {
   standardDeviation: number;
   startMinutesMean: number;
   substituteMinutesMean: number;
-  sampleSource: "empirical" | "cohort";
+  sampleSource: "empirical" | "shrunken_empirical" | "cohort";
   cohort: string;
 };
 
@@ -327,8 +329,8 @@ export type ProbabilisticProjection = {
     evidenceIds: string[];
   }>;
   model: "appearance-state-mixture";
-  modelVersion: "0.0.13" | "0.0.23" | "0.0.26";
-  componentVersions?: { appearance: "0.0.13" | "0.0.26"; points: "0.0.23" };
+  modelVersion: "0.0.13" | "0.0.23" | "0.0.26" | "0.0.27";
+  componentVersions?: { appearance: "0.0.13" | "0.0.26" | "0.0.27"; points: "0.0.23" };
   marketAdjustment?: MarketProjectionAdjustment | null;
   inputs: ProjectionModelInputs;
 };
@@ -338,8 +340,8 @@ export type ProjectionUncertaintyReport = {
   generatedAt: string;
   gameweek: number;
   model: "appearance-state-mixture";
-  modelVersion: "0.0.13" | "0.0.23" | "0.0.26";
-  componentVersions?: { appearance: "0.0.13" | "0.0.26"; points: "0.0.23" };
+  modelVersion: "0.0.13" | "0.0.23" | "0.0.26" | "0.0.27";
+  componentVersions?: { appearance: "0.0.13" | "0.0.26" | "0.0.27"; points: "0.0.23" };
   seed: number;
   sampleCount: number;
   items: ProbabilisticProjection[];

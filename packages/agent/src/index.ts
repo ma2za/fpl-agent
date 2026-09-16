@@ -1,4 +1,5 @@
 export * from "./artifactIO";
+export * from "./activeDecision";
 export * from "./agentRoleEvidence";
 export * from "./artifactSchemas";
 export * from "./canonicalize";

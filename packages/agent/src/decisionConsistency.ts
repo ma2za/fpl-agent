@@ -193,6 +193,16 @@ function decisionValidation(recommendation: WeeklyRecommendation) {
       if (candidate.lowerBound !== null && candidate.upperBound !== null && candidate.lowerBound > candidate.upperBound) {
         errors.push(`Decision ${evaluation.decisionId} candidate ${candidate.candidateId} has reversed uncertainty bounds.`);
       }
+      const eligibilityKind = candidate.eligibilityKind ?? (candidate.eligible ? "eligible" : "repository_ineligible");
+      if (candidate.eligible !== (eligibilityKind === "eligible")) {
+        errors.push(`Decision ${evaluation.decisionId} candidate ${candidate.candidateId} has inconsistent eligibility and eligibility kind.`);
+      }
+      if (eligibilityKind === "preference_excluded" && !candidate.preferenceConstraintIds?.length) {
+        errors.push(`Decision ${evaluation.decisionId} preference-excluded candidate ${candidate.candidateId} must name its preference constraint.`);
+      }
+      if (eligibilityKind !== "preference_excluded" && candidate.preferenceConstraintIds?.length) {
+        errors.push(`Decision ${evaluation.decisionId} candidate ${candidate.candidateId} records preference constraints without being preference-excluded.`);
+      }
     }
 
     const selected = evaluation.candidateScores.find((candidate) => candidate.candidateId === evaluation.selectedCandidateId);
@@ -218,6 +228,33 @@ function decisionValidation(recommendation: WeeklyRecommendation) {
       : bestScore - ranked[1].objectiveScore > materialityThreshold + tolerance
         ? "CLEAR"
         : "NEAR_TIE";
+    const unconstrainedRanked = [...evaluation.candidateScores]
+      .filter((candidate) => (candidate.eligibilityKind ?? (candidate.eligible ? "eligible" : "repository_ineligible")) !== "repository_ineligible")
+      .sort((left, right) => right.objectiveScore - left.objectiveScore || left.candidateId.localeCompare(right.candidateId));
+    const unconstrainedLeader = unconstrainedRanked[0];
+    const preferenceDelta = (unconstrainedLeader?.objectiveScore ?? selected.objectiveScore) - selected.objectiveScore;
+    const unconstrainedLeaderKind = unconstrainedLeader?.eligibilityKind ?? (unconstrainedLeader?.eligible ? "eligible" : "repository_ineligible");
+    const preferenceChangesSelection = preferenceDelta > tolerance && unconstrainedLeaderKind === "preference_excluded";
+
+    if (preferenceChangesSelection) {
+      if (evaluation.selectionScope !== "preference_constrained") {
+        errors.push(`Decision ${evaluation.decisionId} selects a preference-constrained objective leader without declaring the constrained scope.`);
+      }
+      if (evaluation.unconstrainedObjectiveLeaderCandidateId !== unconstrainedLeader?.candidateId) {
+        errors.push(`Decision ${evaluation.decisionId} must identify ${unconstrainedLeader?.candidateId} as its unconstrained objective leader.`);
+      }
+      if ((unconstrainedLeader?.eligibilityKind ?? "eligible") !== "preference_excluded") {
+        errors.push(`Decision ${evaluation.decisionId} excludes its unconstrained objective leader without classifying it as preference-excluded.`);
+      }
+      const expectedConstraintIds = [...new Set(unconstrainedLeader?.preferenceConstraintIds ?? [])].sort();
+      const recordedConstraintIds = [...new Set(evaluation.preferenceTradeoff?.constraintIds ?? [])].sort();
+      if (!evaluation.preferenceTradeoff || Math.abs(evaluation.preferenceTradeoff.objectiveScoreDelta - preferenceDelta) > tolerance ||
+          expectedConstraintIds.join(",") !== recordedConstraintIds.join(",")) {
+        errors.push(`Decision ${evaluation.decisionId} must quantify the objective cost and constraints of its preference-constrained selection.`);
+      }
+    } else if (evaluation.selectionScope === "preference_constrained" || evaluation.unconstrainedObjectiveLeaderCandidateId || evaluation.preferenceTradeoff) {
+      errors.push(`Decision ${evaluation.decisionId} declares a preference-constrained selection without a higher-scoring preference-excluded candidate.`);
+    }
 
     if (evaluation.objectiveLeaderCandidateId !== leader.candidateId) {
       errors.push(`Decision ${evaluation.decisionId} records ${evaluation.objectiveLeaderCandidateId} as leader; expected ${leader.candidateId}.`);

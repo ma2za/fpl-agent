@@ -4,7 +4,7 @@ import { loadWorkspace } from "../../lib/gameweek-workspace";
 export const dynamic = "force-static";
 
 export default function PostmortemsPage() {
-  const finalized = loadWorkspace().gameweeks.filter((gameweek) => gameweek.postmortem);
+  const finalized = loadWorkspace().gameweeks.filter((gameweek) => gameweek.status === "finalized" && gameweek.postmortem);
 
   return (
     <>
