@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.27`
+Version: `0.0.28`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -181,7 +181,7 @@ For rendered-page capture, install the browser once with `corepack pnpm exec pla
 
 `pnpm simulate:frontier -- --input {file} --out {file}` simulates every persisted deterministic candidate without deduplication or truncation. It models shared Poisson match goals, team attack states, shared clean sheets, appearance states, formation-safe automatic substitutions, captain doubling, and vice-captain fallback. Version `0.0.22` reports retain every manager and field candidate definition, every player and fixture input, and every per-sample candidate score so the run is fully replayable from its seed. Add `sensitivityPlayerIds` to the request and `--margins-out {file}` to calculate the player-mean break-even points that flip the leading decision; the margin artifact retains the base simulation and every perturbation simulation. Expected-points mode excludes ownership entirely; rank-aware modes use field weights only through simulated competing scores. The report never selects a structure, and recommendation verification rejects discarded or unsimulated candidates and incomplete MILP optimality proofs.
 
-`pnpm counterfactuals -- --request {file}` uses the local HiGHS mixed-integer solver to prove the exact k-best legal frontier for each requested scenario and GW1, GW1-GW3, or GW1-GW6 horizon. `topCandidateLimit` controls how many of the best 1 to 1,000 deterministic candidates are generated; every generated candidate is persisted for probabilistic reranking. Requests support player inclusion and exclusion, budget, availability, club exposure, premium, premium-defence, bench-depth, and formation constraints. Outputs are neutral candidate, proof, Pareto, and comparison evidence and never select a final structure.
+`pnpm counterfactuals -- --request {file}` first persists a role-specific eligibility report, then uses the local HiGHS mixed-integer solver to prove the exact k-best legal and eligible frontier for each requested scenario and GW1, GW1-GW3, or GW1-GW6 horizon. `topCandidateLimit` controls how many of the best 1 to 1,000 deterministic candidates are generated; every generated candidate is persisted for probabilistic reranking and bound to the eligibility snapshot. Requests support player inclusion and exclusion, budget, availability, club exposure, premium, premium-defence, bench-depth, formation constraints, and typed gameweek-scoped manager exclusions. Outputs are neutral eligibility, candidate, proof, Pareto, and comparison evidence and never select a final structure.
 
 See `docs/counterfactual-optimization.md` for the request format.
 
@@ -311,7 +311,7 @@ pnpm dev
 - The repo captures selected public evidence pages, including official Premier League Scout articles, but does not log in or scrape authenticated FPL pages.
 - Public manager endpoints exist in the API client but are not wired into recommendation flow yet.
 - Venue-specific FPL attack/defence strengths can be unavailable or zero; horizon evidence then labels lower-confidence overall-strength or raw-FDR fallbacks instead of treating zero as real strength.
-- Pre-optimization eligibility, complete frontier enforcement, normalized submitted-state capture, and automatic closed-loop regret are planned in `0.0.28` to `0.0.31`; until delivered, the documented operating policy is a manual gate.
+- Pre-optimization eligibility is enforced and persisted before counterfactual generation. Complete frontier enforcement, normalized submitted-state capture, and automatic closed-loop regret remain planned in `0.0.29` to `0.0.31`; until delivered, their documented operating policies remain manual gates.
 
 ## Project Status
 

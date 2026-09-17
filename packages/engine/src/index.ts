@@ -3,6 +3,7 @@ export * from "./captaincy";
 export * from "./chips";
 export * from "./concentrationAnalysis";
 export * from "./decisionMath";
+export * from "./eligibility";
 export * from "./counterfactualOptimization";
 export * from "./fixtureDistributions";
 export * from "./projections";

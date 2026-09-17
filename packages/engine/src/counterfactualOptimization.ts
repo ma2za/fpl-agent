@@ -1,5 +1,6 @@
 import { REQUIRED_SQUAD_COUNTS, VALID_FORMATIONS, type Position } from "../../rules/src";
 import type { PlayerForEngine, ProjectionScenarioAdjustment } from "./types";
+import type { ManagerConstraint, PlayerEligibility } from "./eligibility";
 import highsLoader from "highs";
 
 export type OptimizationHorizon = 1 | 3 | 6;
@@ -16,6 +17,8 @@ export type OptimizationPlayer = PlayerForEngine & {
   horizons: Record<OptimizationHorizon, OptimizationMetric>;
   startProbability: number;
   appearanceProbability: number;
+  eligibility?: PlayerEligibility;
+  eligibilitySnapshotId?: string;
 };
 
 export type OptimizationConstraints = {
@@ -50,6 +53,7 @@ export type OptimizationRequest = {
   projectionScenarioAdjustments?: Array<ProjectionScenarioAdjustment & { playerId: number }>;
   modelAssumptions: string[];
   topCandidateLimit?: number;
+  managerConstraints?: ManagerConstraint[];
 };
 
 export type SquadCandidate = {
@@ -75,6 +79,7 @@ export type SquadCandidate = {
     roleConfidence: number;
   };
   constraints: OptimizationConstraints;
+  eligibilitySnapshotId?: string;
 };
 
 export type OptimizationProof = {
@@ -109,6 +114,7 @@ export type CounterfactualSet = {
     generatedCandidates: "ALL";
     discardedCandidates: 0;
   };
+  eligibilitySnapshotId?: string;
 };
 
 export type CounterfactualComparison = {
@@ -143,7 +149,6 @@ function constraintsSatisfied(players: OptimizationPlayer[], constraints: Optimi
   if ((constraints.includedPlayerIds ?? []).some((id) => !ids.has(id))) return false;
   if ((constraints.excludedPlayerIds ?? []).some((id) => ids.has(id))) return false;
   if (players.reduce((sum, player) => sum + player.price, 0) > constraints.budget + 1e-9) return false;
-  if (players.some((player) => player.startProbability < (constraints.minimumStartProbability ?? 0))) return false;
   const clubCounts = new Map<number, number>();
   for (const player of players) clubCounts.set(player.teamId, (clubCounts.get(player.teamId) ?? 0) + 1);
   if ([...clubCounts.values()].some((count) => count > 3)) return false;
@@ -169,16 +174,22 @@ function lineupFor(
   for (const formation of formations) {
     const counts = VALID_FORMATIONS[formation];
     const starters = POSITIONS.flatMap((position) => [...squad]
-      .filter((player) => player.position === position)
+      .filter((player) => player.position === position
+        && player.startProbability >= (constraints.minimumStartProbability ?? 0)
+        && player.eligibility?.roles.starter.eligible !== false)
       .sort((a, b) => metric(b).roleAdjustedProjection - metric(a).roleAdjustedProjection || a.id - b.id)
       .slice(0, counts[position]));
     if (starters.length !== 11) continue;
     const starterIds = new Set(starters.map((player) => player.id));
     const bench = squad.filter((player) => !starterIds.has(player.id));
+    if (bench.some((player) => player.eligibility?.roles.emergency.eligible === false)) continue;
     const goalkeeper = bench.find((player) => player.position === "GKP");
     const outfield = bench.filter((player) => player.position !== "GKP")
-      .sort((a, b) => metric(b).benchValue - metric(a).benchValue || a.id - b.id);
+      .sort((a, b) => Number(b.eligibility?.roles.bench.eligible !== false) - Number(a.eligibility?.roles.bench.eligible !== false)
+        || metric(b).benchValue - metric(a).benchValue || a.id - b.id);
     if (!goalkeeper || outfield.length !== 3) continue;
+    if (goalkeeper.eligibility?.roles.bench.eligible === false ||
+      outfield.slice(0, 2).some((player) => player.eligibility?.roles.bench.eligible === false)) continue;
     const benchCost = bench.reduce((sum, player) => sum + player.price, 0);
     const benchConfidence = bench.reduce((sum, player) => sum + metric(player).roleConfidence, 0) / 4;
     if (!withinRange(benchCost, {
@@ -194,6 +205,8 @@ function lineupFor(
       ? [...clubCounts.values()].reduce((sum, count) => sum + Math.max(0, count - 1) ** 2, 0) * concentrationPenaltyWeight
       : 0;
     const unpenalizedObjective = roleAdjustedProjection + captainBonus + benchValue;
+    const eligibilitySnapshotIds = [...new Set(squad.flatMap((player) => player.eligibilitySnapshotId ? [player.eligibilitySnapshotId] : []))];
+    if (eligibilitySnapshotIds.length > 1) throw new Error("Optimization squad mixes eligibility snapshots.");
     const result = {
       playerIds: squad.map((player) => player.id).sort((a, b) => a - b),
       startingXI: starters.map((player) => player.id),
@@ -209,7 +222,8 @@ function lineupFor(
         downside: round(starters.reduce((sum, player) => sum + metric(player).downside, 0)),
         benchValue: round(benchValue),
         roleConfidence: round(squad.reduce((sum, player) => sum + metric(player).roleConfidence, 0) / 15)
-      }
+      },
+      ...(eligibilitySnapshotIds[0] ? { eligibilitySnapshotId: eligibilitySnapshotIds[0] } : {})
     };
     if (!best || result.metrics.objective > best.metrics.objective ||
       (result.metrics.objective === best.metrics.objective && result.playerIds.join(",") < best.playerIds.join(","))) best = result;
@@ -240,7 +254,7 @@ export function optimizeScenario(input: {
   const excluded = new Set(constraints.excludedPlayerIds ?? []);
   const included = new Set(constraints.includedPlayerIds ?? []);
   const eligiblePlayers = [...input.players]
-    .filter((player) => !excluded.has(player.id) && player.startProbability >= (constraints.minimumStartProbability ?? 0))
+    .filter((player) => !excluded.has(player.id) && player.eligibility?.roles.emergency.eligible !== false)
     .sort((a, b) => {
       const aPotential = Math.max(a.horizons[input.horizon].roleAdjustedProjection, a.horizons[input.horizon].benchValue);
       const bPotential = Math.max(b.horizons[input.horizon].roleAdjustedProjection, b.horizons[input.horizon].benchValue);
@@ -456,7 +470,7 @@ export async function optimizeScenarioMilp(input: {
   const excluded = new Set(constraints.excludedPlayerIds ?? []);
   const included = new Set(constraints.includedPlayerIds ?? []);
   const players = input.players.filter((player) =>
-    !excluded.has(player.id) && player.startProbability >= (constraints.minimumStartProbability ?? 0));
+    !excluded.has(player.id) && player.eligibility?.roles.emergency.eligible !== false);
   const playerIds = new Set(players.map((player) => player.id));
   if ([...included].some((playerId) => !playerIds.has(playerId))) {
     return {
@@ -512,6 +526,17 @@ export async function optimizeScenarioMilp(input: {
       rows.push(` one_role_${player.id}: s${player.id} + b${player.id} <= 1`);
       rows.push(` captain_starts_${player.id}: c${player.id} - s${player.id} <= 0`);
       if (included.has(player.id)) rows.push(` include_${player.id}: s${player.id} + b${player.id} = 1`);
+      if (player.startProbability < (constraints.minimumStartProbability ?? 0)) rows.push(` starter_probability_${player.id}: s${player.id} = 0`);
+      if (player.eligibility?.roles.starter.eligible === false) rows.push(` starter_eligible_${player.id}: s${player.id} = 0`);
+      if (player.eligibility?.roles.emergency.eligible === false) rows.push(` bench_eligible_${player.id}: b${player.id} = 0`);
+    }
+    const emergencyOnly = players.filter((player) =>
+      player.eligibility?.roles.emergency.eligible === true && player.eligibility.roles.bench.eligible === false);
+    if (emergencyOnly.length > 0) {
+      rows.push(` emergency_only_bench: ${lpExpression(emergencyOnly.map((player) => [1, `b${player.id}`]))} <= 1`);
+      for (const player of emergencyOnly.filter((item) => item.position === "GKP")) {
+        rows.push(` emergency_goalkeeper_${player.id}: b${player.id} = 0`);
+      }
     }
     for (const position of POSITIONS) {
       const positionPlayers = players.filter((player) => player.position === position);
@@ -647,6 +672,8 @@ export function buildCounterfactualSet(request: OptimizationRequest, players: Op
       proofs.push(result.proof);
     }
   }
+  const eligibilitySnapshotIds = [...new Set(players.flatMap((player) => player.eligibilitySnapshotId ? [player.eligibilitySnapshotId] : []))];
+  if (eligibilitySnapshotIds.length > 1) throw new Error("Counterfactual player pool mixes eligibility snapshots.");
   return {
     schemaVersion: 1,
     artifactKind: "tool_evidence",
@@ -655,7 +682,8 @@ export function buildCounterfactualSet(request: OptimizationRequest, players: Op
     candidates,
     paretoCandidateIds: [...paretoCandidateIds].sort(),
     proofs,
-    retention: { generatedCandidates: "ALL", discardedCandidates: 0 }
+    retention: { generatedCandidates: "ALL", discardedCandidates: 0 },
+    ...(eligibilitySnapshotIds[0] ? { eligibilitySnapshotId: eligibilitySnapshotIds[0] } : {})
   };
 }
 
@@ -679,6 +707,8 @@ export async function buildCounterfactualSetMilp(request: OptimizationRequest, p
       proofs.push(result.proof);
     }
   }
+  const eligibilitySnapshotIds = [...new Set(players.flatMap((player) => player.eligibilitySnapshotId ? [player.eligibilitySnapshotId] : []))];
+  if (eligibilitySnapshotIds.length > 1) throw new Error("Counterfactual player pool mixes eligibility snapshots.");
   return {
     schemaVersion: 1,
     artifactKind: "tool_evidence",
@@ -687,7 +717,8 @@ export async function buildCounterfactualSetMilp(request: OptimizationRequest, p
     candidates,
     paretoCandidateIds: [...paretoCandidateIds].sort(),
     proofs,
-    retention: { generatedCandidates: "ALL", discardedCandidates: 0 }
+    retention: { generatedCandidates: "ALL", discardedCandidates: 0 },
+    ...(eligibilitySnapshotIds[0] ? { eligibilitySnapshotId: eligibilitySnapshotIds[0] } : {})
   };
 }
 

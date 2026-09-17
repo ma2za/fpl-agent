@@ -12,6 +12,17 @@
   "gameweek": 1,
   "horizons": [1, 3, 6],
   "topCandidateLimit": 100,
+  "managerConstraints": [
+    {
+      "id": "avoid-club-7-gw1",
+      "kind": "exclude_club",
+      "teamIds": [7],
+      "scope": { "fromGameweek": 1, "toGameweek": 1 },
+      "rationale": "Temporary fixture-specific manager instruction.",
+      "author": "manager",
+      "createdAt": "2026-08-12T18:00:00.000Z"
+    }
+  ],
   "scenarios": [
     {
       "id": "player-included",
@@ -66,7 +77,7 @@ Pass the resulting counterfactual set to `pnpm simulate:frontier` for the second
 
 Final recommendation verification requires `candidatesSimulated === candidatesGenerated`, `discardedCandidates === 0`, at least two distinct candidates, and an optimality proof for every candidate produced by `highs-milp-k-best`.
 
-The command writes the normalized request, candidate set, optimization proofs, complete-vector comparison, and Markdown comparison. These are tool evidence and candidate artifacts, not final recommendations.
+The command writes the normalized request, eligibility report, candidate set, optimization proofs, complete-vector comparison, and Markdown comparison. These are tool evidence and candidate artifacts, not final recommendations.
 
 Every optimization scenario must declare both `minimumStartProbability` and
 `bench.maximumCost`. This prevents cameo probability from being mistaken for
@@ -74,7 +85,7 @@ starter security and prevents unused budget from being parked on the bench.
 
 ## Decision-Grade Frontier Policy
 
-The planned correctness program adds a pre-optimization eligibility gate and a canonical decision-policy reference. Unavailable or decision-ineligible players must not enter the solver pool. Starter, bench, and emergency-only eligibility remain separate.
+Release `0.0.28` evaluates availability, suspension, registration, scheduled-fixture participation, role sufficiency, evidence freshness, contradictions, and active typed manager constraints before the solver runs. Starter, bench, and emergency-only policies remain separate. Exclusions retain their rule, evidence identifiers, timestamp, and rationale, while every candidate records the exact eligibility snapshot. A manager constraint is active only inside its declared gameweek scope and before its optional expiry; a later constraint can explicitly supersede it.
 
 For transfer-window decisions, the frontier must include the legal roll baseline. The frozen decision set must also retain the objective leader, selected candidate, every candidate in the paired simulation stability band, and every materially discussed alternative. A small numerical lead inside that band is a `NEAR_TIE`, not a winner.
 

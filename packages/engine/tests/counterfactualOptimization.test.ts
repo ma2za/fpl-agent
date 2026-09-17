@@ -142,7 +142,7 @@ describe("exact counterfactual optimization", () => {
     expect(new Set(result.topCandidates.map((candidate) => candidate.playerIds.join(","))).size).toBe(25);
   }, 30_000);
 
-  it("uses start probability rather than cameo-inclusive appearance probability for eligibility", () => {
+  it("uses start probability for the starting XI without excluding a valid bench player", () => {
     const players = pool();
     players[0].startProbability = 0.4;
     players[0].appearanceProbability = 0.95;
@@ -157,8 +157,45 @@ describe("exact counterfactual optimization", () => {
       players
     });
 
-    expect(result.best).toBeNull();
+    expect(result.best?.startingXI).not.toContain(players[0].id);
+    expect(result.best?.benchOrder).toContain(players[0].id);
   });
+
+  it("binds candidates to one eligibility snapshot and never starts an emergency-only player", async () => {
+    const players = smallPool();
+    const emergency = players.find((player) => player.position === "FWD")!;
+    emergency.startProbability = 0.3;
+    const snapshotId = `eligibility:${"1".repeat(64)}`;
+    const allowed = { eligible: true, exclusions: [] };
+    for (const player of players) {
+      player.eligibilitySnapshotId = snapshotId;
+      player.eligibility = {
+        playerId: player.id,
+        teamId: player.teamId,
+        roles: player.id === emergency.id
+          ? {
+            starter: { eligible: false, exclusions: [{ ruleId: "starter-role", code: "INSUFFICIENT_STARTER_ROLE", evidenceIds: ["projection"], observedAt: "2026-09-17T09:00:00.000Z", note: "Emergency only." }] },
+            bench: { eligible: false, exclusions: [{ ruleId: "bench-role", code: "INSUFFICIENT_BENCH_ROLE", evidenceIds: ["projection"], observedAt: "2026-09-17T09:00:00.000Z", note: "Emergency only." }] },
+            emergency: allowed
+          }
+          : { starter: allowed, bench: allowed, emergency: allowed },
+        activeManagerConstraintIds: []
+      };
+    }
+    const scenario: OptimizationScenario = {
+      id: "eligibility",
+      label: "Eligibility-bound squad",
+      constraints: { budget: 100, minimumStartProbability: 0.8, includedPlayerIds: [emergency.id] }
+    };
+    const branch = optimizeScenario({ requestId: "eligibility", scenario, horizon: 1, players, topCandidateLimit: 1 });
+    const milp = await optimizeScenarioMilp({ requestId: "eligibility", scenario, horizon: 1, players, topCandidateLimit: 1 });
+
+    for (const candidate of [branch.best!, milp.best!]) {
+      expect(candidate.eligibilitySnapshotId).toBe(snapshotId);
+      expect(candidate.startingXI).not.toContain(emergency.id);
+      expect(candidate.benchOrder).toContain(emergency.id);
+    }
+  }, 30_000);
 
   it("uses MILP to prove an exact k-best legal frontier", async () => {
     const players = smallPool();

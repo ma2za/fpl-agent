@@ -1947,6 +1947,32 @@ const optimizationScenario = z.object({
   constraints: optimizationConstraints
 }).strict();
 
+const managerConstraint = z.object({
+  id: z.string().min(1),
+  kind: z.enum(["exclude_player", "exclude_club"]),
+  playerIds: z.array(z.number().int().positive()).optional(),
+  teamIds: z.array(z.number().int().positive()).optional(),
+  scope: z.object({
+    fromGameweek: z.number().int().positive(),
+    toGameweek: z.number().int().positive()
+  }).strict(),
+  rationale: z.string().min(1),
+  author: z.string().min(1),
+  createdAt: z.string().min(1),
+  expiresAt: z.string().min(1).optional(),
+  supersedesId: z.string().min(1).optional()
+}).strict().superRefine((constraint, context) => {
+  if (constraint.scope.toGameweek < constraint.scope.fromGameweek) {
+    context.addIssue({ code: "custom", message: `Manager constraint ${constraint.id} has an inverted gameweek scope.` });
+  }
+  if (constraint.kind === "exclude_player" && !constraint.playerIds?.length) {
+    context.addIssue({ code: "custom", message: `Manager constraint ${constraint.id} must name at least one player.` });
+  }
+  if (constraint.kind === "exclude_club" && !constraint.teamIds?.length) {
+    context.addIssue({ code: "custom", message: `Manager constraint ${constraint.id} must name at least one club.` });
+  }
+});
+
 export const OptimizationRequestSchema = z.object({
   schemaVersion: z.literal(1),
   artifactKind: z.literal("tool_evidence"),
@@ -1971,7 +1997,74 @@ export const OptimizationRequestSchema = z.object({
     }).strict()).min(2)
   }).strict()).optional(),
   topCandidateLimit: z.number().int().min(1).max(1000).optional(),
+  managerConstraints: z.array(managerConstraint).optional(),
   modelAssumptions: stringArray
+}).strict().superRefine((request, context) => {
+  const constraints = request.managerConstraints ?? [];
+  const ids = new Set<string>();
+  for (const constraint of constraints) {
+    if (ids.has(constraint.id)) context.addIssue({ code: "custom", message: `Duplicate manager constraint ${constraint.id}.` });
+    ids.add(constraint.id);
+    const createdAt = Date.parse(constraint.createdAt);
+    const expiresAt = constraint.expiresAt === undefined ? null : Date.parse(constraint.expiresAt);
+    if (!Number.isFinite(createdAt)) context.addIssue({ code: "custom", message: `Manager constraint ${constraint.id} has an invalid creation time.` });
+    if (expiresAt !== null && (!Number.isFinite(expiresAt) || expiresAt <= createdAt)) {
+      context.addIssue({ code: "custom", message: `Manager constraint ${constraint.id} must expire after it was created.` });
+    }
+  }
+  for (const constraint of constraints) {
+    if (!constraint.supersedesId) continue;
+    const superseded = constraints.find((item) => item.id === constraint.supersedesId);
+    if (!superseded || constraint.supersedesId === constraint.id) {
+      context.addIssue({ code: "custom", message: `Manager constraint ${constraint.id} references an invalid superseded constraint.` });
+    } else if (Date.parse(constraint.createdAt) <= Date.parse(superseded.createdAt)) {
+      context.addIssue({ code: "custom", message: `Manager constraint ${constraint.id} must be newer than the constraint it supersedes.` });
+    }
+  }
+});
+
+const eligibilityExclusion = z.object({
+  ruleId: z.string().min(1),
+  code: z.string().min(1),
+  evidenceIds: stringArray,
+  observedAt: z.string().min(1),
+  note: z.string().min(1)
+}).strict();
+
+const roleEligibility = z.object({
+  eligible: z.boolean(),
+  exclusions: z.array(eligibilityExclusion)
+}).strict();
+
+export const EligibilityReportSchema = z.object({
+  schemaVersion: z.literal(1),
+  artifactKind: z.literal("tool_evidence"),
+  generatedAt: z.string().min(1),
+  gameweek: z.number().int().positive(),
+  snapshotId: z.string().regex(/^eligibility:[a-f0-9]{64}$/),
+  policyVersion: z.literal("0.0.28"),
+  maximumEvidenceAgeHours: z.number().positive(),
+  managerConstraints: z.array(managerConstraint.and(z.object({
+    active: z.boolean(),
+    inactiveReason: z.string().nullable()
+  }))),
+  players: z.array(z.object({
+    playerId: z.number().int().positive(),
+    teamId: z.number().int().positive(),
+    roles: z.object({
+      starter: roleEligibility,
+      bench: roleEligibility,
+      emergency: roleEligibility
+    }).strict(),
+    activeManagerConstraintIds: stringArray
+  }).strict()),
+  summary: z.object({
+    players: z.number().int().nonnegative(),
+    starterEligible: z.number().int().nonnegative(),
+    benchEligible: z.number().int().nonnegative(),
+    emergencyEligible: z.number().int().nonnegative(),
+    fullyExcluded: z.number().int().nonnegative()
+  }).strict()
 }).strict();
 
 const candidateMetrics = z.object({
@@ -1998,7 +2091,8 @@ export const SquadCandidateSchema = z.object({
   formation: z.string(),
   cost: z.number().nonnegative(),
   metrics: candidateMetrics,
-  constraints: optimizationConstraints
+  constraints: optimizationConstraints,
+  eligibilitySnapshotId: z.string().regex(/^eligibility:[a-f0-9]{64}$/).optional()
 }).strict();
 
 export const OptimizationProofSchema = z.object({
@@ -2032,7 +2126,8 @@ export const CounterfactualSetSchema = z.object({
   retention: z.object({
     generatedCandidates: z.literal("ALL"),
     discardedCandidates: z.literal(0)
-  }).strict().optional()
+  }).strict().optional(),
+  eligibilitySnapshotId: z.string().regex(/^eligibility:[a-f0-9]{64}$/).optional()
 }).strict();
 
 export const CounterfactualComparisonSchema = z.object({
@@ -2140,6 +2235,7 @@ export const ArtifactSchemas = {
   counterfactualSet: CounterfactualSetSchema,
   languageValidationReport: LanguageValidationReportSchema,
   currentRoleReport: CurrentRoleReportSchema,
+  eligibilityReport: EligibilityReportSchema,
   evidenceReport: EvidenceReportSchema,
   evidenceSnapshot: EvidenceSnapshotSchema,
   fixtureHorizonReport: FixtureHorizonReportSchema,

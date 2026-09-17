@@ -9,6 +9,7 @@ import {
   ClubScenarioSetSchema,
   ConcentrationRiskReportSchema,
   EvidenceReportSchema,
+  EligibilityReportSchema,
   FixtureHorizonReportSchema,
   DraftDeltaReportSchema,
   OptimizationRequestSchema,
@@ -156,6 +157,15 @@ describe("artifact schemas", () => {
           { scenarioId: "unavailable", probability: 0.2, projectedPoints: 0, standardDeviation: 0, evidenceIds: ["obs:2"] }
         ]
       }],
+      managerConstraints: [{
+        id: "avoid-club-gw1",
+        kind: "exclude_club",
+        teamIds: [3],
+        scope: { fromGameweek: 1, toGameweek: 1 },
+        rationale: "Fixture-specific manager instruction.",
+        author: "manager",
+        createdAt: "2026-08-12T00:00:00.000Z"
+      }],
       modelAssumptions: ["Independent horizon inputs."]
     };
     const candidate = {
@@ -183,9 +193,42 @@ describe("artifact schemas", () => {
 
     expect(OptimizationRequestSchema.parse(request).requestId).toBe("gw1-structures");
     expect(OptimizationRequestSchema.parse(request).projectionScenarioAdjustments?.[0]?.playerId).toBe(1);
+    expect(OptimizationRequestSchema.parse(request).managerConstraints?.[0]?.scope.toGameweek).toBe(1);
     expect(SquadCandidateSchema.parse(candidate).candidateId).toContain("baseline");
     expect(AgentDecisionArtifactSchema.safeParse(request).success).toBe(false);
     expect(AgentDecisionArtifactSchema.safeParse(candidate).success).toBe(false);
+  });
+
+  it("validates persisted role-specific eligibility reports", () => {
+    const constraint = {
+      id: "avoid-club-gw4",
+      kind: "exclude_club" as const,
+      teamIds: [3],
+      scope: { fromGameweek: 4, toGameweek: 4 },
+      rationale: "Fixture-specific manager instruction.",
+      author: "manager",
+      createdAt: "2026-09-10T00:00:00.000Z",
+      active: false,
+      inactiveReason: "outside_gameweek_scope"
+    };
+    const role = { eligible: true, exclusions: [] };
+    expect(EligibilityReportSchema.parse({
+      schemaVersion: 1,
+      artifactKind: "tool_evidence",
+      generatedAt: "2026-09-17T00:00:00.000Z",
+      gameweek: 5,
+      snapshotId: `eligibility:${"0".repeat(64)}`,
+      policyVersion: "0.0.28",
+      maximumEvidenceAgeHours: 48,
+      managerConstraints: [constraint],
+      players: [{
+        playerId: 1,
+        teamId: 3,
+        roles: { starter: role, bench: role, emergency: role },
+        activeManagerConstraintIds: []
+      }],
+      summary: { players: 1, starterEligible: 1, benchEligible: 1, emergencyEligible: 1, fullyExcluded: 0 }
+    }).managerConstraints[0].inactiveReason).toBe("outside_gameweek_scope");
   });
 
   it("rejects optimization requests that use cameo-inclusive eligibility or omit a bench budget", () => {
@@ -207,6 +250,49 @@ describe("artifact schemas", () => {
     expect(OptimizationRequestSchema.safeParse({
       ...base,
       scenarios: [{ id: "uncapped", label: "Uncapped", constraints: { budget: 100, minimumStartProbability: 0.8 } }]
+    }).success).toBe(false);
+  });
+
+  it("rejects ambiguous manager constraint lifecycles", () => {
+    const base = {
+      schemaVersion: 1,
+      artifactKind: "tool_evidence",
+      generatedAt: "2026-09-17T00:00:00.000Z",
+      requestId: "constraint-lifecycle",
+      gameweek: 5,
+      horizons: [1],
+      scenarios: [{ id: "baseline", label: "Baseline", constraints: { budget: 100, minimumStartProbability: 0.8, bench: { maximumCost: 18 } } }],
+      objective: "role-adjusted-squad-utility",
+      modelAssumptions: ["Test request."]
+    };
+    const constraint = {
+      id: "avoid-club-gw5",
+      kind: "exclude_club",
+      teamIds: [3],
+      scope: { fromGameweek: 5, toGameweek: 5 },
+      rationale: "Fixture-specific manager instruction.",
+      author: "manager",
+      createdAt: "2026-09-17T00:00:00.000Z"
+    };
+
+    expect(OptimizationRequestSchema.safeParse({
+      ...base,
+      managerConstraints: [constraint, constraint]
+    }).success).toBe(false);
+    expect(OptimizationRequestSchema.safeParse({
+      ...base,
+      managerConstraints: [{ ...constraint, expiresAt: "2026-09-16T00:00:00.000Z" }]
+    }).success).toBe(false);
+    expect(OptimizationRequestSchema.safeParse({
+      ...base,
+      managerConstraints: [{ ...constraint, supersedesId: "missing" }]
+    }).success).toBe(false);
+    expect(OptimizationRequestSchema.safeParse({
+      ...base,
+      managerConstraints: [
+        constraint,
+        { ...constraint, id: "replacement", createdAt: "2026-09-16T00:00:00.000Z", supersedesId: constraint.id }
+      ]
     }).success).toBe(false);
   });
 
@@ -286,6 +372,7 @@ describe("artifact schemas", () => {
       "decisionMarginReport",
       "decisionPolicy",
       "draftDeltaReport",
+      "eligibilityReport",
       "evidenceReport",
       "evidenceSnapshot",
       "fixtureHorizonReport",
