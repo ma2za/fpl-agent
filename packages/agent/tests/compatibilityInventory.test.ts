@@ -58,6 +58,14 @@ describe("compatibility inventory", () => {
     expect(packageJson.scripts["benchmark:fixtures"]).toBe("tsx scripts/benchmark-fixtures.ts");
   });
 
+  it("exposes the transfer optionality benchmark", () => {
+    const packageJson = JSON.parse(
+      readFileSync(resolve(root, "package.json"), "utf8"),
+    ) as { scripts: Record<string, string> };
+
+    expect(packageJson.scripts["benchmark:transfers"]).toBe("tsx scripts/benchmark-transfers.ts");
+  });
+
   it.each([
     [
       "agent",

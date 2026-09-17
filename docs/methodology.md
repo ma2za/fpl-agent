@@ -69,11 +69,15 @@ Start, substitute, and no-appearance states use current-role evidence when prese
 
 Every probabilistic projection persists its seed, sample count, input confidence, role support, availability factor, historical minutes, conditional sample count, and cohort. The report keeps evidence uncertainty separate from football-outcome variance and exposes raw-if-starting, role-adjusted, median, p10, p90, and standard-deviation values.
 
+Release `0.0.27` adds recent league starts, minutes, substitute use, other-competition samples, availability gaps, and source conflicts as explicit role inputs. Sparse samples remain shrunk toward a named cohort. Forecasts separately expose calibration state and evidence coverage, classify `CREDIBLE_STARTER`, `LIKELY_SUBSTITUTE`, `EMERGENCY_BENCH`, and `UNKNOWN_ROLE`, and record contradictions between recent use and high start estimates.
+
+The sparse-data ceiling is `0.90`. A displayed `90%` value does not satisfy a strict `>0.90` comparison, and every lift over that ceiling requires at least one named, current, start-supporting source observation. Evidence readiness and decision status carry one hash-bound snapshot over projections, dossier index, current-role evidence, and selected players; verification and archive freeze reject component drift.
+
 Max-expected-points simulations report a decision-stability band rather than treating the numerical leader as uniquely supported. The band uses paired candidate differences from the shared simulation samples, a 95 percent normal interval, and a minimum material margin of `0.15` points. Every candidate inside that band remains available for agent judgment.
 
 Release `0.0.23` de-vigs complete bookmaker outcome sets proportionally, deduplicates bookmakers across providers, and takes the median fair probability. Complete 1X2, 2.5-goal totals, and both clean-sheet probabilities are fitted to independent Poisson home and away goals. A market fit is active only while fresh, unambiguous, and at or below `0.05` RMSE; otherwise the FPL-strength heuristic remains active and labeled.
 
-Anytime-scorer probability becomes a Poisson scoring rate over conditional appeared minutes and is distributed into start and substitute states. Only goal points and position-eligible clean-sheet points are replaced. The applied conditional-start adjustment is capped at `-2.0` to `2.0` points while the uncapped adjustment remains in the artifact. Appearance remains model `0.0.13`; points use model `0.0.23`.
+Anytime-scorer probability becomes a Poisson scoring rate over conditional appeared minutes and is distributed into start and substitute states. Only goal points and position-eligible clean-sheet points are replaced. The applied conditional-start adjustment is capped at `-2.0` to `2.0` points while the uncapped adjustment remains in the artifact. Appearance uses model `0.0.27`; points use model `0.0.23`.
 
 When scorer or clean-sheet prices are missing for a current-squad player with at least `0.90` start probability, the recommendation evidence names the affected player ID and the active heuristic fallback.
 

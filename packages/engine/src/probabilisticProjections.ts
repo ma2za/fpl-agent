@@ -21,6 +21,21 @@ function round(value: number, places = 3) {
   return Math.round(value * scale) / scale;
 }
 
+export function probabilitySatisfies(
+  value: number | null | undefined,
+  operator: "gt" | "gte",
+  threshold: number
+) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return false;
+  return operator === "gt" ? value > threshold : value >= threshold;
+}
+
+export function formatProbability(value: number | null | undefined, fractionDigits = 0) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? `${(value * 100).toFixed(fractionDigits)}%`
+    : "n/a";
+}
+
 function seedFor(baseSeed: number, playerId: number) {
   return (Math.imul(baseSeed ^ playerId, 2654435761) >>> 0) || 1;
 }
@@ -165,17 +180,36 @@ function appearanceForecast(
   priorAppearance?: AppearanceStateForecast
 ) {
   const availability = clamp(raw.availabilityFactor);
+  const leagueHistory = history.filter((sample) =>
+    (sample.competition === undefined || sample.competition === "league") && sample.available !== false
+  );
+  const recentHistory = leagueHistory.slice(-5);
+  const recentStarts = recentHistory.filter((sample) => sample.started).length;
+  const recentNonStarts = recentHistory.length - recentStarts;
+  const recentSubstituteUses = recentHistory.filter((sample) => !sample.started && sample.minutes > 0).length;
+  const recentMinutes = recentHistory.length === 0
+    ? 0
+    : recentHistory.reduce((sum, sample) => sum + sample.minutes, 0) / recentHistory.length;
+  let consecutiveRecentNonStarts = 0;
+  for (const sample of [...recentHistory].reverse()) {
+    if (sample.started) break;
+    consecutiveRecentNonStarts += 1;
+  }
   const historicalRoleConfidence = Math.max(
     historicalConfidence(player),
     priorAppearance?.historicalRoleConfidence ?? 0
   );
   const currentConfidence = role?.currentEvidencePresent ? clamp(role.confidence) : 0;
-  const hasTraceableRoleEvidence = (role?.evidenceIds?.length ?? 0) > 0;
+  const traceableEvidenceIds = [...new Set(role?.evidenceIds ?? [])];
+  const qualifyingStartEvidenceIds = [...new Set(role?.qualifyingStartEvidenceIds ?? [])]
+    .filter((evidenceId) => traceableEvidenceIds.includes(evidenceId));
+  const hasTraceableRoleEvidence = traceableEvidenceIds.length > 0;
   const traceableCurrentConfidence = hasTraceableRoleEvidence ? currentConfidence : 0;
-  const previousPrior = priorAppearance?.startProbability ?? historicalStartPrior(raw.expectedMinutes);
+  const cohortPrior = historicalStartPrior(raw.expectedMinutes);
+  const previousPrior = priorAppearance?.startProbability ?? cohortPrior;
   const priorWeight = 4;
-  const prior = history.length > 0
-    ? (previousPrior * priorWeight + history.filter((sample) => sample.started).length) / (priorWeight + history.length)
+  const prior = leagueHistory.length > 0
+    ? (previousPrior * priorWeight + leagueHistory.filter((sample) => sample.started).length) / (priorWeight + leagueHistory.length)
     : previousPrior;
   let conditionalStart = role?.currentEvidencePresent
     ? prior * (1 - traceableCurrentConfidence) + clamp(role.supportScore) * traceableCurrentConfidence
@@ -185,16 +219,38 @@ function appearanceForecast(
   if (role?.manualOverride === "opposes_start") conditionalStart = 0.02;
   if (role?.disagreement) conditionalStart = prior * 0.5 + conditionalStart * 0.5;
 
-  const recentStarts = history.filter((sample) => sample.started).length;
   const qualifyingCurrentEvidence = role?.currentEvidencePresent === true &&
-    hasTraceableRoleEvidence &&
+    qualifyingStartEvidenceIds.length > 0 &&
     role.manualOverride !== "opposes_start" &&
     !role.disagreement &&
     role.confidence >= 0.85 &&
     role.supportScore >= 0.85;
-  const calibratedStartCeiling = qualifyingCurrentEvidence && recentStarts >= 8
+  const contradictions: NonNullable<AppearanceStateForecast["contradictions"]> = [];
+  if (consecutiveRecentNonStarts >= 2 && conditionalStart > 0.8) {
+    contradictions.push({
+      code: "RECENT_NON_STARTS_VS_HIGH_PROBABILITY",
+      message: `${consecutiveRecentNonStarts} recent non-starts conflict with a ${(conditionalStart * 100).toFixed(1)}% pre-guard start estimate.`
+    });
+  }
+  if (recentHistory.length >= 2 && recentMinutes < 45 && conditionalStart > 0.75) {
+    contradictions.push({
+      code: "RECENT_LOW_MINUTES_VS_HIGH_PROBABILITY",
+      message: `${recentMinutes.toFixed(1)} recent minutes per match conflict with a ${(conditionalStart * 100).toFixed(1)}% pre-guard start estimate.`
+    });
+  }
+  if (role?.disagreement || (role?.sourceConflictCount ?? 0) > 0) {
+    contradictions.push({
+      code: "CONFLICTING_CURRENT_ROLE_SOURCES",
+      message: "Current-role sources contain conflicting directional signals."
+    });
+  }
+  const recentUsageGuardApplied = consecutiveRecentNonStarts >= 2 && !qualifyingCurrentEvidence && conditionalStart > 0.65;
+  if (recentUsageGuardApplied) conditionalStart = 0.65;
+
+  const seasonStarts = leagueHistory.filter((sample) => sample.started).length;
+  const calibratedStartCeiling = qualifyingCurrentEvidence && seasonStarts >= 8
     ? 0.98
-    : qualifyingCurrentEvidence && recentStarts >= 4
+    : qualifyingCurrentEvidence && seasonStarts >= 4
       ? 0.95
       : 0.9;
   const preCeilingStartProbability = conditionalStart;
@@ -221,6 +277,13 @@ function appearanceForecast(
         : conditionalStart >= 0.4
           ? "ROTATION_OPTION" as const
           : "BENCH_OPTION" as const;
+  const roleState = !hasTraceableRoleEvidence && leagueHistory.length === 0 && (player.minutes ?? 0) === 0
+    ? "UNKNOWN_ROLE" as const
+    : conditionalStart >= 0.7
+      ? "CREDIBLE_STARTER" as const
+      : recentSubstituteUses > 0 || conditionalSub >= 0.18
+        ? "LIKELY_SUBSTITUTE" as const
+        : "EMERGENCY_BENCH" as const;
   const source = role?.currentEvidencePresent
     ? "current_role" as const
     : (player.minutes ?? 0) > 0
@@ -246,17 +309,48 @@ function appearanceForecast(
       upper: round(clamp(startProbability + startProbabilityUncertainty))
     },
     roleClass,
+    roleState,
+    roleFeatures: {
+      recentWindowSize: recentHistory.length,
+      recentStarts,
+      recentNonStarts,
+      consecutiveRecentNonStarts,
+      recentMinutes: round(recentMinutes, 1),
+      recentSubstituteUses,
+      leagueSamples: leagueHistory.length,
+      otherCompetitionSamples: history.filter((sample) => sample.competition !== undefined && sample.competition !== "league").length,
+      unavailableSamples: history.filter((sample) => sample.available === false).length,
+      sourceConflictCount: role?.sourceConflictCount ?? (role?.disagreement ? 1 : 0)
+    },
+    calibration: {
+      cohortPrior: round(cohortPrior),
+      previousGameweekPrior: priorAppearance ? round(priorAppearance.startProbability) : null,
+      posteriorBeforeCurrentEvidence: round(prior),
+      priorWeight,
+      sampleCount: leagueHistory.length
+    },
+    evidenceCoverage: {
+      currentRolePresent: role?.currentEvidencePresent ?? false,
+      traceableEvidenceIds,
+      qualifyingStartEvidenceIds,
+      sourceConflict: role?.disagreement === true || (role?.sourceConflictCount ?? 0) > 0
+    },
+    contradictions,
     probabilityMethod: "HISTORICAL_PRIOR_WITH_ROLE_EVIDENCE_BLEND" as const,
     intervalMethod: "HEURISTIC_MODEL_UNCERTAINTY_BAND" as const,
     source,
     reasonCodes: [
       source,
       ...(priorAppearance ? ["previous_gameweek_prior"] : []),
-      ...(history.length > 0 ? ["current_season_start_update"] : []),
+      ...(leagueHistory.length > 0 ? ["current_season_start_update"] : []),
       ...(role?.disagreement ? ["conflicting_role_evidence"] : []),
       ...(!role?.currentEvidencePresent ? ["missing_current_role_evidence"] : []),
       ...(role?.currentEvidencePresent && !hasTraceableRoleEvidence ? ["role_evidence_not_independently_traceable"] : []),
+      ...(role?.currentEvidencePresent && hasTraceableRoleEvidence && qualifyingStartEvidenceIds.length === 0
+        ? ["role_evidence_not_ceiling_qualifying"] : []),
+      ...(recentUsageGuardApplied ? ["recent_usage_start_probability_guard"] : []),
       ...(startProbabilityCeilingApplied ? ["calibrated_start_probability_ceiling"] : []),
+      ...(probabilitySatisfies(startProbability, "gt", 0.9) ? ["above_sparse_ceiling_with_qualifying_evidence"] : []),
       ...((player.minutes ?? 0) === 0 ? ["cohort_minutes_fallback"] : [])
     ]
   };
@@ -272,7 +366,7 @@ export function probabilisticProjection(input: {
   seed?: number;
   sampleCount?: number;
 }): ProbabilisticProjection {
-  const seed = seedFor(input.seed ?? 120026, input.player.id);
+  const seed = seedFor(input.seed ?? 120027, input.player.id);
   const sampleCount = input.sampleCount ?? SAMPLE_COUNT;
   const appearance = appearanceForecast(
     input.player,
@@ -368,6 +462,12 @@ export function probabilisticProjection(input: {
       { featureId: "form-factor", value: input.rawProjection.formFactor, evidenceIds: ["model:raw-projection"] },
       { featureId: "availability", value: input.rawProjection.availabilityFactor, evidenceIds: ["model:appearance-state"] },
       { featureId: "start-probability", value: appearance.startProbability, evidenceIds: input.roleEvidence?.evidenceIds ?? ["model:appearance-state"] },
+      { featureId: "recent-start-count", value: appearance.roleFeatures?.recentStarts ?? 0, evidenceIds: ["model:conditional-history"] },
+      { featureId: "recent-minutes", value: appearance.roleFeatures?.recentMinutes ?? 0, evidenceIds: ["model:conditional-history"] },
+      { featureId: "recent-substitute-uses", value: appearance.roleFeatures?.recentSubstituteUses ?? 0, evidenceIds: ["model:conditional-history"] },
+      { featureId: "other-competition-samples", value: appearance.roleFeatures?.otherCompetitionSamples ?? 0, evidenceIds: ["model:conditional-history"] },
+      { featureId: "unavailable-samples", value: appearance.roleFeatures?.unavailableSamples ?? 0, evidenceIds: ["model:conditional-history"] },
+      { featureId: "source-conflict-count", value: appearance.roleFeatures?.sourceConflictCount ?? 0, evidenceIds: input.roleEvidence?.evidenceIds ?? [] },
       ...(input.roleEvidence?.currentEvidencePresent ? [{
         featureId: "current-role-support",
         value: input.roleEvidence.supportScore,
@@ -398,7 +498,13 @@ export function probabilisticProjection(input: {
       roleCurrentEvidencePresent: input.roleEvidence?.currentEvidencePresent ?? false,
       roleDisagreement: input.roleEvidence?.disagreement ?? false,
       conditionalSampleCount: input.history?.length ?? 0,
-      cohort
+      cohort,
+      recentStartCount: appearance.roleFeatures?.recentStarts ?? 0,
+      recentMinutes: appearance.roleFeatures?.recentMinutes ?? 0,
+      recentSubstituteUses: appearance.roleFeatures?.recentSubstituteUses ?? 0,
+      otherCompetitionSampleCount: appearance.roleFeatures?.otherCompetitionSamples ?? 0,
+      unavailableSampleCount: appearance.roleFeatures?.unavailableSamples ?? 0,
+      qualifyingStartEvidenceCount: appearance.evidenceCoverage?.qualifyingStartEvidenceIds.length ?? 0
     }
   };
 }
@@ -415,7 +521,7 @@ export function buildProjectionUncertaintyReport(input: {
   seed?: number;
   sampleCount?: number;
 }): ProjectionUncertaintyReport {
-  const seed = input.seed ?? 120026;
+  const seed = input.seed ?? 120027;
   const sampleCount = input.sampleCount ?? SAMPLE_COUNT;
   const rawById = new Map(input.rawProjections.map((projection) => [projection.playerId, projection]));
   const roleById = new Map((input.roleEvidence ?? []).map((role) => [role.playerId, role]));
@@ -452,6 +558,9 @@ export function buildProjectionUncertaintyReport(input: {
         : []),
       ...(items.some((item) => item.appearance.source !== "current_role")
         ? ["Some players lack current-role evidence; historical or cohort priors remain visible in each item."]
+        : []),
+      ...(items.some((item) => (item.appearance.contradictions?.length ?? 0) > 0)
+        ? ["Some role forecasts contain explicit recent-usage or source contradictions."]
         : [])
     ]
   };
@@ -478,5 +587,5 @@ export function roleAdjustedPlayerProjections(
 }
 
 export function renderProjectionUncertaintyMarkdown(report: ProjectionUncertaintyReport) {
-  return `# Projection Uncertainty: GW${report.gameweek}\n\nGenerated: ${report.generatedAt}\n\nModel: ${report.model} ${report.modelVersion}\n\nSeed: ${report.seed}\n\n| Player | P(start) | P(sub) | P(no show) | Raw if starting | Role adjusted | p10 | Median | p90 | Evidence confidence | Minutes source |\n| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |\n${report.items.map((item) => `| ${item.playerId} | ${item.appearance.startProbability.toFixed(3)} | ${item.appearance.subAppearanceProbability.toFixed(3)} | ${item.appearance.noAppearanceProbability.toFixed(3)} | ${item.rawProjectionIfStarting.toFixed(1)} | ${item.roleAdjustedProjection.toFixed(1)} | ${item.p10.toFixed(1)} | ${item.median.toFixed(1)} | ${item.p90.toFixed(1)} | ${item.appearance.overallEvidenceConfidence.toFixed(3)} | ${item.minutes.sampleSource}: ${item.minutes.cohort} |`).join("\n")}\n\n## Warnings\n\n${report.warnings.map((warning) => `- ${warning}`).join("\n") || "- None"}\n`;
+  return `# Projection Uncertainty: GW${report.gameweek}\n\nGenerated: ${report.generatedAt}\n\nModel: ${report.model} ${report.modelVersion}\n\nSeed: ${report.seed}\n\n| Player | Role state | P(start) | Ceiling | Recent starts | Recent minutes | Calibration samples | Qualifying sources | Role adjusted | Evidence confidence | Minutes source |\n| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |\n${report.items.map((item) => `| ${item.playerId} | ${item.appearance.roleState ?? "UNKNOWN_ROLE"} | ${item.appearance.startProbability.toFixed(3)} | ${(item.appearance.startProbabilityCeiling ?? 1).toFixed(3)} | ${item.appearance.roleFeatures?.recentStarts ?? 0} | ${(item.appearance.roleFeatures?.recentMinutes ?? 0).toFixed(1)} | ${item.appearance.calibration?.sampleCount ?? 0} | ${item.appearance.evidenceCoverage?.qualifyingStartEvidenceIds.length ?? 0} | ${item.roleAdjustedProjection.toFixed(1)} | ${item.appearance.overallEvidenceConfidence.toFixed(3)} | ${item.minutes.sampleSource}: ${item.minutes.cohort} |`).join("\n")}\n\n## Contradictions\n\n${report.items.flatMap((item) => (item.appearance.contradictions ?? []).map((finding) => `- Player ${item.playerId}: ${finding.code}. ${finding.message}`)).join("\n") || "- None"}\n\n## Warnings\n\n${report.warnings.map((warning) => `- ${warning}`).join("\n") || "- None"}\n`;
 }

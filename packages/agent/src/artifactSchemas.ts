@@ -233,8 +233,40 @@ const chipRecommendation = looseObject({
 
 const transferMove = looseObject({
   sellPlayerId: z.number(),
-  buyPlayerId: z.number()
+  buyPlayerId: z.number(),
+  sellPlayerName: z.string().min(1).optional(),
+  buyPlayerName: z.string().min(1).optional()
 });
+
+const transferPlanning = z.object({
+  modelVersion: z.literal("0.0.26"),
+  rankingHorizon: z.enum(["GW1", "GW1-3", "GW1-5"]),
+  immediateGain: z.number(),
+  multiGameweekGain: z.number().nullable(),
+  rankingGain: z.number().nullable(),
+  optionValue: z.number(),
+  replacementLiquidity: z.number().int().nonnegative(),
+  downside: z.number().nullable(),
+  decisionValue: z.number().nullable(),
+  nextGameweek: z.object({
+    freeTransfers: z.number().int().min(0).max(5),
+    bank: z.number(),
+    reachableSquads: z.number().int().positive()
+  }).strict(),
+  financials: z.object({
+    bankBefore: z.number(),
+    saleProceeds: z.number(),
+    purchaseCost: z.number(),
+    bankAfter: z.number(),
+    sellingPriceBasis: z.enum(["purchase_prices", "current_price_fallback", "not_applicable"])
+  }).strict(),
+  optionValueAssumption: z.object({
+    modelVersion: z.literal("0.0.26"),
+    pointsPerAdditionalFreeTransfer: z.number().nonnegative(),
+    statement: z.string().min(1)
+  }).strict(),
+  assumptions: stringArray
+}).strict();
 
 const transferCandidate = looseObject({
   id: z.string(),
@@ -242,13 +274,14 @@ const transferCandidate = looseObject({
   moves: z.array(transferMove),
   transferCost: z.number(),
   expectedGain1GW: z.number(),
-  expectedGain3GW: z.number(),
-  expectedGain5GW: z.number(),
+  expectedGain3GW: z.number().nullable(),
+  expectedGain5GW: z.number().nullable(),
   risk: z.enum(["low", "medium", "high"]),
   reasons: stringArray,
   concerns: stringArray,
   isLegal: z.boolean(),
-  legalityErrors: stringArray
+  legalityErrors: stringArray,
+  planning: transferPlanning.optional()
 });
 
 const pickTeam = looseObject({
@@ -1353,6 +1386,36 @@ const appearanceStateForecast = z.object({
     upper: z.number().min(0).max(1)
   }).strict().optional(),
   roleClass: z.enum(["SECURE_STARTER", "LIKELY_STARTER", "UNCERTAIN_STARTER", "ROTATION_OPTION", "BENCH_OPTION"]).optional(),
+  roleState: z.enum(["CREDIBLE_STARTER", "LIKELY_SUBSTITUTE", "EMERGENCY_BENCH", "UNKNOWN_ROLE"]).optional(),
+  roleFeatures: z.object({
+    recentWindowSize: z.number().int().nonnegative(),
+    recentStarts: z.number().int().nonnegative(),
+    recentNonStarts: z.number().int().nonnegative(),
+    consecutiveRecentNonStarts: z.number().int().nonnegative(),
+    recentMinutes: z.number().nonnegative(),
+    recentSubstituteUses: z.number().int().nonnegative(),
+    leagueSamples: z.number().int().nonnegative(),
+    otherCompetitionSamples: z.number().int().nonnegative(),
+    unavailableSamples: z.number().int().nonnegative(),
+    sourceConflictCount: z.number().int().nonnegative()
+  }).strict().optional(),
+  calibration: z.object({
+    cohortPrior: z.number().min(0).max(1),
+    previousGameweekPrior: z.number().min(0).max(1).nullable(),
+    posteriorBeforeCurrentEvidence: z.number().min(0).max(1),
+    priorWeight: z.number().positive(),
+    sampleCount: z.number().int().nonnegative()
+  }).strict().optional(),
+  evidenceCoverage: z.object({
+    currentRolePresent: z.boolean(),
+    traceableEvidenceIds: stringArray,
+    qualifyingStartEvidenceIds: stringArray,
+    sourceConflict: z.boolean()
+  }).strict().optional(),
+  contradictions: z.array(z.object({
+    code: z.enum(["RECENT_NON_STARTS_VS_HIGH_PROBABILITY", "RECENT_LOW_MINUTES_VS_HIGH_PROBABILITY", "CONFLICTING_CURRENT_ROLE_SOURCES"]),
+    message: z.string().min(1)
+  }).strict()).optional(),
   probabilityMethod: z.literal("HISTORICAL_PRIOR_WITH_ROLE_EVIDENCE_BLEND").optional(),
   intervalMethod: z.literal("HEURISTIC_MODEL_UNCERTAINTY_BAND").optional(),
   source: z.enum(["current_role", "historical_role", "cohort_fallback"]),
@@ -1427,7 +1490,13 @@ const probabilisticProjection = z.object({
     roleCurrentEvidencePresent: z.boolean(),
     roleDisagreement: z.boolean(),
     conditionalSampleCount: z.number().int().nonnegative(),
-    cohort: z.string()
+    cohort: z.string(),
+    recentStartCount: z.number().int().nonnegative().optional(),
+    recentMinutes: z.number().nonnegative().optional(),
+    recentSubstituteUses: z.number().int().nonnegative().optional(),
+    otherCompetitionSampleCount: z.number().int().nonnegative().optional(),
+    unavailableSampleCount: z.number().int().nonnegative().optional(),
+    qualifyingStartEvidenceCount: z.number().int().nonnegative().optional()
   }).strict()
 }).strict();
 

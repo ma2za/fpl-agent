@@ -9,10 +9,11 @@ import {
   type EvidenceReadinessReport,
   type PlayerDossier,
   type ProvisionalDecisionWorkspace,
+  type RoleDecisionInputSnapshot,
   type TriggerEvaluation,
   type TriggerPlan
 } from "./types";
-import { stableId } from "./store";
+import { contentHash, stableId } from "./store";
 
 export type ReadinessProjection = {
   playerId: number;
@@ -22,12 +23,69 @@ export type ReadinessProjection = {
   currentRoleEvidence: boolean;
 };
 
+export function buildRoleDecisionInputSnapshot(input: {
+  generatedAt: string;
+  gameweek: number;
+  projections: unknown;
+  dossiers: unknown;
+  currentRole: unknown;
+  selectedPlayerIds: number[];
+}): RoleDecisionInputSnapshot {
+  const selectedPlayerIds = [...new Set(input.selectedPlayerIds)].sort((a, b) => a - b);
+  const core = {
+    gameweek: input.gameweek,
+    projectionHash: contentHash(input.projections),
+    dossierHash: contentHash(input.dossiers),
+    currentRoleHash: contentHash(input.currentRole),
+    selectedPlayerHash: contentHash(selectedPlayerIds),
+    selectedPlayerIds
+  };
+  return {
+    schemaVersion: 1,
+    snapshotId: stableId("role-decision-input", core),
+    generatedAt: input.generatedAt,
+    ...core
+  };
+}
+
+export function reconcileRoleDecisionInputSnapshot(input: {
+  actual: RoleDecisionInputSnapshot;
+  readiness?: RoleDecisionInputSnapshot;
+  decisionStatus?: RoleDecisionInputSnapshot;
+}) {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const compare = (label: string, expected?: RoleDecisionInputSnapshot) => {
+    if (!expected) {
+      warnings.push(`${label} predates role-decision input snapshot reconciliation.`);
+      return;
+    }
+    const fields = [
+      ["projection", expected.projectionHash, input.actual.projectionHash],
+      ["dossier", expected.dossierHash, input.actual.dossierHash],
+      ["current-role", expected.currentRoleHash, input.actual.currentRoleHash],
+      ["selected-player", expected.selectedPlayerHash, input.actual.selectedPlayerHash]
+    ] as const;
+    for (const [component, expectedHash, actualHash] of fields) {
+      if (expectedHash !== actualHash) errors.push(`${label} ${component} input does not match the verification snapshot.`);
+    }
+    if (expected.gameweek !== input.actual.gameweek) errors.push(`${label} gameweek does not match the verification snapshot.`);
+    if (expected.snapshotId !== input.actual.snapshotId && !errors.some((error) => error.startsWith(`${label} `))) {
+      errors.push(`${label} snapshot ID does not match the verification snapshot.`);
+    }
+  };
+  compare("Evidence readiness", input.readiness);
+  compare("Decision status", input.decisionStatus);
+  return { isValid: errors.length === 0, errors, warnings };
+}
+
 export function buildEvidenceReadinessReport(input: {
   generatedAt: string;
   gameweek: number;
   dossiers: PlayerDossier[];
   projections: ReadinessProjection[];
   selectedPlayerIds?: number[];
+  inputSnapshot?: RoleDecisionInputSnapshot;
 }): EvidenceReadinessReport {
   const projections = new Map(input.projections.map((item) => [item.playerId, item]));
   const selected = new Set(input.selectedPlayerIds ?? []);
@@ -74,6 +132,7 @@ export function buildEvidenceReadinessReport(input: {
     schemaVersion: 1,
     generatedAt: input.generatedAt,
     gameweek: input.gameweek,
+    inputSnapshot: input.inputSnapshot,
     items,
     summary: {
       ready: items.filter((item) => item.status === "READY").length,
@@ -94,6 +153,7 @@ export function buildDecisionStatusReport(input: {
   if (input.value === null) {
     return DecisionStatusReportSchema.parse({
       schemaVersion: 1, generatedAt: input.generatedAt, gameweek: input.gameweek, items: [],
+      inputSnapshot: input.readiness.inputSnapshot,
       warnings: ["Agent decision-status input is missing."]
     });
   }
@@ -111,6 +171,7 @@ export function buildDecisionStatusReport(input: {
     schemaVersion: 1,
     generatedAt: input.generatedAt,
     gameweek: input.gameweek,
+    inputSnapshot: input.readiness.inputSnapshot,
     items,
     warnings: items.filter((item) => !item.valid)
       .map((item) => `${item.decisionId} status ${item.status} is stronger than ${item.readiness} readiness permits.`)
@@ -219,11 +280,11 @@ export function buildProvisionalDecisionWorkspace(input: {
 }
 
 export function renderReadinessMarkdown(report: EvidenceReadinessReport) {
-  return `# Evidence Readiness: GW${report.gameweek}\n\nGenerated: ${report.generatedAt}\n\n| Player | Selected | Status | P(start) | P(appear) | Confidence | Research | History |\n| --- | --- | --- | ---: | ---: | ---: | --- | --- |\n${report.items.map((item) => `| ${item.name} | ${item.selected ? "yes" : "no"} | ${item.status} | ${item.startProbability.toFixed(3)} | ${item.appearanceProbability.toFixed(3)} | ${item.confidence.toFixed(3)} | ${item.currentResearchCoverage ? "complete" : "incomplete"} | ${item.historyAvailable ? "available" : "missing"} |`).join("\n")}\n\n## Warnings\n\n${report.warnings.map((item) => `- ${item}`).join("\n") || "- None"}\n`;
+  return `# Evidence Readiness: GW${report.gameweek}\n\nGenerated: ${report.generatedAt}\n\nInput snapshot: ${report.inputSnapshot?.snapshotId ?? "legacy-unreconciled"}\n\n| Player | Selected | Status | P(start) | P(appear) | Confidence | Research | History |\n| --- | --- | --- | ---: | ---: | ---: | --- | --- |\n${report.items.map((item) => `| ${item.name} | ${item.selected ? "yes" : "no"} | ${item.status} | ${item.startProbability.toFixed(3)} | ${item.appearanceProbability.toFixed(3)} | ${item.confidence.toFixed(3)} | ${item.currentResearchCoverage ? "complete" : "incomplete"} | ${item.historyAvailable ? "available" : "missing"} |`).join("\n")}\n\n## Warnings\n\n${report.warnings.map((item) => `- ${item}`).join("\n") || "- None"}\n`;
 }
 
 export function renderDecisionStatusMarkdown(report: DecisionStatusReport) {
-  return `# Decision Status: GW${report.gameweek}\n\n${report.items.map((item) => `- ${item.decisionId}: ${item.status} (${item.readiness}) - ${item.valid ? "valid" : "invalid"}.`).join("\n") || "- No agent-authored statuses."}\n\n## Warnings\n\n${report.warnings.map((item) => `- ${item}`).join("\n") || "- None"}\n`;
+  return `# Decision Status: GW${report.gameweek}\n\nInput snapshot: ${report.inputSnapshot?.snapshotId ?? "legacy-unreconciled"}\n\n${report.items.map((item) => `- ${item.decisionId}: ${item.status} (${item.readiness}) - ${item.valid ? "valid" : "invalid"}.`).join("\n") || "- No agent-authored statuses."}\n\n## Warnings\n\n${report.warnings.map((item) => `- ${item}`).join("\n") || "- None"}\n`;
 }
 
 export function renderTriggerEvaluationMarkdown(report: ReturnType<typeof evaluateTriggerPlan>) {

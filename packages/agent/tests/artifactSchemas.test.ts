@@ -114,6 +114,16 @@ describe("artifact schemas", () => {
     expect(AgentDecisionArtifactSchema.safeParse(legacy).success).toBe(true);
   });
 
+  it("preserves unavailable transfer horizons instead of coercing them to zero", () => {
+    const decision = variantRecommendation();
+    decision.topTransferCandidates[0]!.expectedGain3GW = null;
+    decision.topTransferCandidates[0]!.expectedGain5GW = null;
+
+    const parsed = AgentDecisionArtifactSchema.parse(decision);
+    expect(parsed.topTransferCandidates[0]?.expectedGain3GW).toBeNull();
+    expect(parsed.topTransferCandidates[0]?.expectedGain5GW).toBeNull();
+  });
+
   it("does not parse player-intelligence evidence as an agent decision", () => {
     const readiness = EvidenceReadinessReportSchema.parse({
       schemaVersion: 1,

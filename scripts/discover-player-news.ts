@@ -41,7 +41,10 @@ export function eligibleNewsDiscoveryPlayers<T extends { playerId: number }>(
 
 export function searchGoogleNews(players: WorklistPlayer[], when = "14d", maxResults = 10, workers = 8) {
   return new Promise<{ provider: string; results: GoogleNewsResult[] }>((resolve, reject) => {
-    const child = spawn("uv", ["run", "python", path.join("scripts", "google-news-player-search.py")], {
+    const configuredPython = process.env.FPL_NEWS_PYTHON;
+    const child = spawn(configuredPython ?? "uv", configuredPython
+      ? [path.join("scripts", "google-news-player-search.py")]
+      : ["run", "python", path.join("scripts", "google-news-player-search.py")], {
       cwd: process.cwd(),
       stdio: ["pipe", "pipe", "pipe"]
     });

@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EvidenceSnapshotSchema, RefreshManifestSchema } from "../src";
+import { DecisionStatusReportSchema, EvidenceReadinessReportSchema } from "../../player-store/src";
 import { acquireRefreshData, refresh } from "../../../scripts/refresh";
 
 const temporaryDirectories: string[] = [];
@@ -105,6 +106,16 @@ describe("refresh command integration", () => {
     )));
     expect(snapshot.snapshotId).toMatch(/^snapshot:[a-f0-9]{64}$/);
     expect(snapshot.components).toHaveLength(12);
+    const readiness = EvidenceReadinessReportSchema.parse(JSON.parse(await readFile(
+      path.join(recommendationsDir, "gw-1", "evidence-readiness-report.json"),
+      "utf8"
+    )));
+    const decisionStatus = DecisionStatusReportSchema.parse(JSON.parse(await readFile(
+      path.join(recommendationsDir, "gw-1", "decision-status-report.json"),
+      "utf8"
+    )));
+    expect(readiness.inputSnapshot?.snapshotId).toMatch(/^role-decision-input:[a-f0-9]{64}$/);
+    expect(decisionStatus.inputSnapshot).toEqual(readiness.inputSnapshot);
     expect(await readFile(path.join(recommendationsDir, "gw-1", "team-news-report.json"), "utf8"))
       .not.toContain(".refresh-");
     expect(JSON.parse(await readFile(

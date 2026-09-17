@@ -24,7 +24,7 @@ async function main() {
       gameweek: 1,
       players,
       rawProjections,
-      seed: 120026,
+      seed: 120027,
       sampleCount: 1000
     });
     return {
@@ -36,7 +36,7 @@ async function main() {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     runtime: { node: process.version, platform: process.platform, architecture: process.arch },
-    modelVersion: "0.0.23",
+    modelVersion: "0.0.27",
     playerCount: players.length,
     sampleCountPerPlayer: 1000,
     inputHash: createHash("sha256").update(source).digest("hex"),

@@ -1,7 +1,49 @@
 import type { WeeklyRecommendation } from "./types";
 
 function playerName(recommendation: WeeklyRecommendation, playerId: number) {
-  return recommendation.squadBefore.players.find((player) => player.id === playerId)?.name ?? `Player ${playerId}`;
+  const squadName = recommendation.squadBefore.players.find((player) => player.id === playerId)?.name;
+  if (squadName) return squadName;
+  for (const candidate of recommendation.topTransferCandidates) {
+    const move = candidate.moves.find((item) => item.sellPlayerId === playerId || item.buyPlayerId === playerId);
+    if (move?.sellPlayerId === playerId && move.sellPlayerName) return move.sellPlayerName;
+    if (move?.buyPlayerId === playerId && move.buyPlayerName) return move.buyPlayerName;
+  }
+  return `Player ${playerId}`;
+}
+
+function transferMoves(recommendation: WeeklyRecommendation) {
+  if (recommendation.recommendedAction.transfers.length === 0) return "- None. Roll the free transfer.";
+  return recommendation.recommendedAction.transfers.map((move) =>
+    `- ${move.sellPlayerName ?? playerName(recommendation, move.sellPlayerId)} -> ${move.buyPlayerName ?? playerName(recommendation, move.buyPlayerId)}`
+  ).join("\n");
+}
+
+function numberOrUnavailable(value: number | null | undefined) {
+  return value === null || value === undefined ? "unavailable" : value.toFixed(1);
+}
+
+function renderTransferOptions(recommendation: WeeklyRecommendation) {
+  if (recommendation.topTransferCandidates.length === 0) return "";
+  const canonicalHorizon = recommendation.decisionPolicy?.horizon ?? "unavailable";
+  const rows = recommendation.topTransferCandidates.map((candidate) => {
+    const moves = candidate.moves.length === 0
+      ? "Roll"
+      : candidate.moves.map((move) =>
+        `${move.sellPlayerName ?? playerName(recommendation, move.sellPlayerId)} -> ${move.buyPlayerName ?? playerName(recommendation, move.buyPlayerId)}`
+      ).join("; ");
+    const supportingGain = candidate.planning?.multiGameweekGain ?? (
+      canonicalHorizon === "GW1-5" ? candidate.expectedGain5GW : candidate.expectedGain3GW
+    );
+    return `| ${candidate.id} | ${moves} | ${candidate.planning?.rankingHorizon ?? canonicalHorizon} | ${numberOrUnavailable(candidate.expectedGain1GW)} | ${numberOrUnavailable(supportingGain)} | ${numberOrUnavailable(candidate.planning?.optionValue)} | ${numberOrUnavailable(candidate.planning?.decisionValue)} | ${candidate.planning?.replacementLiquidity ?? "unavailable"} | ${numberOrUnavailable(candidate.planning?.downside)} |`;
+  });
+  return `## Transfer Options
+
+Canonical ranking horizon: ${canonicalHorizon}
+
+| Option | Moves | Ranking horizon | Immediate gain | Multi-GW gain | Option value | Decision value | Liquidity | Downside |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+${rows.join("\n")}
+`;
 }
 
 function playerLine(recommendation: WeeklyRecommendation, playerId: number) {
@@ -131,9 +173,14 @@ Data mode: ${recommendation.dataMode}
 
 Recommended action: ${recommendation.recommendedAction.type}
 
+Moves:
+${transferMoves(recommendation)}
+
 Transfer cost: ${recommendation.recommendedAction.transferCost}
 
 Expected bank after action: £${recommendation.recommendedAction.bankAfter.toFixed(1)}
+
+${renderTransferOptions(recommendation)}
 
 ## Pick Team
 

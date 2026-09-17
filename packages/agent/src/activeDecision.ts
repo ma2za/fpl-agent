@@ -19,6 +19,16 @@ export const ActiveDecisionManifestSchema = z.object({
   decisionRecordSha256: hash,
   deadline: z.string().datetime(),
   archiveState: z.enum(["not_archived", "archived", "earlier_immutable_variant"]),
+  supersedes: z.object({
+    variant: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+    selectedCandidateId: z.string().min(1),
+    recommendationSha256: hash,
+    decisionRecordSha256: hash,
+    status: z.enum(["selected", "submitted", "superseded", "archived"]),
+    submissionStatus: z.enum(["unconfirmed", "confirmed"]),
+    reason: z.string().min(1),
+    supersededAt: z.string().datetime()
+  }).strict().nullable().optional(),
   submissionEvidence: z.object({
     source: z.enum(["manager_confirmation", "public_fpl_api"]),
     confirmedAt: z.string().datetime(),
@@ -136,14 +146,19 @@ export async function promoteActiveDecision(input: {
   updatedAt: string;
   archiveState?: ActiveDecisionManifest["archiveState"];
   notes?: string[];
+  supersessionReason?: string;
 }) {
-  let existingArchiveState: ActiveDecisionManifest["archiveState"] | undefined;
+  let existing: ActiveDecisionManifest | undefined;
+  const activeDecisionPath = path.join(input.sourceDir, "active-decision.json");
+  let hasActiveDecision = false;
   try {
-    existingArchiveState = ActiveDecisionManifestSchema.parse(JSON.parse(
-      await readFile(path.join(input.sourceDir, "active-decision.json"), "utf8")
-    )).archiveState;
+    await readFile(activeDecisionPath);
+    hasActiveDecision = true;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  if (hasActiveDecision) {
+    existing = await validateActiveDecisionManifest(input.sourceDir, input.gameweek);
   }
   const prefix = `packages/content/recommendations/gw-${input.gameweek}`;
   const recommendationPath = `${prefix}/variants/${input.variant}/recommendation.json`;
@@ -153,24 +168,48 @@ export async function promoteActiveDecision(input: {
     readReferencedJson(input.sourceDir, input.gameweek, decisionRecordPath)
   ]);
   const deadline = String(recommendation.value.deadline ?? "");
+  const recommendationSha256 = sha256(recommendation.bytes);
+  const decisionRecordSha256 = sha256(decisionRecord.bytes);
+  const selectedCandidateId = String(decisionRecord.value.selectedCandidateId ?? "");
+  const sameDecision = existing?.variant === input.variant &&
+    existing.selectedCandidateId === selectedCandidateId &&
+    existing.recommendationSha256 === recommendationSha256 &&
+    existing.decisionRecordSha256 === decisionRecordSha256;
+  if (existing && !sameDecision && !input.supersessionReason?.trim()) {
+    throw new Error(`Active decision ${existing.variant}/${existing.selectedCandidateId} requires an explicit supersession reason before replacement.`);
+  }
   const manifest = ActiveDecisionManifestSchema.parse({
     schemaVersion: 1,
     gameweek: input.gameweek,
     updatedAt: input.updatedAt,
-    status: "selected",
-    submissionStatus: "unconfirmed",
+    status: sameDecision ? existing!.status : "selected",
+    submissionStatus: sameDecision ? existing!.submissionStatus : "unconfirmed",
     variant: input.variant,
-    selectedCandidateId: decisionRecord.value.selectedCandidateId,
+    selectedCandidateId,
     recommendationPath,
-    recommendationSha256: sha256(recommendation.bytes),
+    recommendationSha256,
     decisionRecordPath,
-    decisionRecordSha256: sha256(decisionRecord.bytes),
+    decisionRecordSha256,
     deadline,
-    archiveState: input.archiveState ?? existingArchiveState ?? "not_archived",
-    submissionEvidence: null,
-    notes: input.notes ?? []
+    archiveState: input.archiveState ?? existing?.archiveState ?? "not_archived",
+    supersedes: sameDecision
+      ? existing!.supersedes ?? null
+      : existing
+        ? {
+            variant: existing.variant,
+            selectedCandidateId: existing.selectedCandidateId,
+            recommendationSha256: existing.recommendationSha256,
+            decisionRecordSha256: existing.decisionRecordSha256,
+            status: existing.status,
+            submissionStatus: existing.submissionStatus,
+            reason: input.supersessionReason!.trim(),
+            supersededAt: input.updatedAt
+          }
+        : null,
+    submissionEvidence: sameDecision ? existing!.submissionEvidence ?? null : null,
+    notes: input.notes ?? (sameDecision ? existing!.notes : [])
   });
-  await writeManifest(path.join(input.sourceDir, "active-decision.json"), manifest);
+  await writeManifest(activeDecisionPath, manifest);
   return validateActiveDecisionManifest(input.sourceDir, input.gameweek, deadline);
 }
 

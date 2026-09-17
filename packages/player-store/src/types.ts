@@ -216,10 +216,23 @@ export const EvidenceStoreManifestSchema = z.object({
 });
 
 export const EvidenceReadinessStatusSchema = z.enum(["READY", "CAUTION", "INSUFFICIENT"]);
+export const RoleDecisionInputSnapshotSchema = z.object({
+  schemaVersion: z.literal(1),
+  snapshotId: stableId,
+  generatedAt: isoDate,
+  gameweek: z.number().int().positive(),
+  projectionHash: hash,
+  dossierHash: hash,
+  currentRoleHash: hash,
+  selectedPlayerHash: hash,
+  selectedPlayerIds: z.array(z.number().int().positive())
+});
+
 export const EvidenceReadinessReportSchema = z.object({
   schemaVersion: z.literal(1),
   generatedAt: isoDate,
   gameweek: z.number().int().positive(),
+  inputSnapshot: RoleDecisionInputSnapshotSchema.optional(),
   items: z.array(z.object({
     playerId: z.number().int().positive(),
     name: z.string().min(1),
@@ -242,6 +255,7 @@ export const DecisionStatusReportSchema = z.object({
   schemaVersion: z.literal(1),
   generatedAt: isoDate,
   gameweek: z.number().int().positive(),
+  inputSnapshot: RoleDecisionInputSnapshotSchema.optional(),
   items: z.array(z.object({
     decisionId: z.string().min(1),
     playerId: z.number().int().positive().nullable(),
@@ -539,6 +553,7 @@ export type EvidenceIngestionBatch = z.infer<typeof EvidenceIngestionBatchSchema
 export type PlayerDossier = z.infer<typeof PlayerDossierSchema>;
 export type EvidenceStoreManifest = z.infer<typeof EvidenceStoreManifestSchema>;
 export type EvidenceReadinessReport = z.infer<typeof EvidenceReadinessReportSchema>;
+export type RoleDecisionInputSnapshot = z.infer<typeof RoleDecisionInputSnapshotSchema>;
 export type DecisionStatusReport = z.infer<typeof DecisionStatusReportSchema>;
 export type DecisionStatusInput = z.infer<typeof DecisionStatusInputSchema>;
 export type TriggerPlan = z.infer<typeof TriggerPlanSchema>;

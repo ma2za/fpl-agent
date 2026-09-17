@@ -248,6 +248,56 @@ describe("verifyRecommendation", () => {
     );
   });
 
+  it("blocks unavailable canonical transfer horizons while warning on legacy optionality", () => {
+    const legacyResult = verifyRecommendation(recommendation);
+    expect(legacyResult.warnings).toContain(
+      "Transfer options without 0.0.26 planning metadata remain readable but do not expose option value, liquidity, downside, or reachable next-gameweek squads."
+    );
+
+    const unknown = structuredClone(recommendation);
+    unknown.decisionPolicy!.horizon = "GW1-5";
+    for (const candidate of unknown.topTransferCandidates) candidate.expectedGain5GW = null;
+    expect(verifyRecommendation(unknown).errors).toContain(
+      "The canonical transfer ranking horizon GW1-5 has unavailable option values."
+    );
+  });
+
+  it("ranks 0.0.26 options by horizon value, transfer cost, and option value", () => {
+    const planned = structuredClone(recommendation);
+    for (const candidate of planned.topTransferCandidates) {
+      candidate.planning = {
+        modelVersion: "0.0.26",
+        rankingHorizon: "GW1",
+        immediateGain: candidate.expectedGain1GW,
+        multiGameweekGain: candidate.expectedGain3GW,
+        rankingGain: candidate.expectedGain1GW,
+        optionValue: candidate.type === "roll" ? 0 : -0.5,
+        replacementLiquidity: 3,
+        downside: null,
+        decisionValue: candidate.expectedGain1GW + (candidate.type === "roll" ? 0 : -0.5),
+        nextGameweek: { freeTransfers: 1, bank: 1, reachableSquads: 4 },
+        financials: {
+          bankBefore: 1,
+          saleProceeds: 0,
+          purchaseCost: 0,
+          bankAfter: 1,
+          sellingPriceBasis: candidate.type === "roll" ? "not_applicable" : "current_price_fallback"
+        },
+        optionValueAssumption: {
+          modelVersion: "0.0.26",
+          pointsPerAdditionalFreeTransfer: 0.5,
+          statement: "Test assumption."
+        },
+        assumptions: ["Test assumption."]
+      };
+    }
+    planned.topTransferCandidates[0]!.planning!.decisionValue = -5;
+
+    expect(verifyRecommendation(planned).errors).toContain(
+      "The five transfer options must be ranked by expected gain over the canonical decision horizon."
+    );
+  });
+
   it("defaults a transfer-versus-roll near-tie to rolling", () => {
     const transferDecision = structuredClone(recommendation);
     const evaluation = transferDecision.decisionEvaluations!.find((item) => item.decisionType === "transfers")!;
@@ -326,6 +376,19 @@ describe("verifyRecommendation", () => {
 
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain("Goalkeeper 1 lacks completed current research coverage.");
+  });
+
+  it("blocks publication when role-decision inputs fail snapshot reconciliation", () => {
+    const result = verifyRecommendation(recommendation, {
+      roleDecisionSnapshot: {
+        isValid: false,
+        errors: ["Evidence readiness projection input does not match the verification snapshot."],
+        warnings: []
+      }
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain("Evidence readiness projection input does not match the verification snapshot.");
   });
 
   it("blocks a squad without five recent public-news articles", () => {

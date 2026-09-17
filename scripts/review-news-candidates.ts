@@ -4,16 +4,20 @@ import { pathToFileURL } from "node:url";
 import { CURRENT_SQUAD } from "../config/squad";
 import { CurrentRoleReportSchema, ProbabilisticProjectionArraySchema } from "../packages/agent/src";
 import {
+  DecisionStatusReportSchema,
   NewsReviewDecisionSchema,
+  buildDecisionStatusReport,
   buildEvidenceReadinessReport,
   buildNewsReviewQueue,
   buildPlayerDossier,
+  buildRoleDecisionInputSnapshot,
   latestResearchWorklist,
   openPlayerStore,
   playerIdsForRun,
   playerStoreStatus,
   recordNewsCandidateReviews,
   renderPlayerDossierMarkdown,
+  renderDecisionStatusMarkdown,
   renderReadinessMarkdown,
   updatePlayerStoreTransactionally
 } from "../packages/player-store/src";
@@ -27,9 +31,12 @@ function argValue(name: string) {
 
 async function rebuildEvidence(input: { gameweek: number; playerIds: number[]; generatedAt: string; storePath: string; recommendationsDir?: string }) {
   const outputDir = input.recommendationsDir ?? path.join("packages", "content", "recommendations", `gw-${input.gameweek}`);
-  const [projectionValue, roleValue] = await Promise.all([
+  const [projectionValue, roleValue, previousDecisionStatus] = await Promise.all([
     readFile(path.join(outputDir, "probabilistic-projections.json"), "utf8").then(JSON.parse),
-    readFile(path.join(outputDir, "current-role-report.json"), "utf8").then(JSON.parse)
+    readFile(path.join(outputDir, "current-role-report.json"), "utf8").then(JSON.parse),
+    readFile(path.join(outputDir, "decision-status-report.json"), "utf8")
+      .then((value) => DecisionStatusReportSchema.parse(JSON.parse(value)))
+      .catch((error: NodeJS.ErrnoException) => error.code === "ENOENT" ? null : Promise.reject(error))
   ]);
   const projections = ProbabilisticProjectionArraySchema.parse(projectionValue);
   const currentRole = CurrentRoleReportSchema.parse(roleValue);
@@ -39,11 +46,36 @@ async function rebuildEvidence(input: { gameweek: number; playerIds: number[]; g
     if (!latest || latest.gameweek !== input.gameweek) throw new Error(`The latest official store refresh is not GW${input.gameweek}.`);
     const dossiers = playerIdsForRun(db, latest.runId).map((playerId) => buildPlayerDossier(db, { playerId, generatedAt: input.generatedAt }));
     const roleByPlayer = new Map(currentRole.items.map((item) => [item.playerId, item]));
+    const dossierIndex = {
+      schemaVersion: 1 as const,
+      runId: latest.runId,
+      generatedAt: input.generatedAt,
+      gameweek: input.gameweek,
+      players: dossiers.map((dossier) => ({
+        playerId: dossier.playerId,
+        dossierId: dossier.dossierId,
+        snapshotId: dossier.snapshot?.snapshotId ?? null,
+        performanceObservationIds: dossier.performance.map((item) => item.performanceId),
+        newsObservationIds: dossier.news.map((item) => item.observationId),
+        coverageId: dossier.coverage?.coverageId ?? null,
+        disagreements: dossier.disagreements,
+        gaps: dossier.gaps
+      }))
+    };
+    const inputSnapshot = buildRoleDecisionInputSnapshot({
+      generatedAt: input.generatedAt,
+      gameweek: input.gameweek,
+      projections,
+      dossiers: dossierIndex,
+      currentRole,
+      selectedPlayerIds: CURRENT_SQUAD.players
+    });
     const readiness = buildEvidenceReadinessReport({
       generatedAt: input.generatedAt,
       gameweek: input.gameweek,
       dossiers,
       selectedPlayerIds: CURRENT_SQUAD.players,
+      inputSnapshot,
       projections: projections.map((projection) => ({
         playerId: projection.playerId,
         startProbability: projection.appearance.startProbability,
@@ -51,6 +83,17 @@ async function rebuildEvidence(input: { gameweek: number; playerIds: number[]; g
         confidence: projection.appearance.overallEvidenceConfidence,
         currentRoleEvidence: roleByPlayer.get(projection.playerId)?.currentEvidencePresent ?? false
       }))
+    });
+    const decisionStatus = buildDecisionStatusReport({
+      generatedAt: input.generatedAt,
+      gameweek: input.gameweek,
+      readiness,
+      value: previousDecisionStatus ? {
+        schemaVersion: 1,
+        authorship: { kind: "coding_agent", agent: "news-review-rebuild", authoredAt: input.generatedAt },
+        gameweek: input.gameweek,
+        items: previousDecisionStatus.items.map(({ readiness: _readiness, valid: _valid, ...item }) => item)
+      } : null
     });
     const affected = new Set(input.playerIds);
     const dossierDir = path.join(outputDir, "player-dossiers");
@@ -60,24 +103,11 @@ async function rebuildEvidence(input: { gameweek: number; playerIds: number[]; g
         writeFile(path.join(dossierDir, `${dossier.playerId}.json`), `${JSON.stringify(dossier, null, 2)}\n`, "utf8"),
         writeFile(path.join(dossierDir, `${dossier.playerId}.md`), renderPlayerDossierMarkdown(dossier), "utf8")
       ]),
-      writeFile(path.join(outputDir, "player-dossier-index.json"), `${JSON.stringify({
-        schemaVersion: 1,
-        runId: latest.runId,
-        generatedAt: input.generatedAt,
-        gameweek: input.gameweek,
-        players: dossiers.map((dossier) => ({
-          playerId: dossier.playerId,
-          dossierId: dossier.dossierId,
-          snapshotId: dossier.snapshot?.snapshotId ?? null,
-          performanceObservationIds: dossier.performance.map((item) => item.performanceId),
-          newsObservationIds: dossier.news.map((item) => item.observationId),
-          coverageId: dossier.coverage?.coverageId ?? null,
-          disagreements: dossier.disagreements,
-          gaps: dossier.gaps
-        }))
-      }, null, 2)}\n`, "utf8"),
+      writeFile(path.join(outputDir, "player-dossier-index.json"), `${JSON.stringify(dossierIndex, null, 2)}\n`, "utf8"),
       writeFile(path.join(outputDir, "evidence-readiness-report.json"), `${JSON.stringify(readiness, null, 2)}\n`, "utf8"),
-      writeFile(path.join(outputDir, "evidence-readiness-report.md"), renderReadinessMarkdown(readiness), "utf8")
+      writeFile(path.join(outputDir, "evidence-readiness-report.md"), renderReadinessMarkdown(readiness), "utf8"),
+      writeFile(path.join(outputDir, "decision-status-report.json"), `${JSON.stringify(decisionStatus, null, 2)}\n`, "utf8"),
+      writeFile(path.join(outputDir, "decision-status-report.md"), renderDecisionStatusMarkdown(decisionStatus), "utf8")
     ]);
     return readiness;
   } finally {

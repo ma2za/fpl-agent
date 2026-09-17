@@ -8,10 +8,13 @@ import {
   validateActiveDecisionManifest
 } from "../packages/agent/src";
 import {
+  DecisionStatusReportSchema,
   EvidenceReadinessReportSchema,
   GameweekArchiveManifestSchema,
   assertPreDeadlineArtifact,
+  buildRoleDecisionInputSnapshot,
   contentHash,
+  reconcileRoleDecisionInputSnapshot,
   recordGameweekArchive,
   stableId,
   updatePlayerStoreTransactionally
@@ -81,14 +84,29 @@ export async function freezeGameweekArchive(input: {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
-  const [refresh, projections, readiness, role] = await Promise.all([
+  const [refresh, projections, readiness, role, decisionStatus, dossierIndex] = await Promise.all([
     readFile(path.join(sourceDir, "refresh-manifest.json"), "utf8").then((value) => RefreshManifestSchema.parse(JSON.parse(value))),
     readFile(path.join(sourceDir, "probabilistic-projections.json"), "utf8").then((value) => ProbabilisticProjectionArraySchema.parse(JSON.parse(value))),
     readFile(path.join(sourceDir, "evidence-readiness-report.json"), "utf8").then((value) => EvidenceReadinessReportSchema.parse(JSON.parse(value))),
-    readFile(path.join(sourceDir, "current-role-report.json"), "utf8").then((value) => CurrentRoleReportSchema.parse(JSON.parse(value)))
+    readFile(path.join(sourceDir, "current-role-report.json"), "utf8").then((value) => CurrentRoleReportSchema.parse(JSON.parse(value))),
+    readFile(path.join(sourceDir, "decision-status-report.json"), "utf8").then((value) => DecisionStatusReportSchema.parse(JSON.parse(value))),
+    readFile(path.join(sourceDir, "player-dossier-index.json"), "utf8").then(JSON.parse)
   ]);
   if (refresh.gameweek !== input.gameweek || readiness.gameweek !== input.gameweek || role.gameweek !== input.gameweek) throw new Error("Archive inputs do not agree on gameweek.");
   if (!refresh.deadline.time) throw new Error("Archive requires a known deadline.");
+  const snapshotReconciliation = reconcileRoleDecisionInputSnapshot({
+    actual: buildRoleDecisionInputSnapshot({
+      generatedAt: readiness.generatedAt,
+      gameweek: input.gameweek,
+      projections,
+      dossiers: dossierIndex,
+      currentRole: role,
+      selectedPlayerIds: readiness.items.filter((item) => item.selected).map((item) => item.playerId)
+    }),
+    readiness: readiness.inputSnapshot,
+    decisionStatus: decisionStatus.inputSnapshot
+  });
+  if (!snapshotReconciliation.isValid) throw new Error(snapshotReconciliation.errors.join(" "));
   await assertManagerDecisionRecorded(sourceDir, input.gameweek, refresh.deadline.time);
   const readinessByPlayer = new Map(readiness.items.map((item) => [item.playerId, item]));
   const roleByPlayer = new Map(role.items.map((item) => [item.playerId, item]));

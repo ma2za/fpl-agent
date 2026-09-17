@@ -19,6 +19,8 @@ export type RecommendedAction = {
   transfers: Array<{
     sellPlayerId: number;
     buyPlayerId: number;
+    sellPlayerName?: string;
+    buyPlayerName?: string;
   }>;
   transferCost: number;
   bankAfter: number;

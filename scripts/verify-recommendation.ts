@@ -8,6 +8,7 @@ import {
   FixtureTickerSchema,
   MinutesRiskReportSchema,
   OddsReportSchema,
+  ProbabilisticProjectionArraySchema,
   PublicEvidenceReportSchema,
   readArtifactFile,
   readArtifactFileIfExists,
@@ -35,7 +36,12 @@ import {
   type WeeklyStrategy
 } from "../packages/agent/src";
 import { RISK_PROFILE } from "../config/risk-profile";
-import { EvidenceReadinessReportSchema } from "../packages/player-store/src";
+import {
+  DecisionStatusReportSchema,
+  EvidenceReadinessReportSchema,
+  buildRoleDecisionInputSnapshot,
+  reconcileRoleDecisionInputSnapshot
+} from "../packages/player-store/src";
 import { buildLocalEvidenceReport } from "./evidence-sources";
 
 function argValue(name: string) {
@@ -114,12 +120,38 @@ async function main() {
     path.join(outputDir, "evidence-readiness-report.json"),
     EvidenceReadinessReportSchema
   );
+  const [snapshotProjections, snapshotCurrentRole, dossierIndex, decisionStatus] = await Promise.all([
+    readArtifactFileIfExists(path.join(outputDir, "probabilistic-projections.json"), ProbabilisticProjectionArraySchema),
+    readArtifactFileIfExists(path.join(outputDir, "current-role-report.json"), CurrentRoleReportSchema),
+    readJsonIfExists<unknown>(path.join(outputDir, "player-dossier-index.json")),
+    readArtifactFileIfExists(path.join(outputDir, "decision-status-report.json"), DecisionStatusReportSchema)
+  ]);
+  const snapshotInputsAvailable = snapshotProjections !== null && snapshotCurrentRole !== null && dossierIndex !== null;
+  const roleDecisionSnapshot = snapshotInputsAvailable
+    ? reconcileRoleDecisionInputSnapshot({
+        actual: buildRoleDecisionInputSnapshot({
+          generatedAt: evidenceReadiness?.generatedAt ?? new Date().toISOString(),
+          gameweek: Number(gameweek),
+          projections: snapshotProjections,
+          dossiers: dossierIndex,
+          currentRole: snapshotCurrentRole,
+          selectedPlayerIds: isWeeklyRecommendation(recommendation)
+            ? recommendation.squadBefore.players.map((player) => player.id)
+            : evidenceReadiness?.items.filter((item) => item.selected).map((item) => item.playerId) ?? []
+        }),
+        readiness: evidenceReadiness?.inputSnapshot,
+        decisionStatus: decisionStatus?.inputSnapshot
+      })
+    : evidenceReadiness?.inputSnapshot
+      ? { isValid: false, errors: ["Role-decision snapshot reconciliation inputs are incomplete."], warnings: [] }
+      : { isValid: true, errors: [], warnings: ["Role-decision snapshot reconciliation is unavailable for this legacy artifact set."] };
   const seasonPlanPath = path.join("packages", "content", "strategy", "season-plan.md");
   const weeklyStrategyPath = path.join("packages", "content", "strategy", "weekly", `gw-${gameweek}.json`);
   const legality: VerifyRecommendationResult = isWeeklyRecommendation(recommendation)
     ? verifyRecommendation(recommendation, {
       forceDeadline: process.argv.includes("--force-deadline"),
-      selectedPlayerEvidence: evidenceReadiness?.items ?? null
+      selectedPlayerEvidence: evidenceReadiness?.items ?? null,
+      roleDecisionSnapshot
     })
     : {
       isValid: false,
@@ -182,10 +214,7 @@ async function main() {
       path.join(outputDir, "public-evidence-report.json"),
       PublicEvidenceReportSchema
     );
-    const currentRoleReport: CurrentRoleReport | null = await readArtifactFileIfExists(
-      path.join(outputDir, "current-role-report.json"),
-      CurrentRoleReportSchema
-    );
+    const currentRoleReport: CurrentRoleReport | null = snapshotCurrentRole;
     const riskReport: SquadRiskReport = buildSquadRiskReport({
       generatedAt: new Date().toISOString(),
       recommendation,

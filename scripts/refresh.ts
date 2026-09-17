@@ -68,6 +68,7 @@ import {
   buildPlayerDossier,
   buildProvisionalDecisionWorkspace,
   buildResearchWorklist,
+  buildRoleDecisionInputSnapshot,
   buildStoreManifest,
   clonePlayerStore,
   evaluateTriggerPlan,
@@ -867,11 +868,36 @@ function buildStages(input: {
           const dossiers = playerIdsForRun(db, input.runId)
             .map((playerId) => buildPlayerDossier(db, { playerId, generatedAt: input.generatedAt }));
           const roleByPlayer = new Map(currentRole.items.map((item) => [item.playerId, item]));
+          const dossierIndex = {
+            schemaVersion: 1 as const,
+            runId: input.runId,
+            generatedAt: input.generatedAt,
+            gameweek: input.gameweek,
+            players: dossiers.map((dossier) => ({
+              playerId: dossier.playerId,
+              dossierId: dossier.dossierId,
+              snapshotId: dossier.snapshot?.snapshotId ?? null,
+              performanceObservationIds: dossier.performance.map((item) => item.performanceId),
+              newsObservationIds: dossier.news.map((item) => item.observationId),
+              coverageId: dossier.coverage?.coverageId ?? null,
+              disagreements: dossier.disagreements,
+              gaps: dossier.gaps
+            }))
+          };
+          const inputSnapshot = buildRoleDecisionInputSnapshot({
+            generatedAt: input.generatedAt,
+            gameweek: input.gameweek,
+            projections,
+            dossiers: dossierIndex,
+            currentRole,
+            selectedPlayerIds: selected.selectedPlayerIds
+          });
           const readiness = buildEvidenceReadinessReport({
             generatedAt: input.generatedAt,
             gameweek: input.gameweek,
             dossiers,
             selectedPlayerIds: selected.selectedPlayerIds,
+            inputSnapshot,
             projections: projections.map((projection) => ({
               playerId: projection.playerId,
               startProbability: projection.appearance.startProbability,
@@ -887,22 +913,7 @@ function buildStages(input: {
             readiness
           });
           await Promise.all([
-            writeJson(path.join(outputDir, "player-dossier-index.json"), {
-              schemaVersion: 1,
-              runId: input.runId,
-              generatedAt: input.generatedAt,
-              gameweek: input.gameweek,
-              players: dossiers.map((dossier) => ({
-                playerId: dossier.playerId,
-                dossierId: dossier.dossierId,
-                snapshotId: dossier.snapshot?.snapshotId ?? null,
-                performanceObservationIds: dossier.performance.map((item) => item.performanceId),
-                newsObservationIds: dossier.news.map((item) => item.observationId),
-                coverageId: dossier.coverage?.coverageId ?? null,
-                disagreements: dossier.disagreements,
-                gaps: dossier.gaps
-              }))
-            }),
+            writeJson(path.join(outputDir, "player-dossier-index.json"), dossierIndex),
             writeReport(outputDir, "evidence-readiness-report.json", "evidence-readiness-report.md", readiness, renderReadinessMarkdown(readiness)),
             writeReport(outputDir, "decision-status-report.json", "decision-status-report.md", statuses, renderDecisionStatusMarkdown(statuses))
           ]);

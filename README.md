@@ -1,6 +1,6 @@
 # fpl-agent
 
-Version: `0.0.25`
+Version: `0.0.27`
 
 `fpl-agent` is an open-source, recommendation-only Fantasy Premier League workspace for coding agents and developers.
 
@@ -65,7 +65,7 @@ human manually applies accepted changes in FPL
 later refreshes append final performance and postmortems compare frozen decisions to outcomes
 ```
 
-The active correctness policy requires one objective and horizon across the full decision pipeline, honest near-tie classification, a roll baseline for every transfer decision, current evidence for start probabilities above `0.90`, pre-optimization eligibility filtering, and a complete frozen frontier. See `docs/methodology.md` and the prioritized `0.0.25` to `0.0.34` program in `docs/roadmap.md`.
+The active correctness policy requires one objective and horizon across the full decision pipeline, honest near-tie classification, a roll baseline for every transfer decision, qualifying current source observations for start probabilities above `0.90`, and hash-reconciled projection, dossier, role-evidence, and selected-player inputs for readiness and verification. See `docs/methodology.md` and the prioritized `0.0.25` to `0.0.34` program in `docs/roadmap.md`.
 
 ## Install
 
@@ -80,6 +80,7 @@ pnpm dev
 pnpm test
 pnpm benchmark:fixtures
 pnpm benchmark:player-store
+pnpm benchmark:transfers
 pnpm refresh -- --gw auto
 pnpm player-store:status
 pnpm evidence:worklist -- --gw auto
@@ -102,6 +103,7 @@ pnpm set-pieces -- --gw 1
 pnpm team-news -- --gw 1
 pnpm minutes -- --gw 1
 pnpm roles -- --gw 1
+pnpm likely-starters -- --gw 1
 pnpm public-evidence -- --gw 1
 pnpm fixtures -- --gw 1 --horizon 6
 pnpm recommend -- --gw auto
@@ -125,7 +127,7 @@ pnpm postmortem -- --gw 1
 
 `pnpm evidence:worklist -- --gw {n|auto}` materializes the current all-player research worklist for inspection. The authoritative worklist remains in SQLite.
 
-`pnpm evidence:discover -- --gw {n}` scans the maintained UK football-news seed and searches matching worklist players through the `google-news-api` package using Google News RSS over the preceding 14 days. The default runs eight bounded Google News workers and commits every 25 players; completed searches are skipped on the next run so interrupted discovery resumes from SQLite. Use `--source-concurrency {1..16}`, `--news-concurrency {1..16}`, `--batch-size {1..100}`, or `--max-players {n}` to bound a pass, and `--no-resume` only to deliberately repeat completed searches. Repeat `--player {id}` for a focused review set, `--include-player {id}` to union priority players into a threshold set, `--min-appearance {0..1}` for the current appearance model, or `--min-prior-start {0..1}` to bootstrap news discovery from the preceding frozen deadline start probabilities. Search runs, receipts, and candidate articles are written directly to the player-intelligence SQLite database. The maintained-source crawl uses a declared per-site fetch, Playwright, or fetch-then-Playwright strategy, respects robots rules, uses configured public feeds where available, and records blocked sources. Run `uv sync` once to install the Python news dependency. Use `--source {id}` to test selected crawl adapters and `--max-pages-per-source {n}` to bound each crawl.
+`pnpm evidence:discover -- --gw {n}` scans the maintained UK football-news seed and searches matching worklist players through the `google-news-api` package using Google News RSS over the preceding 14 days. The default runs eight bounded Google News workers and commits every 25 players; completed searches are skipped on the next run so interrupted discovery resumes from SQLite. Use `--source-concurrency {1..16}`, `--news-concurrency {1..16}`, `--batch-size {1..100}`, or `--max-players {n}` to bound a pass, and `--no-resume` only to deliberately repeat completed searches. Repeat `--player {id}` for a focused review set, `--include-player {id}` to union priority players into a threshold set, `--min-appearance {0..1}` for the current appearance model, or `--min-prior-start {0..1}` to bootstrap news discovery from the preceding frozen deadline start probabilities. Search runs, receipts, and candidate articles are written directly to the player-intelligence SQLite database. The maintained-source crawl uses a declared per-site fetch, Playwright, or fetch-then-Playwright strategy, respects robots rules, uses configured public feeds where available, and records blocked sources. Run `uv sync` once to install the Python news dependency. Set `FPL_NEWS_PYTHON` to an alternate Python executable when the managed `uv` interpreter cannot run. Use `--source {id}` to test selected crawl adapters and `--max-pages-per-source {n}` to bound each crawl.
 
 `pnpm evidence:review-queue -- --gw {n} [--limit {n}]` writes a resumable JSON and Markdown queue from every discovery checkpoint in the active worklist. The configured submitted squad is first, followed by named alternatives, transfer targets, high-appearance players, and the remaining worklist. Add repeated `--selected`, `--alternative`, `--transfer-target`, or `--appearance` player IDs to override those priority sets.
 
@@ -172,6 +174,8 @@ For rendered-page capture, install the browser once with `corepack pnpm exec pla
 `pnpm fixtures -- --gw {n} --horizon {n}` writes the existing fixture ticker plus attack/defence horizon evidence for 1GW, 3GW, and 6GW. The horizon report exposes raw FDR, source-backed strength inputs, fallbacks, blanks, doubles, unresolved schedules, congestion, fixture swings, and squad or variant exposure without altering recommendations.
 
 `pnpm recommend -- --gw {n}` prepares evidence for the coding agent. It does not select players or write a final recommendation.
+
+`pnpm likely-starters -- --gw {n}` writes JSON and Markdown reports for every player whose refreshed start probability is at least 70 percent. The report includes appearance chances, projection bands, current role and injury evidence, and descriptive goals-plus-assists versus expected-goal-involvement deltas. Use `--threshold {0..1}` to change the inclusion threshold.
 
 `pnpm squad:utility -- --gw {n}` writes role-adjusted squad utility, downside, bench-cost, formation-coverage, and exact expected automatic-substitution metrics for an authored recommendation. Use `--previous path/to/recommendation.json` to write the immediately preceding draft delta.
 
@@ -274,7 +278,7 @@ Rules coverage and known gaps are tracked in `docs/rules-coverage.md`.
 
 `pnpm verify -- --gw {n}` validates agent-authored recommendation files before a manual checklist is trusted.
 
-It checks squad legality, starting XI, formation, bench order, captaincy, chip availability, transfer cost, deadline status, the manual-execution safety flag, quality gates for rationale and risk notes, structure comparisons, pick-versus-alternative analysis, projection-scope disclosure, bench spend, confidence calibration, and weekly strategy gates.
+It checks squad legality, starting XI, formation, bench order, captaincy, chip availability, transfer cost, deadline status, the manual-execution safety flag, quality gates for rationale and risk notes, structure comparisons, pick-versus-alternative analysis, projection-scope disclosure, bench spend, confidence calibration, weekly strategy gates, and role-decision input snapshot reconciliation.
 
 Invalid recommendations fail loudly and update:
 
@@ -300,14 +304,14 @@ pnpm dev
 
 - The repo prepares deterministic evidence files and seeded appearance-state distributions from cached FPL data.
 - The repo validates squads, formations, captaincy, bench order, chips, deadlines, and transfer costs.
-- The repo generates role-adjusted projections while retaining legacy conditional projections for comparison.
+- The repo generates role-adjusted projections with recent-use features, explicit role states, qualifying-source ceilings, contradiction findings, and separate calibration and evidence coverage while retaining legacy conditional projections for comparison.
 - The repo can hold a season strategy and verify weekly strategy rationale.
 - Public odds coverage depends on Football-Data fixture rows being available for the target gameweek.
 - Player selection is intentionally agent-authored, not script-authored.
 - The repo captures selected public evidence pages, including official Premier League Scout articles, but does not log in or scrape authenticated FPL pages.
 - Public manager endpoints exist in the API client but are not wired into recommendation flow yet.
 - Venue-specific FPL attack/defence strengths can be unavailable or zero; horizon evidence then labels lower-confidence overall-strength or raw-FDR fallbacks instead of treating zero as real strength.
-- Transfer optionality, pre-optimization eligibility, complete frontier enforcement, normalized submitted-state capture, and automatic closed-loop regret are planned in `0.0.26` to `0.0.31`; until delivered, the documented operating policy is a manual gate.
+- Pre-optimization eligibility, complete frontier enforcement, normalized submitted-state capture, and automatic closed-loop regret are planned in `0.0.28` to `0.0.31`; until delivered, the documented operating policy is a manual gate.
 
 ## Project Status
 

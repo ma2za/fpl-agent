@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildDecisionStatusReport,
   buildEvidenceReadinessReport,
+  buildRoleDecisionInputSnapshot,
   evaluateTriggerPlan,
+  reconcileRoleDecisionInputSnapshot,
   stableId,
   type PlayerDossier,
   type TriggerEvaluation
@@ -70,6 +72,46 @@ describe("readiness, decisions, and triggers", () => {
     });
     expect(report.items[0]).toMatchObject({ readiness: "INSUFFICIENT", valid: false });
     expect(buildDecisionStatusReport({ generatedAt: at, gameweek: 1, readiness, value: null }).warnings).toHaveLength(1);
+  });
+
+  it("fails reconciliation when stale readiness at 0.991 is paired with a capped 0.900 projection", () => {
+    const dossierIndex = { players: [{ playerId: 1, dossierId: "dossier:one" }] };
+    const currentRole = { items: [{ playerId: 1, currentEvidencePresent: true }] };
+    const staleProjections = [{ playerId: 1, appearance: { startProbability: 0.991 } }];
+    const inputSnapshot = buildRoleDecisionInputSnapshot({
+      generatedAt: at,
+      gameweek: 4,
+      projections: staleProjections,
+      dossiers: dossierIndex,
+      currentRole,
+      selectedPlayerIds: [1]
+    });
+    const readiness = buildEvidenceReadinessReport({
+      generatedAt: at,
+      gameweek: 4,
+      dossiers: [dossier(1)],
+      selectedPlayerIds: [1],
+      inputSnapshot,
+      projections: [{ playerId: 1, startProbability: 0.991, appearanceProbability: 1, confidence: 1, currentRoleEvidence: true }]
+    });
+    const decisionStatus = buildDecisionStatusReport({ generatedAt: at, gameweek: 4, readiness, value: null });
+    const actual = buildRoleDecisionInputSnapshot({
+      generatedAt: at,
+      gameweek: 4,
+      projections: [{ playerId: 1, appearance: { startProbability: 0.9 } }],
+      dossiers: dossierIndex,
+      currentRole,
+      selectedPlayerIds: [1]
+    });
+    const result = reconcileRoleDecisionInputSnapshot({
+      actual,
+      readiness: readiness.inputSnapshot,
+      decisionStatus: decisionStatus.inputSnapshot
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain("Evidence readiness projection input does not match the verification snapshot.");
+    expect(result.errors).toContain("Decision status projection input does not match the verification snapshot.");
   });
 
   it.each([

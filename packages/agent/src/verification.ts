@@ -57,6 +57,11 @@ export type VerifyRecommendationOptions = {
     status: "READY" | "CAUTION" | "INSUFFICIENT";
     reasonCodes: string[];
   }> | null;
+  roleDecisionSnapshot?: {
+    isValid: boolean;
+    errors: string[];
+    warnings: string[];
+  };
 };
 
 export type VerifyRecommendationResult = ValidationResult & {
@@ -72,6 +77,36 @@ function mergeResults(...results: ValidationResult[]): ValidationResult {
     errors: results.flatMap((result) => result.errors),
     warnings: results.flatMap((result) => result.warnings)
   };
+}
+
+function transferPlanningWarnings(recommendation: WeeklyRecommendation) {
+  if (recommendation.decisionContext?.phase !== "TRANSFER_WINDOW" ||
+      !["transfer", "hit", "roll"].includes(recommendation.recommendedAction.type)) return [];
+  const warnings: string[] = [];
+  const horizon = recommendation.decisionPolicy?.horizon;
+  const supportedHorizon = horizon === "GW1" || horizon === "GW1-3" || horizon === "GW1-5";
+  const planned = recommendation.topTransferCandidates.filter((candidate) => candidate.planning);
+  if (planned.length !== recommendation.topTransferCandidates.length) {
+    warnings.push("Transfer options without 0.0.26 planning metadata remain readable but do not expose option value, liquidity, downside, or reachable next-gameweek squads.");
+  }
+  if (!supportedHorizon) return warnings;
+
+  for (const candidate of planned) {
+    const planning = candidate.planning!;
+    const rankingGain = horizon === "GW1"
+      ? candidate.expectedGain1GW
+      : horizon === "GW1-3"
+        ? candidate.expectedGain3GW
+        : candidate.expectedGain5GW;
+    if (planning.rankingHorizon !== horizon) {
+      warnings.push(`Transfer option ${candidate.id} planning horizon ${planning.rankingHorizon} does not match canonical horizon ${horizon}.`);
+    }
+    if (planning.immediateGain !== candidate.expectedGain1GW || planning.rankingGain !== rankingGain) {
+      warnings.push(`Transfer option ${candidate.id} planning gains do not match its compatibility gain fields.`);
+    }
+  }
+
+  return warnings;
 }
 
 function actionErrors(recommendation: WeeklyRecommendation) {
@@ -173,13 +208,22 @@ function actionErrors(recommendation: WeeklyRecommendation) {
     if (new Set(moveSignatures).size !== moveSignatures.length) {
       errors.push("Published transfer options must represent distinct actions.");
     }
+    const horizon = recommendation.decisionPolicy?.horizon;
     const gain = (candidate: WeeklyRecommendation["topTransferCandidates"][number]) =>
-      recommendation.decisionPolicy?.horizon === "GW1"
+      horizon === "GW1"
         ? candidate.expectedGain1GW
-        : recommendation.decisionPolicy?.horizon === "GW1-3"
+        : horizon === "GW1-3"
           ? candidate.expectedGain3GW
-          : candidate.expectedGain5GW;
-    if (transfers.some((candidate, index) => index > 0 && gain(transfers[index - 1]!) < gain(candidate))) {
+          : horizon === "GW1-5"
+            ? candidate.expectedGain5GW
+            : null;
+    const plannedRanking = transfers.every((candidate) => candidate.planning !== undefined);
+    const rankedGains = plannedRanking
+      ? transfers.map((candidate) => candidate.planning!.decisionValue)
+      : transfers.map(gain);
+    if (rankedGains.some((value) => value === null)) {
+      errors.push(`The canonical transfer ranking horizon ${horizon ?? "unavailable"} has unavailable option values.`);
+    } else if (rankedGains.some((value, index) => index > 0 && rankedGains[index - 1]! < value!)) {
       errors.push("The five transfer options must be ranked by expected gain over the canonical decision horizon.");
     }
     const selectedSignature = recommendation.recommendedAction.transfers
@@ -235,6 +279,8 @@ export function verifyRecommendation(
   const warnings = recommendation.dataMode === "provisional"
     ? ["Provisional recommendation: player IDs, prices, fixtures, and availability may be stale."]
     : [];
+  warnings.push(...transferPlanningWarnings(recommendation));
+  warnings.push(...(options.roleDecisionSnapshot?.warnings ?? []));
   const selectedPlayerCoverageErrors: string[] = [];
   if (options.selectedPlayerEvidence === null) {
     selectedPlayerCoverageErrors.push("Current longitudinal research coverage is unavailable for the selected squad.");
@@ -247,7 +293,11 @@ export function verifyRecommendation(
       else if (item.status !== "READY") warnings.push(`${player.name} dossier readiness is ${item.status}: ${item.reasonCodes.join(", ") || "no reason code"}.`);
     }
   }
-  const customErrors = [...actionErrors(recommendation), ...selectedPlayerCoverageErrors];
+  const customErrors = [
+    ...actionErrors(recommendation),
+    ...selectedPlayerCoverageErrors,
+    ...(options.roleDecisionSnapshot?.errors ?? [])
+  ];
   const transferValidation = recommendation.decisionContext?.phase === "PRESEASON_DRAFT"
     ? { isValid: true, errors: [], warnings: [] }
     : validateTransfers({

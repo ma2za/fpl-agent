@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import {
   buildProjectionUncertaintyReport,
   projectPlayers,
+  probabilitySatisfies,
   rankCaptainCandidates,
   renderProjectionUncertaintyMarkdown,
   roleAdjustedPlayerProjections,
@@ -99,7 +100,7 @@ export function marketCoverageWarnings(input: {
   const playerById = new Map(input.players.map((player) => [player.id, player]));
   const featureById = new Map((input.features?.players ?? []).map((feature) => [feature.playerId, feature]));
   const likelyStarters = input.projections.filter((projection) =>
-    squad.has(projection.playerId) && projection.appearance.startProbability >= 0.9);
+    squad.has(projection.playerId) && probabilitySatisfies(projection.appearance.startProbability, "gte", 0.9));
   const missingScorer = likelyStarters.filter((projection) => {
     const player = playerById.get(projection.playerId);
     return player?.position !== "GKP" && featureById.get(projection.playerId)?.anytimeScorerProbability == null;
@@ -148,7 +149,9 @@ async function loadConditionalHistory() {
       return [{
         started: item.starts === 1 || (item.starts === undefined && minutes > 45),
         minutes,
-        points
+        points,
+        gameweek: typeof item.round === "number" ? item.round : undefined,
+        competition: "league" as const
       }];
     });
     if (samples.length > 0) history.set(entry.id, samples);
@@ -467,12 +470,22 @@ export async function generateRecommendationEvidence(input: {
     path.join(outputDir, "current-role-report.json"),
     CurrentRoleReportSchema
   );
-  const projectionRoleEvidence = currentRoleReport?.items.map((item) => ({
-    ...item,
-    evidenceIds: [...new Set(Object.values(item.dimensions).flat()
+  const projectionRoleEvidence = currentRoleReport?.items.map((item) => {
+    const records = Object.values(item.dimensions).flat();
+    const evidenceIds = [...new Set(records
       .filter((record) => record.signal !== "neutral" && record.sourceKind !== "current_season_minutes")
-      .flatMap((record) => record.observationIds))]
-  }));
+      .flatMap((record) => record.observationIds))];
+    const qualifyingStartEvidenceIds = [...new Set(records
+      .filter((record) => record.signal === "supports_start" && record.observationIds.length > 0
+        && record.independentSourceCount > 0 && record.ageDays <= 14)
+      .flatMap((record) => record.observationIds))];
+    return {
+      ...item,
+      evidenceIds,
+      qualifyingStartEvidenceIds,
+      sourceConflictCount: Object.values(item.assessments).filter((assessment) => assessment.coverage === "conflicting").length
+    };
+  });
   const historyByPlayerId = await loadConditionalHistory();
   const priorProjections: ProbabilisticProjection[] | null = gameweek > 1
     ? await readArtifactFileIfExists(path.join(

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildProjectionUncertaintyReport,
+  formatProbability,
+  probabilitySatisfies,
   probabilisticProjection,
   projectPlayer,
   roleAdjustedPlayerProjections,
@@ -32,7 +34,8 @@ function role(playerId: number, supportScore: number, confidence = 1): RoleEvide
     currentEvidencePresent: true,
     manualOverride: null,
     disagreement: false,
-    evidenceIds: [`role-observation:${playerId}`]
+    evidenceIds: [`role-observation:${playerId}`],
+    qualifyingStartEvidenceIds: [`role-observation:${playerId}`]
   };
 }
 
@@ -291,5 +294,97 @@ describe("probabilistic projections", () => {
 
     expect(projection.appearance.startProbability).toBeGreaterThan(0.9);
     expect(projection.appearance.startProbability).toBeLessThanOrEqual(0.98);
+    expect(projection.appearance.reasonCodes).toContain("above_sparse_ceiling_with_qualifying_evidence");
+  });
+
+  it("does not let displayed rounding change strict probability semantics", () => {
+    expect(formatProbability(0.9)).toBe("90%");
+    expect(formatProbability(0.904)).toBe("90%");
+    expect(probabilitySatisfies(0.9, "gt", 0.9)).toBe(false);
+    expect(probabilitySatisfies(0.9, "gte", 0.9)).toBe(true);
+    expect(probabilitySatisfies(0.904, "gt", 0.9)).toBe(true);
+    expect(probabilitySatisfies(null, "gte", 0.9)).toBe(false);
+  });
+
+  it("requires a qualifying source observation for every lift over the sparse ceiling", () => {
+    const subject = player(21, 720, 48);
+    const projection = probabilisticProjection({
+      player: subject,
+      rawProjection: projectPlayer(subject),
+      roleEvidence: { ...role(21, 0.99), qualifyingStartEvidenceIds: [] },
+      history: Array.from({ length: 8 }, () => ({ started: true, minutes: 90, points: 6 }))
+    });
+
+    expect(projection.appearance.startProbability).toBe(0.9);
+    expect(projection.appearance.evidenceCoverage?.qualifyingStartEvidenceIds).toEqual([]);
+    expect(projection.appearance.reasonCodes).toContain("role_evidence_not_ceiling_qualifying");
+    expect(projection.appearance.reasonCodes).not.toContain("above_sparse_ceiling_with_qualifying_evidence");
+  });
+
+  it("guards a Wilson-style high prior after two recent non-starts and records the contradiction", () => {
+    const subject = player(22, 2700, 170);
+    const projection = probabilisticProjection({
+      player: subject,
+      rawProjection: projectPlayer(subject),
+      roleEvidence: {
+        ...role(22, 1),
+        manualOverride: "supports_start",
+        qualifyingStartEvidenceIds: []
+      },
+      history: [
+        { started: true, minutes: 90, points: 6, gameweek: 1, competition: "league" },
+        { started: false, minutes: 18, points: 1, gameweek: 2, competition: "league" },
+        { started: false, minutes: 11, points: 1, gameweek: 3, competition: "league" }
+      ]
+    });
+
+    expect(projection.appearance.startProbability).toBe(0.65);
+    expect(projection.appearance.roleState).toBe("LIKELY_SUBSTITUTE");
+    expect(projection.appearance.reasonCodes).toContain("recent_usage_start_probability_guard");
+    expect(projection.appearance.contradictions?.map((item) => item.code)).toContain("RECENT_NON_STARTS_VS_HIGH_PROBABILITY");
+  });
+
+  it("keeps league usage, other competitions, availability, and source conflicts as separate features", () => {
+    const subject = player(23, 900, 55);
+    const projection = probabilisticProjection({
+      player: subject,
+      rawProjection: projectPlayer(subject),
+      roleEvidence: { ...role(23, 0.7), disagreement: true, sourceConflictCount: 2 },
+      history: [
+        { started: true, minutes: 90, points: 5, competition: "cup" },
+        { started: false, minutes: 0, points: 0, competition: "league", available: false },
+        { started: false, minutes: 22, points: 1, competition: "league" }
+      ]
+    });
+
+    expect(projection.appearance.roleFeatures).toMatchObject({
+      leagueSamples: 1,
+      otherCompetitionSamples: 1,
+      unavailableSamples: 1,
+      recentSubstituteUses: 1,
+      sourceConflictCount: 2
+    });
+    expect(projection.appearance.evidenceCoverage?.sourceConflict).toBe(true);
+    expect(projection.appearance.contradictions?.map((item) => item.code)).toContain("CONFLICTING_CURRENT_ROLE_SOURCES");
+  });
+
+  it("separates starter, substitute, emergency-bench, and unknown role states", () => {
+    const credible = probabilisticProjection({
+      player: player(24, 2200, 130), rawProjection: projectPlayer(player(24, 2200, 130)), roleEvidence: role(24, 0.8)
+    });
+    const substitute = probabilisticProjection({
+      player: player(25, 800, 45), rawProjection: projectPlayer(player(25, 800, 45)), roleEvidence: role(25, 0.35),
+      history: [{ started: false, minutes: 20, points: 1 }]
+    });
+    const emergency = probabilisticProjection({
+      player: player(26, 800, 35, "GKP"), rawProjection: projectPlayer(player(26, 800, 35, "GKP")), roleEvidence: role(26, 0.1)
+    });
+    const unknown = probabilisticProjection({
+      player: player(27, 0, 0), rawProjection: projectPlayer(player(27, 0, 0))
+    });
+
+    expect([credible, substitute, emergency, unknown].map((item) => item.appearance.roleState)).toEqual([
+      "CREDIBLE_STARTER", "LIKELY_SUBSTITUTE", "EMERGENCY_BENCH", "UNKNOWN_ROLE"
+    ]);
   });
 });

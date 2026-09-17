@@ -50,6 +50,36 @@ export type AppearanceStateForecast = {
   startProbabilityCeiling?: number;
   startProbabilityInterval?: { lower: number; upper: number };
   roleClass?: "SECURE_STARTER" | "LIKELY_STARTER" | "UNCERTAIN_STARTER" | "ROTATION_OPTION" | "BENCH_OPTION";
+  roleState?: "CREDIBLE_STARTER" | "LIKELY_SUBSTITUTE" | "EMERGENCY_BENCH" | "UNKNOWN_ROLE";
+  roleFeatures?: {
+    recentWindowSize: number;
+    recentStarts: number;
+    recentNonStarts: number;
+    consecutiveRecentNonStarts: number;
+    recentMinutes: number;
+    recentSubstituteUses: number;
+    leagueSamples: number;
+    otherCompetitionSamples: number;
+    unavailableSamples: number;
+    sourceConflictCount: number;
+  };
+  calibration?: {
+    cohortPrior: number;
+    previousGameweekPrior: number | null;
+    posteriorBeforeCurrentEvidence: number;
+    priorWeight: number;
+    sampleCount: number;
+  };
+  evidenceCoverage?: {
+    currentRolePresent: boolean;
+    traceableEvidenceIds: string[];
+    qualifyingStartEvidenceIds: string[];
+    sourceConflict: boolean;
+  };
+  contradictions?: Array<{
+    code: "RECENT_NON_STARTS_VS_HIGH_PROBABILITY" | "RECENT_LOW_MINUTES_VS_HIGH_PROBABILITY" | "CONFLICTING_CURRENT_ROLE_SOURCES";
+    message: string;
+  }>;
   probabilityMethod?: "HISTORICAL_PRIOR_WITH_ROLE_EVIDENCE_BLEND";
   intervalMethod?: "HEURISTIC_MODEL_UNCERTAINTY_BAND";
   source: "current_role" | "historical_role" | "cohort_fallback";
@@ -262,6 +292,9 @@ export type ConditionalAppearanceSample = {
   started: boolean;
   minutes: number;
   points: number;
+  gameweek?: number;
+  competition?: "league" | "cup" | "other";
+  available?: boolean;
 };
 
 export type RoleEvidenceForProjection = {
@@ -272,6 +305,8 @@ export type RoleEvidenceForProjection = {
   manualOverride: "supports_start" | "opposes_start" | null;
   disagreement: boolean;
   evidenceIds?: string[];
+  qualifyingStartEvidenceIds?: string[];
+  sourceConflictCount?: number;
 };
 
 export type ProjectionModelInputs = {
@@ -290,6 +325,12 @@ export type ProjectionModelInputs = {
   roleDisagreement: boolean;
   conditionalSampleCount: number;
   cohort: string;
+  recentStartCount?: number;
+  recentMinutes?: number;
+  recentSubstituteUses?: number;
+  otherCompetitionSampleCount?: number;
+  unavailableSampleCount?: number;
+  qualifyingStartEvidenceCount?: number;
 };
 
 export type MarketPlayerProjectionInput = {
@@ -446,14 +487,45 @@ export type TransferCandidate = {
   moves: Array<{
     sellPlayerId: number;
     buyPlayerId: number;
+    sellPlayerName?: string;
+    buyPlayerName?: string;
   }>;
   transferCost: number;
   expectedGain1GW: number;
-  expectedGain3GW: number;
-  expectedGain5GW: number;
+  expectedGain3GW: number | null;
+  expectedGain5GW: number | null;
   risk: RiskLabel;
   reasons: string[];
   concerns: string[];
   isLegal: boolean;
   legalityErrors: string[];
+  planning?: {
+    modelVersion: "0.0.26";
+    rankingHorizon: "GW1" | "GW1-3" | "GW1-5";
+    immediateGain: number;
+    multiGameweekGain: number | null;
+    rankingGain: number | null;
+    optionValue: number;
+    replacementLiquidity: number;
+    downside: number | null;
+    decisionValue: number | null;
+    nextGameweek: {
+      freeTransfers: number;
+      bank: number;
+      reachableSquads: number;
+    };
+    financials: {
+      bankBefore: number;
+      saleProceeds: number;
+      purchaseCost: number;
+      bankAfter: number;
+      sellingPriceBasis: "purchase_prices" | "current_price_fallback" | "not_applicable";
+    };
+    optionValueAssumption: {
+      modelVersion: "0.0.26";
+      pointsPerAdditionalFreeTransfer: number;
+      statement: string;
+    };
+    assumptions: string[];
+  };
 };
