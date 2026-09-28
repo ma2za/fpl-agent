@@ -131,7 +131,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Operational State
 
-- The local release suite contains 59 test files and 432 tests, all passing.
+- The local release suite contains 66 test files and 480 tests, all passing.
 - Type-check, production build, cached offline refresh, store validation, worklist generation, and dossier generation pass.
 - The accepted 600-player store baseline is 156.779 ms initial ingestion, 78.167 ms idempotent re-ingestion, 1150.416 ms dossier-index generation, and 2.302 ms individual dossier query on Node 24.14.1, Windows x64.
 - A bounded live adapter smoke completed 48 of 50 configured UK football-news sources. The Times and talkSPORT were retained as explicit robots-blocked results; no blocked source was bypassed or counted as completed coverage.
@@ -714,6 +714,17 @@ The first three submitted gameweeks produced 200 points against a combined gamew
 - GW1 retained only one candidate, and GW3 did not produce a complete archive-backed regret report.
 - Transfer optionality was assigned zero value even though two transfers improved the direct submitted result by only one point in total.
 
+The GW4 deadline workflow exposed additional systemic failures before submission:
+
+- Refresh and variant workflows can leave several contradictory truths: root tool evidence, an authored variant, a root decision record, stale readiness reports, and an immutable earlier archive.
+- There is no atomic, hash-bound promotion from an authored variant to the active manager selection. A fresh chat can therefore read the wrong recommendation even when the selected variant passes verification.
+- Generated readiness and decision-status reports can retain probabilities and selected-player membership from an earlier snapshot after projections or dossiers change.
+- A probability ceiling can prevent unsupported confidence while still making a strict manager requirement such as `>0.90` impossible. The workflow must report the unsatisfied constraint instead of treating `0.90` as equivalent.
+- Transfer candidates can be ranked by one horizon while displaying incomplete or zero-filled fields for other horizons, inviting a false explanation of why the selected candidate won.
+- The manual checklist identifies a transfer action without printing the actual sell and buy players.
+- A manager selection, a manual submission, and an immutable archive are different lifecycle states, but the current files do not make their relationship sufficiently hard to misuse.
+- Temporary preferences such as avoiding one club for a specific fixture block can be mistaken for permanent exclusions when scope and expiry are not typed.
+
 This program optimizes decision integrity, not retrospective points. No release may claim that it would have recovered realized points without a frozen pre-deadline candidate and replayable evidence.
 
 ### Immediate Operating Policy
@@ -760,6 +771,10 @@ Scope:
 - Compare transfers over the declared horizon rather than only the next deadline.
 - Keep the option-value model versioned and visible as an assumption, not a fact.
 - Publish five ranked, distinct, legal transfer options for manager choice plus the roll baseline; require the selected action to appear in that set.
+- Add one atomic active-decision manifest that points to the selected authored variant, binds its recommendation and decision-record hashes, and records `selected`, `submitted`, and `archived` separately.
+- Make refresh preserve a valid active-decision manifest or fail visibly; never silently replace it with `decision_record_unavailable`.
+- Render the concrete sell and buy players in every actionable manual checklist.
+- Store unavailable horizon values as unavailable, not numeric zero, and label the exact ranking horizon beside every option table.
 
 Release gate:
 
@@ -767,8 +782,11 @@ Release gate:
 - Verify that a transfer below the near-tie threshold cannot be justified by decimal EV alone.
 - Cover one-transfer, two-transfer, hit, capped-roll, and chip interactions.
 - Reject short, duplicated, illegal, misranked, or selected-action-missing option sets.
+- Reproduce the GW4 root/variant/decision-record split and prove that a fresh chat resolves Buendía as selected while submission remains unconfirmed.
+- Reject an active manifest whose hashes, variant, gameweek, deadline, or selected candidate do not match the authored recommendation.
+- Verify refresh preservation, explicit supersession, checklist transfer rendering, and unknown-horizon serialization.
 
-Status: in progress, priority 2. Five-option publication and selection consistency are implemented; transfer reachability and option-value modeling remain open.
+Status: in progress, priority 1 and next release. Five-option publication and selection consistency are implemented; atomic active-decision promotion, transfer reachability, option-value modeling, checklist rendering, and unknown-horizon handling remain open.
 
 ### 0.0.27: Role Probability Guardrails
 
@@ -782,6 +800,9 @@ Scope:
 - Add contradiction findings when recent usage and the probability estimate materially disagree.
 - Separate credible starter, likely substitute, emergency bench, and unknown-role states.
 - Require a selected or submitted manager decision record before a new gameweek archive can be frozen; archive verification remains idempotent after freezing.
+- Rebuild readiness and decision-status artifacts from the same projection, dossier, evidence, and selected-squad snapshot used by verification.
+- Record probability ceilings separately from estimates and enforce strict comparison semantics, so `0.90` never satisfies `>0.90`.
+- Require a qualifying source observation behind every claim that current evidence lifts a player above the sparse-sample ceiling.
 
 Release gate:
 
@@ -789,8 +810,10 @@ Release gate:
 - Verify that historical minutes cannot override two recent non-start signals without current evidence.
 - Report probability calibration and evidence coverage separately.
 - Reject an unavailable decision record at the archive boundary and preserve already frozen archives unchanged.
+- Reproduce the GW4 stale `0.991` readiness value beside the refreshed `0.90` projection and fail snapshot reconciliation.
+- Test `>`, `>=`, rounding, display formatting, and missing-source behavior at the 90-percent boundary.
 
-Status: in progress, priority 1. Sparse-sample probability ceilings, one-gameweek/multi-gameweek claim consistency, and the archive decision gate are implemented; richer role features and calibration reporting remain open.
+Status: in progress, priority 2. Sparse-sample probability ceilings, one-gameweek/multi-gameweek claim consistency, and the archive decision gate are implemented; snapshot reconciliation, strict threshold semantics, richer role features, and calibration reporting remain open.
 
 ### 0.0.28: Pre-Optimization Eligibility Gate
 
@@ -803,12 +826,15 @@ Scope:
 - Persist every exclusion with its evidence, rule, and timestamp.
 - Fail closed when required eligibility evidence is stale or contradictory.
 - Prevent post-hoc cleanup from changing an already optimized frontier.
+- Treat manager constraints as typed inputs with scope, rationale, author, creation time, expiry, and supersession. A one-week club exclusion must not become a permanent ban.
+- Validate that every published option satisfies both repository legality and the active scoped manager constraints before ranking.
 
 Release gate:
 
 - Replay the GW2 pool and reduce retained unavailable candidates from 175 to zero.
 - Prove every optimized candidate was legal and eligible at the evidence snapshot time.
 - Keep exclusions inspectable without allowing the tool to select the final squad.
+- Reproduce the GW4 Bournemouth instruction as a gameweek-scoped exclusion and prove it expires before GW5 candidate generation.
 
 Status: planned, priority 4.
 
@@ -823,12 +849,15 @@ Scope:
 - Add archive completeness and simulation coverage checks before publication.
 - Record why a legal candidate was excluded from analysis without inventing a score for it.
 - Make incomplete frontiers visibly provisional.
+- Promote one authored variant to the active decision without deleting alternative variants or rewriting immutable evidence.
+- Require the active decision, canonical evaluations, top-five option set, manual checklist, and handover summary to resolve to the same candidate IDs and snapshot.
 
 Release gate:
 
 - Reproduce the GW1 one-candidate archive and block a claim of measurable decision regret.
 - Reject publication when generated candidates are discarded or discussed alternatives are absent.
 - Guarantee replayability from frozen inputs and seeds.
+- Reject a workspace where the root pointer, selected variant, checklist, or decision record names a different action.
 
 Status: planned, priority 5.
 
@@ -843,12 +872,15 @@ Scope:
 - Reconcile the submitted state with the agent recommendation and explicit manager overrides.
 - Ingest provisional and finalized outcomes with correction lineage.
 - Preserve the read-only boundary and use only public endpoints.
+- Model `recommended`, `selected`, `submission_pending`, `submitted`, `superseded`, and `archived` as distinct transitions with timestamps and provenance.
+- Bind every transition to the active recommendation hash and reject claims that a local lock proves FPL submission.
 
 Release gate:
 
 - Reconstruct GW1 to GW3 submitted states from public data or report precise missing fields.
 - Make repeated capture and outcome ingestion idempotent.
 - Never infer a submitted action from a recommendation file.
+- Reproduce the GW4 selected-but-unconfirmed Buendía state and prevent `config/squad.ts` or postmortem inputs from advancing until public or manager-confirmed submission evidence exists.
 
 Status: planned, priority 6.
 
@@ -863,12 +895,15 @@ Scope:
 - Distinguish process errors from hindsight-only alternatives.
 - Generate calibration and regret reports automatically after finalization.
 - Require unresolved archive gaps to remain explicit.
+- Preserve superseded pre-deadline recommendations as decision history while scoring only the actual submitted state.
+- Require the prior-week review and root-cause actions to be acknowledged before the next gameweek can be marked final.
 
 Release gate:
 
 - Produce comparable formal reports for GW1, GW2, and GW3, with non-comparable gaps labeled rather than estimated.
 - Reconcile every component to submitted points and the best frozen legal candidate.
 - Complete the prior-gameweek review before the next recommendation can be final.
+- Reconcile the immutable earlier GW4 archive, later selected variant, and eventual submitted state without mutating any of them.
 
 Status: planned, priority 7.
 
@@ -883,12 +918,14 @@ Scope:
 - Price the effect of a weak bench under realistic starter-absence scenarios.
 - Expose cheap-player savings separately from resilience cost.
 - Require an agent rationale for squads below the declared resilience floor.
+- Make low-role bench players such as Hughes an explicit forced-transfer and autosub-failure risk rather than hiding them behind total bench cost.
 
 Release gate:
 
 - Replay the Wilson and Hughes role states as a combined squad-resilience regression fixture.
 - Verify all valid formations under one and two starter absences.
 - Keep resilience as a metric vector and policy constraint, not a hidden overall score.
+- Reject generic risk waivers that mechanically cover every starter without player-specific evidence or a concrete change condition.
 
 Status: planned, priority 8.
 
@@ -903,12 +940,14 @@ Scope:
 - Compare champion and challenger models on identical frozen archives.
 - Require minimum evidence, declared expected benefit, rollback criteria, and coding-agent approval before adoption.
 - Track whether changes improve ordering and calibration, not only mean absolute point error.
+- Version and calibrate probability ceilings, strict threshold pass rates, and source-qualified uplift separately from raw start-probability accuracy.
 
 Release gate:
 
 - Demonstrate that the Wilson regression fixture contributes to the relevant role cohort without directly fitting its realized outcome.
 - Reject a challenger that improves aggregate error while worsening decision ordering or high-confidence calibration.
 - Preserve reversible adoption and rollback history.
+- Reject a challenger that merely increases the share of players displayed above a manager threshold without improving calibration or evidence qualification.
 
 Status: planned, priority 9.
 
@@ -923,12 +962,14 @@ Scope:
 - Add trend views across gameweeks and model versions.
 - Convert critical correctness measures into final-publication and release gates.
 - Complete the outstanding browser verification for the multi-gameweek workspace against these measures.
+- Add cross-file consistency, active-decision hash integrity, stale-derived-artifact detection, scoped-constraint expiry, and fresh-chat handover completeness to the scorecard.
 
 Release gate:
 
 - Require zero objective mismatches, zero retained ineligible candidates, and complete override attribution.
 - Display incomplete or non-comparable weeks without manufacturing a score.
 - Verify current, historical, provisional, and finalized views with Playwright and no authenticated FPL access.
+- Start a clean-room handover test that reads only repository instructions and active manifests, then proves it identifies the same selected action, submission state, deadline, source snapshot, and next release.
 
 Status: planned, priority 10.
 

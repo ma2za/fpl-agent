@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -1129,17 +1129,25 @@ export async function refresh(input: {
     input.recommendationsDir ?? path.join("packages", "content", "recommendations"),
     `gw-${gameweek}`
   );
-  const agentRoleEvidence = await readAgentRoleEvidence(
-    input.agentRoleEvidencePath ?? path.join("packages", "content", "context", "agent-role-evidence.json")
-  );
-  const decisionStatuses = await readOptionalJson(
-    input.decisionStatusesPath ?? path.join("packages", "content", "context", "decision-statuses.json"),
-    DecisionStatusInputSchema
-  );
-  const triggerPlan = await readOptionalJson(
-    input.triggerPlanPath ?? path.join("packages", "content", "context", "trigger-plan.json"),
-    TriggerPlanSchema
-  );
+  const contextDir = path.join("packages", "content", "context");
+  const agentRoleEvidence = input.agentRoleEvidencePath
+    ? await readAgentRoleEvidence(input.agentRoleEvidencePath)
+    : await readAgentRoleEvidence(path.join(contextDir, `agent-role-evidence-gw${gameweek}.json`))
+      ?? await readAgentRoleEvidence(path.join(contextDir, "agent-role-evidence.json"));
+  const defaultDecisionStatuses = input.decisionStatusesPath
+    ? null
+    : await readOptionalJson(path.join(contextDir, `decision-statuses-gw${gameweek}.json`), DecisionStatusInputSchema)
+      ?? await readOptionalJson(path.join(contextDir, "decision-statuses.json"), DecisionStatusInputSchema);
+  const decisionStatuses = input.decisionStatusesPath
+    ? await readOptionalJson(input.decisionStatusesPath, DecisionStatusInputSchema)
+    : defaultDecisionStatuses?.gameweek === gameweek ? defaultDecisionStatuses : null;
+  const defaultTriggerPlan = input.triggerPlanPath
+    ? null
+    : await readOptionalJson(path.join(contextDir, `trigger-plan-gw${gameweek}.json`), TriggerPlanSchema)
+      ?? await readOptionalJson(path.join(contextDir, "trigger-plan.json"), TriggerPlanSchema);
+  const triggerPlan = input.triggerPlanPath
+    ? await readOptionalJson(input.triggerPlanPath, TriggerPlanSchema)
+    : defaultTriggerPlan?.gameweek === gameweek ? defaultTriggerPlan : null;
   const playerStorePath = input.playerStorePath ?? (input.recommendationsDir
     ? path.join(path.dirname(input.recommendationsDir), "player-intelligence.sqlite")
     : path.join("data", "player-intelligence", "player-intelligence.sqlite"));
@@ -1187,6 +1195,13 @@ export async function refresh(input: {
     cleanUnmanaged: true,
     preserveUnmanagedPaths: ["active-decision.json", "player-dossiers", "raw-sources", "variants"]
   });
+
+  if (result.promoted) {
+    await rm(path.join(
+      input.temporaryRoot ?? path.join("data", "cache", "refresh-inputs"),
+      runId
+    ), { recursive: true, force: true });
+  }
 
   return { ...result, gameweek, targetDir };
 }

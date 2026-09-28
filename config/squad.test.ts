@@ -59,20 +59,28 @@ describe("configured squad decision record", () => {
     );
   });
 
-  it("uses the submitted GW3 team as the current squad without changing the frozen AI draft", () => {
-    expect(CURRENT_SQUAD.sourceGameweek).toBe(3);
+  it("uses the submitted GW5 team as the current squad without changing the frozen AI draft", () => {
+    expect(CURRENT_SQUAD.sourceGameweek).toBe(5);
     expect(CURRENT_SQUAD.players).toContain(418);
     expect(CURRENT_SQUAD.players).toContain(427);
     expect(CURRENT_SQUAD.players).toContain(542);
     expect(CURRENT_SQUAD.players).toContain(88);
     expect(CURRENT_SQUAD.players).toContain(106);
+    expect(CURRENT_SQUAD.players).toContain(41);
+    expect(CURRENT_SQUAD.players).toContain(464);
+    expect(CURRENT_SQUAD.players).not.toContain(260);
+    expect(CURRENT_SQUAD.players).not.toContain(346);
     expect(CURRENT_SQUAD.players).not.toContain(32);
     expect(CURRENT_SQUAD.players).not.toContain(533);
     expect(CURRENT_SQUAD.players).not.toContain(428);
     expect(CURRENT_SQUAD.players).not.toContain(336);
     expect(CURRENT_SQUAD.players).not.toContain(165);
     expect(FROZEN_AI_SQUAD.players).toEqual(record.squad.playerIds);
-    expect(CURRENT_SQUAD.bank).toBe(0);
+    expect(CURRENT_SQUAD.captainPlayerId).toBe(411);
+    expect(CURRENT_SQUAD.viceCaptainPlayerId).toBe(427);
+    expect(CURRENT_SQUAD.benchOrder).toEqual([109, 542, 88, 212]);
+    expect(CURRENT_SQUAD.formation).toBe("4-3-3");
+    expect(CURRENT_SQUAD.bank).toBe(0.2);
   });
 
   it("rejects stale numerical comparisons", () => {

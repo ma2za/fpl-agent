@@ -56,6 +56,13 @@ type CurrentRoleReport = {
   }>;
 };
 
+type OddsReport = {
+  summary: {
+    coverageStatus: "complete" | "partial" | "missing";
+    marketCoverage: Record<string, "complete" | "partial" | "missing">;
+  };
+};
+
 function argValue(name: string) {
   const index = process.argv.indexOf(name);
   return index === -1 ? null : process.argv[index + 1] ?? null;
@@ -81,6 +88,38 @@ function performanceLabel(delta: number) {
   return "IN_LINE";
 }
 
+export function summarizeOdds(oddsReport: OddsReport | null) {
+  if (!oddsReport || oddsReport.summary.coverageStatus === "missing") {
+    return {
+      calibration: "unavailable",
+      markdown: "unavailable; heuristic projection fallback active",
+      warning: "Market odds are unavailable, so scorer and clean-sheet components use the repository's heuristic fallback."
+    };
+  }
+
+  const labels: Record<string, string> = {
+    matchOdds: "match odds",
+    overUnder: "over/under",
+    cleanSheet: "clean sheet",
+    anytimeScorer: "anytime scorer",
+    teamGoals: "team goals"
+  };
+  const available = Object.entries(oddsReport.summary.marketCoverage)
+    .filter(([, coverage]) => coverage !== "missing")
+    .map(([market]) => labels[market] ?? market);
+  const missing = Object.entries(oddsReport.summary.marketCoverage)
+    .filter(([, coverage]) => coverage === "missing")
+    .map(([market]) => labels[market] ?? market);
+  const detail = `${available.join(", ")} available${missing.length > 0 ? `; ${missing.join(", ")} missing` : ""}`;
+  return {
+    calibration: `${oddsReport.summary.coverageStatus} (${detail})`,
+    markdown: `${oddsReport.summary.coverageStatus}; ${detail}`,
+    warning: oddsReport.summary.coverageStatus === "complete" && missing.length === 0
+      ? null
+      : `Market coverage is ${oddsReport.summary.coverageStatus}; missing markets and fixtures continue to use derived or heuristic fallbacks.`
+  };
+}
+
 export async function generateLikelyStarterRefresh(input: {
   gameweek: number;
   threshold?: number;
@@ -93,14 +132,17 @@ export async function generateLikelyStarterRefresh(input: {
   if (threshold < 0 || threshold > 1) throw new Error("Threshold must be between zero and one.");
 
   const outputDir = path.join(rootDir, "packages", "content", "recommendations", `gw-${input.gameweek}`);
-  const [bootstrap, projections, roleReport] = await Promise.all([
+  const [bootstrap, projections, roleReport, oddsReport] = await Promise.all([
     readFile(path.join(rootDir, "data", "raw", "bootstrap-static.json"), "utf8").then(JSON.parse) as Promise<{
       events: Array<{ id: number; deadline_time: string }>;
       teams: Array<{ id: number; name: string; short_name: string }>;
       elements: BootstrapPlayer[];
     }>,
     readFile(path.join(outputDir, "probabilistic-projections.json"), "utf8").then(JSON.parse) as Promise<Projection[]>,
-    readFile(path.join(outputDir, "current-role-report.json"), "utf8").then(JSON.parse) as Promise<CurrentRoleReport>
+    readFile(path.join(outputDir, "current-role-report.json"), "utf8").then(JSON.parse) as Promise<CurrentRoleReport>,
+    readFile(path.join(outputDir, "odds-report.json"), "utf8")
+      .then((value) => JSON.parse(value) as OddsReport)
+      .catch((error: NodeJS.ErrnoException) => error.code === "ENOENT" ? null : Promise.reject(error))
   ]);
   const generatedAt = input.generatedAt ?? new Date().toISOString();
   const playerById = new Map(bootstrap.elements.map((player) => [player.id, player]));
@@ -195,6 +237,7 @@ export async function generateLikelyStarterRefresh(input: {
   }).sort((a, b) => b.startProbability - a.startProbability);
 
   const byPerformance = [...rows].sort((a, b) => b.seasonToDate.attackingReturnDelta - a.seasonToDate.attackingReturnDelta);
+  const odds = summarizeOdds(oddsReport);
   const report = {
     schemaVersion: 1,
     generatedAt,
@@ -205,7 +248,7 @@ export async function generateLikelyStarterRefresh(input: {
       likelyStarter: `startProbability >= ${threshold}`,
       overUnderPerformance: "Actual goals plus assists minus expected goal involvements through the latest completed gameweek; descriptive, not predictive.",
       inLineTolerance: 0.05,
-      oddsCalibration: "unavailable"
+      oddsCalibration: odds.calibration
     },
     summary: {
       likelyStarters: rows.length,
@@ -215,7 +258,7 @@ export async function generateLikelyStarterRefresh(input: {
       excludedRiskWatch: excludedWatch.length
     },
     warnings: [
-      "The live odds provider failed twice, so scorer and clean-sheet components use the repository's heuristic fallback.",
+      ...(odds.warning ? [odds.warning] : []),
       "Early-season over/under-performance deltas are small-sample descriptive signals and should regress toward underlying rates."
     ],
     leaders: {
@@ -226,7 +269,7 @@ export async function generateLikelyStarterRefresh(input: {
     excludedRiskWatch: excludedWatch,
     players: rows
   };
-  const markdown = `# GW${input.gameweek} likely-starter refresh\n\nGenerated: ${generatedAt}\n\nDeadline: ${report.deadline ?? "unknown"}\n\nThreshold: P(start) >= ${(threshold * 100).toFixed(0)}%\n\nLikely starters: ${rows.length}\n\nMarket odds: unavailable; heuristic projection fallback active.\n\n## Material risk watch\n\n${excludedWatch.map((item) => `- ${item.webName} (${item.team}): P(start) ${(item.startProbability * 100).toFixed(1)}%, ${item.evidence.map((evidence) => evidence.note).join(" ")}`).join("\n") || "- None"}\n\n## All likely starters\n\n| Player | Team | Pos | P(start) | P(appear) | xPts | P10 | Median | P90 | Starts | Min | Pts | G+A-xGI | Perf | News / role evidence |\n| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |\n${rows.map((row) => `| ${row.webName} | ${row.teamShortName} | ${row.position} | ${(row.forecast.startProbability * 100).toFixed(1)}% | ${(row.forecast.appearanceProbability * 100).toFixed(1)}% | ${row.forecast.expectedPoints.toFixed(1)} | ${row.forecast.p10.toFixed(1)} | ${row.forecast.median.toFixed(1)} | ${row.forecast.p90.toFixed(1)} | ${row.seasonToDate.starts} | ${row.seasonToDate.minutes} | ${row.seasonToDate.points} | ${row.seasonToDate.attackingReturnDelta.toFixed(2)} | ${row.seasonToDate.attackingReturnPerformance} | ${row.materialEvidence.map((evidence) => evidence.note).join(" ") || row.availability.officialNews || "No material current update"} |`).join("\n")}\n\n## Interpretation\n\nOver/under performance is actual goals plus assists minus expected goal involvements through GW4. It is descriptive and is not added to the GW5 projection.\n`;
+  const markdown = `# GW${input.gameweek} likely-starter refresh\n\nGenerated: ${generatedAt}\n\nDeadline: ${report.deadline ?? "unknown"}\n\nThreshold: P(start) >= ${(threshold * 100).toFixed(0)}%\n\nLikely starters: ${rows.length}\n\nMarket odds: ${odds.markdown}.\n\n## Material risk watch\n\n${excludedWatch.map((item) => `- ${item.webName} (${item.team}): P(start) ${(item.startProbability * 100).toFixed(1)}%, ${item.evidence.map((evidence) => evidence.note).join(" ")}`).join("\n") || "- None"}\n\n## All likely starters\n\n| Player | Team | Pos | P(start) | P(appear) | xPts | P10 | Median | P90 | Starts | Min | Pts | G+A-xGI | Perf | News / role evidence |\n| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |\n${rows.map((row) => `| ${row.webName} | ${row.teamShortName} | ${row.position} | ${(row.forecast.startProbability * 100).toFixed(1)}% | ${(row.forecast.appearanceProbability * 100).toFixed(1)}% | ${row.forecast.expectedPoints.toFixed(1)} | ${row.forecast.p10.toFixed(1)} | ${row.forecast.median.toFixed(1)} | ${row.forecast.p90.toFixed(1)} | ${row.seasonToDate.starts} | ${row.seasonToDate.minutes} | ${row.seasonToDate.points} | ${row.seasonToDate.attackingReturnDelta.toFixed(2)} | ${row.seasonToDate.attackingReturnPerformance} | ${row.materialEvidence.map((evidence) => evidence.note).join(" ") || row.availability.officialNews || "No material current update"} |`).join("\n")}\n\n## Interpretation\n\nOver/under performance is actual goals plus assists minus expected goal involvements through the latest completed gameweek. It is descriptive and is not added to the projection.\n`;
 
   await mkdir(outputDir, { recursive: true });
   await Promise.all([

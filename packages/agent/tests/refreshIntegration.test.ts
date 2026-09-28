@@ -95,6 +95,7 @@ describe("refresh command integration", () => {
     expect(second.manifest.stages.find((stage) => stage.id === "odds")?.status).toBe("failed");
     expect(second.manifest.stages.find((stage) => stage.id === "evidence-summary")?.status).toBe("success");
     expect(second.manifest.stages.find((stage) => stage.id === "evidence-snapshot")?.status).toBe("success");
+    await expect(stat(path.join(root, "refresh-inputs", "offline-fixture"))).rejects.toMatchObject({ code: "ENOENT" });
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
     expect(RefreshManifestSchema.parse(JSON.parse(
@@ -213,6 +214,7 @@ describe("refresh command integration", () => {
       rawDir,
       processedDir: path.join(root, "processed"),
       recommendationsDir: path.join(root, "recommendations"),
+      temporaryRoot: path.join(root, "refresh-inputs"),
       decisionStatusesPath: path.join(root, "decision-statuses.json"),
       triggerPlanPath: path.join(root, "trigger-plan.json")
     });

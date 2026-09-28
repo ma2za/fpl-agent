@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "artifactKind": "gameweek_postmortem",
-  "outcomeStatus": "provisional",
+  "outcomeStatus": "finalized",
   "gameweek": 4,
   "source": "https://fantasy.premierleague.com/en/entry/7407631/event/4",
   "manager": {
@@ -54,7 +54,7 @@
     "unusedBenchPoints": 5
   },
   "lessons": [
-    "All ten GW4 fixtures are finished, but the official FPL event still reports finished=false and data_checked=false. The 61-point score, ranks, average and highest score are provisional until FPL completes its data check.",
+    "Official FPL now marks GW4 finished and data-checked, finalizing the 61-point score, ranks, average and highest score.",
     "The submitted team scored 61 points, eight below the current 69-point gameweek average, and the overall rank moved from 2,346,231 to 3,647,848.",
     "The official transfer and submitted starting XI match the selected Buendía plan. The only submission difference is Thiago rather than Gabriel as vice-captain, which had no realized effect because Haaland played.",
     "Haaland scored nine raw points and captaincy added nine. Replacing him with submitted vice-captain Thiago would have reduced the score by eight points; the recommended vice-captain Gabriel also scored nine.",

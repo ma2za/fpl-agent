@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import postmortemJson from "../../content/postmortems/gw-1.json";
 import gw3PostmortemJson from "../../content/postmortems/gw-3.json";
 import gw4PostmortemJson from "../../content/postmortems/gw-4.json";
+import gw5PostmortemJson from "../../content/postmortems/gw-5.json";
 import { GameweekPostmortemSchema } from "../src/postmortem";
 
 describe("GW1 postmortem", () => {
@@ -35,10 +36,24 @@ describe("GW3 postmortem", () => {
 });
 
 describe("GW4 postmortem", () => {
-  it("stays provisional until the official outcome batch is finalized", () => {
+  it("records the finalized official outcome", () => {
     const postmortem = GameweekPostmortemSchema.parse(gw4PostmortemJson);
 
-    expect(postmortem.outcomeStatus).toBe("provisional");
+    expect(postmortem.outcomeStatus).toBe("finalized");
     expect(postmortem.manager.totalPoints).toBe(61);
+  });
+});
+
+describe("GW5 postmortem", () => {
+  it("reconciles the submitted score and manager-selected transfer", () => {
+    const postmortem = GameweekPostmortemSchema.parse(gw5PostmortemJson);
+
+    expect(postmortem.outcomeStatus).toBe("finalized");
+    expect(postmortem.manager.totalPoints).toBe(65);
+    expect(postmortem.aiSelection.actualPointsCounterfactual).toBe(67);
+    expect(postmortem.counterfactuals.managerOverrideDelta).toBe(-2);
+    expect(postmortem.managerOverrides.map((item) => `${item.outName} -> ${item.inName}`)).toEqual([
+      "Calvert-Lewin -> Wissa"
+    ]);
   });
 });
