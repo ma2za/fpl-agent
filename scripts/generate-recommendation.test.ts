@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { FixtureHorizonReport } from "../packages/agent/src";
+import { projectPlayers, type PlayerForEngine } from "../packages/engine/src";
+import { engineSquad } from "../packages/engine/tests/fixtures";
 import { CURRENT_SQUAD } from "../config/squad";
-import { fixtureProjectionContext, marketCoverageWarnings } from "./generate-recommendation";
+import { fixtureProjectionContext, marketCoverageWarnings, transferPlanningCandidates } from "./generate-recommendation";
 
 describe("recommendation projection context", () => {
   it("identifies the frozen source gameweek for configured decisions", () => {
@@ -57,5 +59,43 @@ describe("recommendation projection context", () => {
       "Heuristic goal fallback remains active for likely-starting squad player IDs: 1.",
       "Heuristic clean-sheet fallback remains active for likely-starting squad player IDs: 2."
     ]);
+  });
+
+  it("writes five actionable GW1 options plus the roll baseline with planning metadata", () => {
+    const alternatives: PlayerForEngine[] = Array.from({ length: 5 }, (_, index) => ({
+      id: 101 + index,
+      name: `Alternative ${index + 1}`,
+      nowCost: 50,
+      price: 5,
+      position: "MID",
+      status: "a",
+      teamId: 6 + index,
+      chanceOfPlayingNextRound: 100,
+      expectedPointsNext: 8 - index / 10,
+      expectedPointsThis: 8 - index / 10,
+      form: 5,
+      minutes: 900,
+      selectedByPercent: 1,
+      totalPoints: 30
+    }));
+    const players = [...engineSquad, ...alternatives];
+    const projections = projectPlayers(players);
+    const candidates = transferPlanningCandidates({
+      players,
+      projections,
+      downsideProjections: projections.map((projection) => ({
+        ...projection,
+        projectedPoints: projection.projectedPoints - 1
+      })),
+      squadPlayerIds: engineSquad.map((player) => player.id),
+      freeTransfers: 1,
+      bank: 1
+    });
+
+    expect(candidates).toHaveLength(6);
+    expect(candidates.filter((candidate) => candidate.type === "transfer")).toHaveLength(5);
+    expect(candidates.at(-1)?.type).toBe("roll");
+    expect(candidates.every((candidate) => candidate.planning?.modelVersion === "0.0.26")).toBe(true);
+    expect(candidates.every((candidate) => candidate.expectedGain3GW === null || candidate.type === "roll")).toBe(true);
   });
 });

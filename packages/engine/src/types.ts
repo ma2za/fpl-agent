@@ -491,7 +491,7 @@ export type TransferCandidate = {
     buyPlayerName?: string;
   }>;
   transferCost: number;
-  expectedGain1GW: number;
+  expectedGain1GW: number | null;
   expectedGain3GW: number | null;
   expectedGain5GW: number | null;
   risk: RiskLabel;
@@ -502,7 +502,7 @@ export type TransferCandidate = {
   planning?: {
     modelVersion: "0.0.26";
     rankingHorizon: "GW1" | "GW1-3" | "GW1-5";
-    immediateGain: number;
+    immediateGain: number | null;
     multiGameweekGain: number | null;
     rankingGain: number | null;
     optionValue: number;

@@ -95,7 +95,10 @@ The decision loop is:
 7. Run `pnpm verify -- --gw {n}`.
 8. Read `risk-report.md`, `agent-brief.md`, and `manual-checklist.md`; update the recommendation or author a variant if needed.
 9. List, verify, and compare authored variants with `pnpm variant:list -- --gw {n}`, `pnpm variant:verify -- --gw {n} --variant <slug>`, and `pnpm variant:compare -- --gw {n} --a <slug> --b <slug>`.
-10. Keep the final recommendation human-readable and manually executable.
+10. Promote the selected verified variant with `pnpm decision:activate -- --gw {n} --variant <slug>`. Replacing an active selection requires `--supersede-reason <reason>`.
+11. Re-read the active variant's `manual-checklist.md`, then keep every FPL action human-readable and manually executable.
+12. After the human applies the plan, record evidence with `pnpm decision:submit -- --gw {n} --source <manager_confirmation|public_fpl_api> --reference <value>`. A local selection never proves submission.
+13. Freeze the deadline state with `pnpm archive:freeze -- --gw {n}`. The archive flow records archive evidence on the active manifest; an archived decision cannot be silently replaced.
 
 Variant slugs use lowercase letters, digits, and single hyphens. Each variant keeps only its authored recommendation and derived verification files in its own directory; fixture, availability, odds, role, strategy, and freshness evidence remains shared at gameweek level. Comparison output is written under `variants/comparisons/{a}-vs-{b}/` unless `--out` is supplied. It presents differences and evidence gaps without ranking variants or choosing the final action.
 

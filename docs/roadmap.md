@@ -94,6 +94,8 @@ The exact covered and uncovered rule behavior is listed in `docs/rules-coverage.
 - Canonical decision-policy artifacts bind objective, horizon, risk mode, materiality floor, and transfer posture across optimization, simulation, evaluation, and recommendation.
 - Decision evaluations classify comparisons as `CLEAR`, `NEAR_TIE`, or `UNRESOLVED`, reject clear-winner language for near-ties, and permit only quantified evidence-backed overrides.
 - Transfer decisions default to rolling when the roll baseline remains inside the near-tie set.
+- Transfer options expose immediate and declared-horizon gain, transfer cost, option value, replacement liquidity, downside, next-gameweek free transfers, bank, and reachable squads; unavailable gains remain null and block ranking on that horizon.
+- A hash-bound active-decision manifest atomically records the selected variant, confirmed submission, supersession, and archive evidence while refresh preserves it or fails promotion.
 - Pre-optimization eligibility excludes unavailable or decision-ineligible players before candidate generation, preserves typed exclusion evidence, distinguishes starter, bench, and emergency roles, and enforces scoped manager constraints with expiry.
 
 ### Evidence Sources
@@ -132,7 +134,7 @@ Detailed present-state coverage is recorded in `docs/evidence-release-plan.md`.
 
 ### Operational State
 
-- The local release suite contains 66 test files and 480 tests, all passing.
+- The local release suite contains 66 test files and 489 tests, all passing.
 - Type-check, production build, cached offline refresh, store validation, worklist generation, and dossier generation pass.
 - The accepted 600-player store baseline is 156.779 ms initial ingestion, 78.167 ms idempotent re-ingestion, 1150.416 ms dossier-index generation, and 2.302 ms individual dossier query on Node 24.14.1, Windows x64.
 - A bounded live adapter smoke completed 48 of 50 configured UK football-news sources. The Times and talkSPORT were retained as explicit robots-blocked results; no blocked source was bypassed or counted as completed coverage.
@@ -827,7 +829,7 @@ Release gate:
 - Reject an active manifest whose hashes, variant, gameweek, deadline, or selected candidate do not match the authored recommendation.
 - Verify refresh preservation, explicit supersession, checklist transfer rendering, and unknown-horizon serialization.
 
-Status: in progress, priority 1 and next release. Five-option publication and selection consistency are implemented; atomic active-decision promotion, transfer reachability, option-value modeling, checklist rendering, and unknown-horizon handling remain open.
+Status: delivered. Planning metadata and exact-horizon ranking are publication gates; the paired roll hurdle, option-value components, active-decision promotion and archive lifecycle, refresh preservation, checklist rendering, and null serialization have regression coverage.
 
 ### 0.0.27: Discriminative Role Probabilities, Contradiction Handling, and Calibration
 
@@ -856,7 +858,7 @@ Release gate:
 - Reproduce the GW4 stale `0.991` readiness value beside the refreshed `0.90` projection and fail snapshot reconciliation.
 - Test `>`, `>=`, rounding, display formatting, and missing-source behavior at the 90-percent boundary.
 
-Status: in progress, priority 2. Sparse-sample probability ceilings, one-gameweek/multi-gameweek claim consistency, and the archive decision gate are implemented; snapshot reconciliation, strict threshold semantics, richer role features, and calibration reporting remain open.
+Status: in progress, priority 1 and next release. Sparse-sample probability ceilings, one-gameweek/multi-gameweek claim consistency, and the archive decision gate are implemented; snapshot reconciliation, strict threshold semantics, richer role features, and calibration reporting remain open.
 
 ### 0.0.28: Pre-Optimization Eligibility Gate
 
@@ -903,7 +905,7 @@ Release gate:
 - Guarantee replayability from frozen inputs and seeds.
 - Reject a workspace where the root pointer, selected variant, checklist, or decision record names a different action.
 
-Status: planned, priority 3.
+Status: planned, priority 2.
 
 ### 0.0.30: Public Submitted-State and Outcome Capture
 
@@ -926,7 +928,7 @@ Release gate:
 - Never infer a submitted action from a recommendation file.
 - Reproduce the GW4 selected-but-unconfirmed Buendía state and prevent `config/squad.ts` or postmortem inputs from advancing until public or manager-confirmed submission evidence exists.
 
-Status: planned, priority 4.
+Status: planned, priority 3.
 
 ### 0.0.31: Closed-Loop Regret and Typed Root-Cause Actions
 
@@ -954,7 +956,7 @@ Release gate:
 - Complete the prior-gameweek review before the next recommendation can be final.
 - Reconcile the immutable earlier GW4 archive, later selected variant, and eventual submitted state without mutating any of them.
 
-Status: planned, priority 5.
+Status: planned, priority 4.
 
 ### 0.0.32: Squad Resilience, Price-Point Liquidity, and Forced-Transfer Demand
 
@@ -978,7 +980,7 @@ Release gate:
 - Keep resilience as a metric vector and policy constraint, not a hidden overall score.
 - Reject generic risk waivers that mechanically cover every starter without player-specific evidence or a concrete change condition.
 
-Status: planned, priority 6.
+Status: planned, priority 5.
 
 ### 0.0.33: Rolling-Origin Champion-Challenger Evaluation
 
@@ -1003,7 +1005,7 @@ Release gate:
 - Preserve reversible adoption and rollback history.
 - Reject a challenger that merely increases the share of players displayed above a manager threshold without improving calibration or evidence qualification.
 
-Status: planned, priority 7.
+Status: planned, priority 6.
 
 ### 0.0.34: Dual Process/Outcome Scorecard and Phase Checkpoints
 
@@ -1028,7 +1030,7 @@ Release gate:
 - Verify current, historical, provisional, and finalized views with Playwright and no authenticated FPL access.
 - Start a clean-room handover test that reads only repository instructions and active manifests, then proves it identifies the same selected action, submission state, deadline, source snapshot, and next release.
 
-Status: planned, priority 8.
+Status: planned, priority 7.
 
 ### 0.0.35: Season Freeze and Leakage-Safe Benchmarking
 
@@ -1049,7 +1051,7 @@ Release gate:
 - Report every gameweek as comparable or non-comparable with a typed reason.
 - Keep season outcomes outside publication correctness and model-adoption gates.
 
-Status: planned, priority 9.
+Status: planned, priority 8.
 
 ### 0.0.36: Offseason and Preseason State Transition
 
@@ -1070,7 +1072,7 @@ Release gate:
 - Reject preseason analysis when the active rule contract is missing or still references superseded season rules.
 - Preserve schema compatibility and provenance across the transition without rewriting the season freeze.
 
-Status: planned, priority 10.
+Status: planned, priority 9.
 
 ### 0.0.37: Opening Squad and Full-Season Operating Contract
 
@@ -1091,7 +1093,7 @@ Release gate:
 - Reproduce the preseason freeze from hashes and reject unversioned model, policy, threshold, baseline, or rule changes after lock.
 - Complete each scheduled review with separate process and outcome scorecards while preserving agent ownership of the final squad and every later decision.
 
-Status: planned, priority 11.
+Status: planned, priority 10.
 
 ## Delivery Dependencies and Migration
 

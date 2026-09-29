@@ -241,7 +241,7 @@ const transferMove = looseObject({
 const transferPlanning = z.object({
   modelVersion: z.literal("0.0.26"),
   rankingHorizon: z.enum(["GW1", "GW1-3", "GW1-5"]),
-  immediateGain: z.number(),
+  immediateGain: z.number().nullable(),
   multiGameweekGain: z.number().nullable(),
   rankingGain: z.number().nullable(),
   optionValue: z.number(),
@@ -273,7 +273,7 @@ const transferCandidate = looseObject({
   type: z.enum(["roll", "transfer", "hit", "wildcard", "free_hit"]),
   moves: z.array(transferMove),
   transferCost: z.number(),
-  expectedGain1GW: z.number(),
+  expectedGain1GW: z.number().nullable(),
   expectedGain3GW: z.number().nullable(),
   expectedGain5GW: z.number().nullable(),
   risk: z.enum(["low", "medium", "high"]),

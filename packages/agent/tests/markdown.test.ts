@@ -32,8 +32,13 @@ describe("manual checklist", () => {
 
   it("labels unavailable supporting horizons instead of printing zero", () => {
     const recommendation = variantRecommendation();
+    recommendation.topTransferCandidates[0]!.expectedGain1GW = null;
     recommendation.topTransferCandidates[0]!.expectedGain3GW = null;
     recommendation.topTransferCandidates[0]!.expectedGain5GW = null;
+    recommendation.topTransferCandidates[0]!.planning!.immediateGain = null;
+    recommendation.topTransferCandidates[0]!.planning!.multiGameweekGain = null;
+    recommendation.topTransferCandidates[0]!.planning!.rankingGain = null;
+    recommendation.topTransferCandidates[0]!.planning!.decisionValue = null;
 
     expect(renderManualChecklist(recommendation)).toContain("unavailable");
   });

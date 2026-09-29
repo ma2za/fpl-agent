@@ -19,6 +19,11 @@ export const ActiveDecisionManifestSchema = z.object({
   decisionRecordSha256: hash,
   deadline: z.string().datetime(),
   archiveState: z.enum(["not_archived", "archived", "earlier_immutable_variant"]),
+  archiveEvidence: z.object({
+    archiveId: z.string().min(1),
+    frozenAt: z.string().datetime(),
+    manifestPath: z.string().min(1)
+  }).strict().nullable().optional(),
   supersedes: z.object({
     variant: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
     selectedCandidateId: z.string().min(1),
@@ -44,6 +49,12 @@ export const ActiveDecisionManifestSchema = z.object({
   }
   if (manifest.status === "submitted" && manifest.submissionStatus !== "confirmed") {
     context.addIssue({ code: "custom", message: "Submitted decision requires confirmed submission." });
+  }
+  if (manifest.status === "archived" && (manifest.archiveState !== "archived" || !manifest.archiveEvidence)) {
+    context.addIssue({ code: "custom", message: "Archived decision requires archive evidence." });
+  }
+  if (manifest.status !== "archived" && (manifest.archiveState === "archived" || manifest.archiveEvidence)) {
+    context.addIssue({ code: "custom", message: "Only an archived decision may contain archive evidence." });
   }
 });
 
@@ -73,15 +84,11 @@ async function readReferencedJson(sourceDir: string, gameweek: number, logicalPa
   return { bytes, value: JSON.parse(bytes.toString("utf8")) as Record<string, unknown> };
 }
 
-export async function validateActiveDecisionManifest(
+async function validateManifestReferences(
   sourceDir: string,
-  expectedGameweek: number,
+  manifest: ActiveDecisionManifest,
   expectedDeadline?: string | null
 ) {
-  const manifest = ActiveDecisionManifestSchema.parse(JSON.parse(
-    await readFile(path.join(sourceDir, "active-decision.json"), "utf8")
-  ));
-  if (manifest.gameweek !== expectedGameweek) throw new Error("Active decision gameweek does not match the workspace.");
   if (expectedDeadline && Date.parse(manifest.deadline) !== Date.parse(expectedDeadline)) {
     throw new Error("Active decision deadline does not match the refresh deadline.");
   }
@@ -119,17 +126,30 @@ export async function validateActiveDecisionManifest(
   return manifest;
 }
 
+export async function validateActiveDecisionManifest(
+  sourceDir: string,
+  expectedGameweek: number,
+  expectedDeadline?: string | null
+) {
+  const manifest = ActiveDecisionManifestSchema.parse(JSON.parse(
+    await readFile(path.join(sourceDir, "active-decision.json"), "utf8")
+  ));
+  if (manifest.gameweek !== expectedGameweek) throw new Error("Active decision gameweek does not match the workspace.");
+  return validateManifestReferences(sourceDir, manifest, expectedDeadline);
+}
+
 export async function validateActiveDecisionManifestIfPresent(
   sourceDir: string,
   expectedGameweek: number,
   expectedDeadline?: string | null
 ) {
   try {
-    return await validateActiveDecisionManifest(sourceDir, expectedGameweek, expectedDeadline);
+    await readFile(path.join(sourceDir, "active-decision.json"));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
   }
+  return validateActiveDecisionManifest(sourceDir, expectedGameweek, expectedDeadline);
 }
 
 async function writeManifest(filePath: string, manifest: ActiveDecisionManifest) {
@@ -144,7 +164,7 @@ export async function promoteActiveDecision(input: {
   gameweek: number;
   variant: string;
   updatedAt: string;
-  archiveState?: ActiveDecisionManifest["archiveState"];
+  archiveState?: Exclude<ActiveDecisionManifest["archiveState"], "archived">;
   notes?: string[];
   supersessionReason?: string;
 }) {
@@ -175,6 +195,9 @@ export async function promoteActiveDecision(input: {
     existing.selectedCandidateId === selectedCandidateId &&
     existing.recommendationSha256 === recommendationSha256 &&
     existing.decisionRecordSha256 === decisionRecordSha256;
+  if (existing?.status === "archived" && !sameDecision) {
+    throw new Error("An archived active decision cannot be superseded.");
+  }
   if (existing && !sameDecision && !input.supersessionReason?.trim()) {
     throw new Error(`Active decision ${existing.variant}/${existing.selectedCandidateId} requires an explicit supersession reason before replacement.`);
   }
@@ -192,6 +215,7 @@ export async function promoteActiveDecision(input: {
     decisionRecordSha256,
     deadline,
     archiveState: input.archiveState ?? existing?.archiveState ?? "not_archived",
+    archiveEvidence: sameDecision ? existing!.archiveEvidence ?? null : null,
     supersedes: sameDecision
       ? existing!.supersedes ?? null
       : existing
@@ -209,6 +233,7 @@ export async function promoteActiveDecision(input: {
     submissionEvidence: sameDecision ? existing!.submissionEvidence ?? null : null,
     notes: input.notes ?? (sameDecision ? existing!.notes : [])
   });
+  await validateManifestReferences(input.sourceDir, manifest, deadline);
   await writeManifest(activeDecisionPath, manifest);
   return validateActiveDecisionManifest(input.sourceDir, input.gameweek, deadline);
 }
@@ -224,7 +249,7 @@ export async function confirmActiveDecisionSubmission(input: {
   const manifest = ActiveDecisionManifestSchema.parse({
     ...current,
     updatedAt: input.confirmedAt,
-    status: "submitted",
+    status: current.status === "archived" ? "archived" : "submitted",
     submissionStatus: "confirmed",
     submissionEvidence: {
       source: input.source,
@@ -232,6 +257,41 @@ export async function confirmActiveDecisionSubmission(input: {
       reference: input.reference
     }
   });
+  await validateManifestReferences(input.sourceDir, manifest);
   await writeManifest(path.join(input.sourceDir, "active-decision.json"), manifest);
-  return manifest;
+  return validateActiveDecisionManifest(input.sourceDir, input.gameweek);
+}
+
+export async function markActiveDecisionArchived(input: {
+  sourceDir: string;
+  gameweek: number;
+  archiveId: string;
+  frozenAt: string;
+  manifestPath: string;
+}) {
+  const current = await validateActiveDecisionManifest(input.sourceDir, input.gameweek);
+  if (current.status === "archived") {
+    if (current.archiveEvidence?.archiveId !== input.archiveId ||
+        current.archiveEvidence.manifestPath !== input.manifestPath) {
+      throw new Error("Active decision is already bound to a different archive.");
+    }
+    return current;
+  }
+  if (current.status === "superseded") {
+    throw new Error("A superseded decision cannot be archived as active.");
+  }
+  const manifest = ActiveDecisionManifestSchema.parse({
+    ...current,
+    updatedAt: input.frozenAt,
+    status: "archived",
+    archiveState: "archived",
+    archiveEvidence: {
+      archiveId: input.archiveId,
+      frozenAt: input.frozenAt,
+      manifestPath: input.manifestPath
+    }
+  });
+  await validateManifestReferences(input.sourceDir, manifest);
+  await writeManifest(path.join(input.sourceDir, "active-decision.json"), manifest);
+  return validateActiveDecisionManifest(input.sourceDir, input.gameweek);
 }

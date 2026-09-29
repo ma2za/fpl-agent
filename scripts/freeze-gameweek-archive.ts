@@ -3,9 +3,10 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   CurrentRoleReportSchema,
+  markActiveDecisionArchived,
   ProbabilisticProjectionArraySchema,
   RefreshManifestSchema,
-  validateActiveDecisionManifest
+  validateActiveDecisionManifestIfPresent
 } from "../packages/agent/src";
 import {
   DecisionStatusReportSchema,
@@ -46,17 +47,49 @@ function artifactKind(filePath: string) {
   return "supporting" as const;
 }
 
+async function markCapturedActiveDecisionArchived(input: {
+  sourceDir: string;
+  gameweek: number;
+  archiveManifestPath: string;
+  archive: {
+    archiveId: string;
+    frozenAt: string;
+    artifacts: Array<{ path: string; contentHash: string }>;
+  };
+}) {
+  const active = await validateActiveDecisionManifestIfPresent(input.sourceDir, input.gameweek);
+  if (!active) return;
+  const manifestPath = path.relative(process.cwd(), input.archiveManifestPath).replaceAll("\\", "/");
+  if (active.status === "archived") {
+    await markActiveDecisionArchived({
+      sourceDir: input.sourceDir,
+      gameweek: input.gameweek,
+      archiveId: input.archive.archiveId,
+      frozenAt: input.archive.frozenAt,
+      manifestPath
+    });
+    return;
+  }
+  const frozenActiveDecision = input.archive.artifacts.find((artifact) => artifact.path === "active-decision.json");
+  if (!frozenActiveDecision) return;
+  const currentBytes = await readFile(path.join(input.sourceDir, "active-decision.json"));
+  if (contentHash(currentBytes) !== frozenActiveDecision.contentHash) return;
+  await markActiveDecisionArchived({
+    sourceDir: input.sourceDir,
+    gameweek: input.gameweek,
+    archiveId: input.archive.archiveId,
+    frozenAt: input.archive.frozenAt,
+    manifestPath
+  });
+}
+
 export async function assertManagerDecisionRecorded(sourceDir: string, gameweek: number, deadline?: string | null) {
-  try {
-    const manifest = await validateActiveDecisionManifest(sourceDir, gameweek, deadline);
-    if (!["selected", "submitted"].includes(manifest.status)) {
-      throw new Error("Archive requires an active selected or submitted decision.");
-    }
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      throw new Error("Archive requires a hash-verified active-decision.json manifest.");
-    }
-    throw error;
+  const manifest = await validateActiveDecisionManifestIfPresent(sourceDir, gameweek, deadline);
+  if (!manifest) {
+    throw new Error("Archive requires a hash-verified active-decision.json manifest.");
+  }
+  if (!["selected", "submitted"].includes(manifest.status)) {
+    throw new Error("Archive requires an active selected or submitted decision.");
   }
 }
 
@@ -80,6 +113,12 @@ export async function freezeGameweekArchive(input: {
       assertPreDeadlineArtifact(artifact.path, bytes, existing.deadline);
     }
     const stored = await updatePlayerStoreTransactionally(storePath, { appliedAt: frozenAt, update: (db) => recordGameweekArchive(db, existing) });
+    await markCapturedActiveDecisionArchived({
+      sourceDir,
+      gameweek: input.gameweek,
+      archiveManifestPath: existingManifestPath,
+      archive: existing
+    });
     return { manifest: existing, inserted: stored.inserted, reused: true };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
@@ -162,6 +201,12 @@ export async function freezeGameweekArchive(input: {
   await mkdir(archiveDir, { recursive: true });
   await writeFile(existingManifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   const stored = await updatePlayerStoreTransactionally(storePath, { appliedAt: frozenAt, update: (db) => recordGameweekArchive(db, manifest) });
+  await markCapturedActiveDecisionArchived({
+    sourceDir,
+    gameweek: input.gameweek,
+    archiveManifestPath: existingManifestPath,
+    archive: manifest
+  });
   return { manifest, inserted: stored.inserted, reused: false };
 }
 

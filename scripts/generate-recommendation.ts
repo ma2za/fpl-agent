@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   buildProjectionUncertaintyReport,
+  generateTransferCandidates,
   projectPlayers,
   probabilitySatisfies,
   rankCaptainCandidates,
@@ -12,6 +13,7 @@ import {
   type ConditionalAppearanceSample,
   type MarketPlayerProjectionInput,
   type PlayerForEngine,
+  type PlayerProjection,
   type ProbabilisticProjection,
   type ProjectionContext
 } from "../packages/engine/src";
@@ -117,6 +119,30 @@ export function marketCoverageWarnings(input: {
       ? [`Heuristic clean-sheet fallback remains active for likely-starting squad player IDs: ${missingCleanSheet.join(", ")}.`]
       : [])
   ];
+}
+
+export function transferPlanningCandidates(input: {
+  players: PlayerForEngine[];
+  projections: PlayerProjection[];
+  downsideProjections: PlayerProjection[];
+  squadPlayerIds: number[];
+  freeTransfers: number;
+  bank: number;
+}) {
+  const playerById = new Map(input.players.map((player) => [player.id, player]));
+  const squad = input.squadPlayerIds
+    .map((playerId) => playerById.get(playerId))
+    .filter((player): player is PlayerForEngine => player !== undefined);
+  if (squad.length !== input.squadPlayerIds.length) return [];
+  return generateTransferCandidates({
+    squad,
+    candidates: input.players.filter((player) => player.status === "a"),
+    projections: input.projections,
+    downsideProjections: input.downsideProjections,
+    freeTransfers: input.freeTransfers,
+    bank: input.bank,
+    rankingHorizon: "GW1"
+  });
 }
 
 async function readJson<T>(filePath: string) {
@@ -355,8 +381,9 @@ The coding agent must read the evidence files, reason from current public inform
 - Classify each comparison as CLEAR, NEAR_TIE, or UNRESOLVED. A small positive estimate inside the materiality threshold is not a clear winner.
 - Select the objective leader unless an explicit override records its reason, exact objective-score delta, and supporting evidence IDs.
 - Keep manager-preference exclusions in candidateScores as preference_excluded candidates. Label the selected leader preference-constrained, identify the unconstrained leader, and quantify the exact objective-score cost and constraint IDs.
-- When a transfer and roll are a near-tie, select the roll unless a quantified explicit override supports the transfer.
-- For every transfer, hit, or roll decision, publish exactly five distinct, legal transfer options ranked over the canonical decision horizon, plus one legal roll baseline. The recommended action must be one of those six options.
+- Select a transfer over roll only when its paired margin clears the policy materiality threshold on the canonical horizon, unless a quantified explicit override with evidence supports the transfer.
+- For every transfer, hit, or roll decision, publish exactly five distinct, legal transfer options ranked by reconciled 0.0.26 decision value over the canonical horizon, plus one legal roll baseline. Include immediate and multi-gameweek gain, transfer cost, option value, replacement liquidity, downside, next-gameweek free transfers, bank, and reachable squads. The recommended action and action type must match one of those six options.
+- Store missing horizon projections as unavailable, never numeric zero, and do not rank or select an option on an unavailable canonical horizon.
 - Declare optimizationPolicy explicitly. MAX_EXPECTED_POINTS excludes ownership; rank-aware modes require a cited simulated field distribution.
 - Quantify every model adjustment as a feature-level points delta with uncertainty and evidence IDs. Never apply a feature already present in the base projection.
 - Never use club "coverage" to select or omit a player. Compare independently optimized with-player and without-player squads.
@@ -631,6 +658,18 @@ export async function generateRecommendationEvidence(input: {
   const decisionInputsAvailable = squadInputsAvailable
     && CURRENT_SQUAD.players.every((playerId) => PLAYER_DECISION_INPUTS[playerId] !== undefined)
     && [...requiredDecisionPlayerIds].every((playerId) => availablePlayerIds.has(playerId) && projectedPlayerIds.has(playerId));
+  const p10ByPlayerId = new Map(projectionUncertainty.items.map((projection) => [projection.playerId, projection.p10]));
+  const transferCandidates = squadInputsAvailable ? transferPlanningCandidates({
+    players: projectionPlayers,
+    projections,
+    downsideProjections: projections.map((projection) => ({
+      ...projection,
+      projectedPoints: p10ByPlayerId.get(projection.playerId) ?? projection.projectedPoints
+    })),
+    squadPlayerIds: CURRENT_SQUAD.players,
+    freeTransfers: CURRENT_SQUAD.freeTransfers,
+    bank: CURRENT_SQUAD.bank
+  }) : [];
   const squadDecisionRecord = decisionInputsAvailable ? buildSquadDecisionRecord({
     gameweek,
     generatedAt,
@@ -719,12 +758,12 @@ export async function generateRecommendationEvidence(input: {
   await writeJson(path.join(outputDir, "decision-record.json"), squadDecisionRecord);
   await writeJson(path.join(outputDir, "recommendation-template.json"), evidencePack.recommendationTemplate);
   await writeJson(path.join(outputDir, "captain-candidates.json"), captainCandidates);
+  await writeJson(path.join(outputDir, "transfer-candidates.json"), transferCandidates);
   await writeFile(path.join(outputDir, "projection-summary.md"), renderProjectionSummary(evidencePack), "utf8");
   await writeFile(path.join(outputDir, "decision-prompts.md"), renderDecisionPrompts(evidencePack, fixtureHorizonReport), "utf8");
 
   if (!authoredRecommendationExists) {
     await writeJson(recommendationPath, evidencePack.recommendationTemplate);
-    await writeJson(path.join(outputDir, "transfer-candidates.json"), []);
     await writeJson(path.join(outputDir, "legality-report.json"), {
       isValid: false,
       errors: ["Final recommendation has not been authored by the coding agent."],

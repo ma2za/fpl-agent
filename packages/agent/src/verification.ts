@@ -1,4 +1,7 @@
 import {
+  calculateNextFreeTransfers,
+  calculateTransferCost,
+  SUPPORTED_RULES_SEASON,
   validateBench,
   validateCaptaincy,
   validateChip,
@@ -79,17 +82,27 @@ function mergeResults(...results: ValidationResult[]): ValidationResult {
   };
 }
 
-function transferPlanningWarnings(recommendation: WeeklyRecommendation) {
+function transferPlanningErrors(recommendation: WeeklyRecommendation) {
   if (recommendation.decisionContext?.phase !== "TRANSFER_WINDOW" ||
       !["transfer", "hit", "roll"].includes(recommendation.recommendedAction.type)) return [];
-  const warnings: string[] = [];
+  const errors: string[] = [];
   const horizon = recommendation.decisionPolicy?.horizon;
   const supportedHorizon = horizon === "GW1" || horizon === "GW1-3" || horizon === "GW1-5";
   const planned = recommendation.topTransferCandidates.filter((candidate) => candidate.planning);
   if (planned.length !== recommendation.topTransferCandidates.length) {
-    warnings.push("Transfer options without 0.0.26 planning metadata remain readable but do not expose option value, liquidity, downside, or reachable next-gameweek squads.");
+    errors.push("Every transfer option must include 0.0.26 planning metadata for option value, liquidity, downside, and next-gameweek reachability.");
   }
-  if (!supportedHorizon) return warnings;
+  if (!supportedHorizon) {
+    errors.push(`Transfer planning requires a GW1, GW1-3, or GW1-5 canonical horizon; received ${horizon ?? "unavailable"}.`);
+    return errors;
+  }
+  const roll = recommendation.topTransferCandidates.find((candidate) => candidate.type === "roll");
+  const rollPlanning = roll?.planning;
+  const transferEvaluation = recommendation.decisionEvaluations
+    ?.find((evaluation) => evaluation.decisionType === "transfers");
+  const evaluatedById = new Map(transferEvaluation?.candidateScores
+    .map((candidate) => [candidate.candidateId, candidate]) ?? []);
+  const evaluatedRoll = evaluatedById.get("action:roll:none");
 
   for (const candidate of planned) {
     const planning = candidate.planning!;
@@ -98,15 +111,63 @@ function transferPlanningWarnings(recommendation: WeeklyRecommendation) {
       : horizon === "GW1-3"
         ? candidate.expectedGain3GW
         : candidate.expectedGain5GW;
+    const multiGameweekGain = horizon === "GW1-5"
+      ? candidate.expectedGain5GW
+      : candidate.expectedGain3GW;
     if (planning.rankingHorizon !== horizon) {
-      warnings.push(`Transfer option ${candidate.id} planning horizon ${planning.rankingHorizon} does not match canonical horizon ${horizon}.`);
+      errors.push(`Transfer option ${candidate.id} planning horizon ${planning.rankingHorizon} does not match canonical horizon ${horizon}.`);
     }
-    if (planning.immediateGain !== candidate.expectedGain1GW || planning.rankingGain !== rankingGain) {
-      warnings.push(`Transfer option ${candidate.id} planning gains do not match its compatibility gain fields.`);
+    if (planning.immediateGain !== candidate.expectedGain1GW ||
+        planning.multiGameweekGain !== multiGameweekGain || planning.rankingGain !== rankingGain) {
+      errors.push(`Transfer option ${candidate.id} planning gains do not match its compatibility gain fields.`);
+    }
+    const expectedDecisionValue = rankingGain === null
+      ? null
+      : Math.round((rankingGain - candidate.transferCost + planning.optionValue) * 10) / 10;
+    if (planning.decisionValue !== expectedDecisionValue) {
+      errors.push(`Transfer option ${candidate.id} decision value does not reconcile ranking gain, transfer cost, and option value.`);
+    }
+    const evaluatedCandidate = evaluatedById.get(`action:${candidate.type}:${moveSignature(candidate.moves)}`);
+    if (planning.decisionValue !== null && rollPlanning?.decisionValue != null && evaluatedCandidate && evaluatedRoll) {
+      const planningMargin = Math.round((planning.decisionValue - rollPlanning.decisionValue) * 10) / 10;
+      const evaluationMargin = Math.round((evaluatedCandidate.objectiveScore - evaluatedRoll.objectiveScore) * 10) / 10;
+      if (planningMargin !== evaluationMargin) {
+        errors.push(`Transfer option ${candidate.id} canonical evaluation margin does not match its reconciled decision value relative to roll.`);
+      }
+    }
+    const expectedTransferCost = calculateTransferCost(
+      SUPPORTED_RULES_SEASON,
+      candidate.moves.length,
+      recommendation.squadBefore.freeTransfers
+    );
+    const expectedNextFreeTransfers = calculateNextFreeTransfers(
+      SUPPORTED_RULES_SEASON,
+      recommendation.squadBefore.freeTransfers,
+      candidate.moves.length
+    );
+    if (candidate.transferCost !== expectedTransferCost || planning.nextGameweek.freeTransfers !== expectedNextFreeTransfers) {
+      errors.push(`Transfer option ${candidate.id} does not reconcile its move count with transfer cost and next-gameweek free transfers.`);
+    }
+    if (planning.financials.bankBefore !== recommendation.squadBefore.bank ||
+        Math.round((planning.financials.bankBefore + planning.financials.saleProceeds - planning.financials.purchaseCost) * 10) / 10 !== planning.financials.bankAfter ||
+        planning.nextGameweek.bank !== planning.financials.bankAfter) {
+      errors.push(`Transfer option ${candidate.id} financials do not reconcile the current bank, sale proceeds, purchase cost, and next-gameweek bank.`);
+    }
+    if (rollPlanning) {
+      const expectedOptionValue = Math.round((planning.nextGameweek.freeTransfers - rollPlanning.nextGameweek.freeTransfers) *
+        planning.optionValueAssumption.pointsPerAdditionalFreeTransfer * 10) / 10;
+      if (planning.optionValue !== expectedOptionValue ||
+          planning.optionValueAssumption.pointsPerAdditionalFreeTransfer !== rollPlanning.optionValueAssumption.pointsPerAdditionalFreeTransfer) {
+        errors.push(`Transfer option ${candidate.id} option value does not reconcile next-gameweek free transfers and the shared versioned assumption.`);
+      }
     }
   }
 
-  return warnings;
+  return errors;
+}
+
+function moveSignature(moves: Array<{ sellPlayerId: number; buyPlayerId: number }>) {
+  return moves.map((move) => `${move.sellPlayerId}>${move.buyPlayerId}`).sort().join(",") || "none";
 }
 
 function actionErrors(recommendation: WeeklyRecommendation) {
@@ -201,37 +262,32 @@ function actionErrors(recommendation: WeeklyRecommendation) {
     if (new Set(options.map((candidate) => candidate.id)).size !== options.length) {
       errors.push("Published transfer options must have unique candidate IDs.");
     }
-    const moveSignatures = options.map((candidate) => candidate.moves
-      .map((move) => `${move.sellPlayerId}>${move.buyPlayerId}`)
-      .sort()
-      .join(",") || "roll");
+    const moveSignatures = options.map((candidate) => moveSignature(candidate.moves));
     if (new Set(moveSignatures).size !== moveSignatures.length) {
       errors.push("Published transfer options must represent distinct actions.");
     }
     const horizon = recommendation.decisionPolicy?.horizon;
-    const gain = (candidate: WeeklyRecommendation["topTransferCandidates"][number]) =>
-      horizon === "GW1"
-        ? candidate.expectedGain1GW
-        : horizon === "GW1-3"
-          ? candidate.expectedGain3GW
-          : horizon === "GW1-5"
-            ? candidate.expectedGain5GW
-            : null;
-    const plannedRanking = transfers.every((candidate) => candidate.planning !== undefined);
-    const rankedGains = plannedRanking
-      ? transfers.map((candidate) => candidate.planning!.decisionValue)
-      : transfers.map(gain);
-    if (rankedGains.some((value) => value === null)) {
+    const canonicalGains = transfers.map((candidate) => horizon === "GW1"
+      ? candidate.expectedGain1GW
+      : horizon === "GW1-3"
+        ? candidate.expectedGain3GW
+        : horizon === "GW1-5"
+          ? candidate.expectedGain5GW
+          : null);
+    const rankedGains = transfers.map((candidate) => candidate.planning?.decisionValue ?? null);
+    if (canonicalGains.some((value) => value === null) || rankedGains.some((value) => value === null)) {
       errors.push(`The canonical transfer ranking horizon ${horizon ?? "unavailable"} has unavailable option values.`);
     } else if (rankedGains.some((value, index) => index > 0 && rankedGains[index - 1]! < value!)) {
-      errors.push("The five transfer options must be ranked by expected gain over the canonical decision horizon.");
+      errors.push("The five transfer options must be ranked by decision value over the canonical decision horizon.");
     }
-    const selectedSignature = recommendation.recommendedAction.transfers
-      .map((move) => `${move.sellPlayerId}>${move.buyPlayerId}`)
-      .sort()
-      .join(",") || "roll";
-    if (!moveSignatures.includes(selectedSignature)) {
+    const selectedSignature = moveSignature(recommendation.recommendedAction.transfers);
+    const selectedOption = options.find((candidate) => candidate.type === recommendation.recommendedAction.type &&
+      moveSignature(candidate.moves) === selectedSignature);
+    if (!selectedOption) {
       errors.push("The recommended action must appear in the published transfer options.");
+    } else if (selectedOption.transferCost !== recommendation.recommendedAction.transferCost ||
+        selectedOption.planning?.financials.bankAfter !== recommendation.recommendedAction.bankAfter) {
+      errors.push("The recommended action transfer cost and bank must match its published transfer option.");
     }
     const evaluated = new Set(
       recommendation.decisionEvaluations
@@ -239,8 +295,7 @@ function actionErrors(recommendation: WeeklyRecommendation) {
         ?.candidateScores.map((candidate) => candidate.candidateId) ?? []
     );
     const unevaluated = options.filter((candidate) => {
-      const signature = candidate.moves.map((move) => `${move.sellPlayerId}>${move.buyPlayerId}`).join(",");
-      return !evaluated.has(`action:${candidate.type}:${signature || "none"}`);
+      return !evaluated.has(`action:${candidate.type}:${moveSignature(candidate.moves)}`);
     });
     if (unevaluated.length > 0) {
       errors.push("Every published transfer option must appear in the canonical transfer evaluation.");
@@ -279,7 +334,6 @@ export function verifyRecommendation(
   const warnings = recommendation.dataMode === "provisional"
     ? ["Provisional recommendation: player IDs, prices, fixtures, and availability may be stale."]
     : [];
-  warnings.push(...transferPlanningWarnings(recommendation));
   warnings.push(...(options.roleDecisionSnapshot?.warnings ?? []));
   const selectedPlayerCoverageErrors: string[] = [];
   if (options.selectedPlayerEvidence === null) {
@@ -295,6 +349,7 @@ export function verifyRecommendation(
   }
   const customErrors = [
     ...actionErrors(recommendation),
+    ...transferPlanningErrors(recommendation),
     ...selectedPlayerCoverageErrors,
     ...(options.roleDecisionSnapshot?.errors ?? [])
   ];

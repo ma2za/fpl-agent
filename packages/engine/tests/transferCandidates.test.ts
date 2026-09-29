@@ -59,8 +59,29 @@ describe("transfer optionality", () => {
     expect(result.filter((candidate) => candidate.type === "transfer")).toHaveLength(5);
     expect(result.at(-1)?.type).toBe("roll");
     expect(result.every((candidate) => candidate.isLegal)).toBe(true);
-    expect(result.every((candidate) => candidate.expectedGain3GW === null && candidate.expectedGain5GW === null)).toBe(true);
+    expect(result.filter((candidate) => candidate.type === "transfer")
+      .every((candidate) => candidate.expectedGain3GW === null && candidate.expectedGain5GW === null)).toBe(true);
+    expect(result.at(-1)).toMatchObject({ expectedGain3GW: 0, expectedGain5GW: 0 });
     expect(result.every((candidate) => candidate.planning?.rankingHorizon === "GW1")).toBe(true);
+  });
+
+  it("serializes a missing immediate projection as unavailable instead of zero", () => {
+    const buy = alternatives[0]!;
+    const candidate = evaluateTransferCandidate({
+      squad: engineSquad,
+      candidates: pool,
+      projections: projectPlayers(engineSquad),
+      freeTransfers: 1,
+      bank: 1,
+      moves: [{ sellPlayerId: 12, buyPlayerId: buy.id }]
+    });
+
+    expect(candidate.expectedGain1GW).toBeNull();
+    expect(candidate.planning).toMatchObject({
+      immediateGain: null,
+      rankingGain: null,
+      decisionValue: null
+    });
   });
 
   it("ranks on declared multi-gameweek projections and reports each planning component", () => {

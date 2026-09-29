@@ -82,7 +82,7 @@ const recommendation: WeeklyRecommendation = {
     reasons: ["No chip clears threshold."],
     warnings: []
   },
-  topTransferCandidates: rankedTransferOptions(12),
+  topTransferCandidates: rankedTransferOptions(12, 11.5),
   confidence: {
     score: 0.7,
     label: "medium",
@@ -223,7 +223,7 @@ describe("verifyRecommendation", () => {
     [misranked.topTransferCandidates[0], misranked.topTransferCandidates[1]] =
       [misranked.topTransferCandidates[1]!, misranked.topTransferCandidates[0]!];
     expect(verifyRecommendation(misranked).errors).toContain(
-      "The five transfer options must be ranked by expected gain over the canonical decision horizon."
+      "The five transfer options must be ranked by decision value over the canonical decision horizon."
     );
 
     const unevaluated = structuredClone(recommendation);
@@ -246,12 +246,20 @@ describe("verifyRecommendation", () => {
     expect(verifyRecommendation(missingSelection).errors).toContain(
       "The recommended action must appear in the published transfer options."
     );
+
+    const wrongActionType = structuredClone(recommendation);
+    wrongActionType.recommendedAction.type = "hit";
+    wrongActionType.recommendedAction.transfers = [...wrongActionType.topTransferCandidates[0]!.moves];
+    expect(verifyRecommendation(wrongActionType).errors).toContain(
+      "The recommended action must appear in the published transfer options."
+    );
   });
 
-  it("blocks unavailable canonical transfer horizons while warning on legacy optionality", () => {
-    const legacyResult = verifyRecommendation(recommendation);
-    expect(legacyResult.warnings).toContain(
-      "Transfer options without 0.0.26 planning metadata remain readable but do not expose option value, liquidity, downside, or reachable next-gameweek squads."
+  it("blocks missing planning metadata and unavailable canonical transfer horizons", () => {
+    const missingPlanning = structuredClone(recommendation);
+    delete missingPlanning.topTransferCandidates[0]!.planning;
+    expect(verifyRecommendation(missingPlanning).errors).toContain(
+      "Every transfer option must include 0.0.26 planning metadata for option value, liquidity, downside, and next-gameweek reachability."
     );
 
     const unknown = structuredClone(recommendation);
@@ -264,54 +272,80 @@ describe("verifyRecommendation", () => {
 
   it("ranks 0.0.26 options by horizon value, transfer cost, and option value", () => {
     const planned = structuredClone(recommendation);
-    for (const candidate of planned.topTransferCandidates) {
-      candidate.planning = {
-        modelVersion: "0.0.26",
-        rankingHorizon: "GW1",
-        immediateGain: candidate.expectedGain1GW,
-        multiGameweekGain: candidate.expectedGain3GW,
-        rankingGain: candidate.expectedGain1GW,
-        optionValue: candidate.type === "roll" ? 0 : -0.5,
-        replacementLiquidity: 3,
-        downside: null,
-        decisionValue: candidate.expectedGain1GW + (candidate.type === "roll" ? 0 : -0.5),
-        nextGameweek: { freeTransfers: 1, bank: 1, reachableSquads: 4 },
-        financials: {
-          bankBefore: 1,
-          saleProceeds: 0,
-          purchaseCost: 0,
-          bankAfter: 1,
-          sellingPriceBasis: candidate.type === "roll" ? "not_applicable" : "current_price_fallback"
-        },
-        optionValueAssumption: {
-          modelVersion: "0.0.26",
-          pointsPerAdditionalFreeTransfer: 0.5,
-          statement: "Test assumption."
-        },
-        assumptions: ["Test assumption."]
-      };
-    }
     planned.topTransferCandidates[0]!.planning!.decisionValue = -5;
 
     expect(verifyRecommendation(planned).errors).toContain(
-      "The five transfer options must be ranked by expected gain over the canonical decision horizon."
+      "The five transfer options must be ranked by decision value over the canonical decision horizon."
+    );
+    expect(verifyRecommendation(planned).errors).toContain(
+      "Transfer option transfer-option-1 decision value does not reconcile ranking gain, transfer cost, and option value."
     );
   });
 
-  it("defaults a transfer-versus-roll near-tie to rolling", () => {
+  it("reconciles transfer optionality, financials, and the selected action", () => {
+    const inconsistent = structuredClone(recommendation);
+    inconsistent.topTransferCandidates[0]!.planning!.optionValue = 0;
+    inconsistent.topTransferCandidates[1]!.planning!.financials.bankAfter = 0.9;
+    inconsistent.topTransferCandidates[2]!.planning!.nextGameweek.freeTransfers = 2;
+    inconsistent.recommendedAction.bankAfter = 0.5;
+    inconsistent.decisionEvaluations!.find((item) => item.decisionType === "transfers")!
+      .candidateScores[3]!.objectiveScore = 12;
+
+    const errors = verifyRecommendation(inconsistent).errors;
+    expect(errors).toContain(
+      "Transfer option transfer-option-1 option value does not reconcile next-gameweek free transfers and the shared versioned assumption."
+    );
+    expect(errors).toContain(
+      "Transfer option transfer-option-2 financials do not reconcile the current bank, sale proceeds, purchase cost, and next-gameweek bank."
+    );
+    expect(errors).toContain(
+      "Transfer option transfer-option-3 does not reconcile its move count with transfer cost and next-gameweek free transfers."
+    );
+    expect(errors).toContain(
+      "The recommended action transfer cost and bank must match its published transfer option."
+    );
+    expect(errors).toContain(
+      "Transfer option transfer-option-4 canonical evaluation margin does not match its reconciled decision value relative to roll."
+    );
+  });
+
+  it.each([0.003, 0.273])("defaults a %s transfer-versus-roll margin to rolling inside the declared band", (margin) => {
     const transferDecision = structuredClone(recommendation);
     const evaluation = transferDecision.decisionEvaluations!.find((item) => item.decisionType === "transfers")!;
     const roll = evaluation.candidateScores.find((candidate) => candidate.candidateId === "action:roll:none")!;
     const transfer = evaluation.candidateScores.find((candidate) => candidate.candidateId.startsWith("action:transfer:"))!;
-    Object.assign(transfer, { rawExpectedPoints: 0.1, objectiveScore: 0.1, lowerBound: -0.9, upperBound: 1.1 });
-    transferDecision.topTransferCandidates[0]!.expectedGain1GW = 0.1;
+    Object.assign(transfer, { rawExpectedPoints: margin, objectiveScore: margin, lowerBound: -0.9, upperBound: 1.1 });
+    transferDecision.topTransferCandidates[0]!.expectedGain1GW = margin + 0.5;
+    transferDecision.topTransferCandidates[0]!.planning!.immediateGain = margin + 0.5;
+    transferDecision.topTransferCandidates[0]!.planning!.rankingGain = margin + 0.5;
+    transferDecision.topTransferCandidates[0]!.planning!.decisionValue = margin;
+    evaluation.materialityThreshold = 0.3;
     evaluation.selectedCandidateId = transfer.candidateId;
     evaluation.objectiveLeaderCandidateId = transfer.candidateId;
     evaluation.comparisonStatus = "NEAR_TIE";
     evaluation.nearTieCandidateIds = [transfer.candidateId, roll.candidateId];
 
     expect(verifyRecommendation(transferDecision).errors).toContain(
-      "Decision dec:transfers must roll when a transfer is tied with the roll baseline unless a quantified override is recorded."
+      "Decision dec:transfers must roll unless the selected transfer clears the paired materiality margin or a quantified override is recorded."
+    );
+  });
+
+  it("allows a transfer that clears the paired roll hurdle", () => {
+    const transferDecision = structuredClone(recommendation);
+    const evaluation = transferDecision.decisionEvaluations!.find((item) => item.decisionType === "transfers")!;
+    const transfer = evaluation.candidateScores.find((candidate) => candidate.candidateId.startsWith("action:transfer:"))!;
+    Object.assign(transfer, { rawExpectedPoints: 0.2, objectiveScore: 0.2, lowerBound: -0.8, upperBound: 1.2 });
+    transferDecision.topTransferCandidates[0]!.expectedGain1GW = 0.7;
+    transferDecision.topTransferCandidates[0]!.planning!.immediateGain = 0.7;
+    transferDecision.topTransferCandidates[0]!.planning!.rankingGain = 0.7;
+    transferDecision.topTransferCandidates[0]!.planning!.decisionValue = 0.2;
+    evaluation.selectedCandidateId = transfer.candidateId;
+    evaluation.objectiveLeaderCandidateId = transfer.candidateId;
+    evaluation.comparisonStatus = "CLEAR";
+    evaluation.nearTieCandidateIds = [transfer.candidateId];
+
+    expect(verifyRecommendation(transferDecision).errors).not.toContain(
+      "Decision dec:transfers must roll unless the selected transfer clears the paired materiality margin or a quantified override is recorded."
     );
   });
 
@@ -321,7 +355,10 @@ describe("verifyRecommendation", () => {
     const roll = evaluation.candidateScores.find((candidate) => candidate.candidateId === "action:roll:none")!;
     const transfer = evaluation.candidateScores.find((candidate) => candidate.candidateId.startsWith("action:transfer:"))!;
     Object.assign(transfer, { rawExpectedPoints: 0.1, objectiveScore: 0.1, lowerBound: -0.9, upperBound: 1.1 });
-    rollDecision.topTransferCandidates[0]!.expectedGain1GW = 0.1;
+    rollDecision.topTransferCandidates[0]!.expectedGain1GW = 0.6;
+    rollDecision.topTransferCandidates[0]!.planning!.immediateGain = 0.6;
+    rollDecision.topTransferCandidates[0]!.planning!.rankingGain = 0.6;
+    rollDecision.topTransferCandidates[0]!.planning!.decisionValue = 0.1;
     evaluation.selectedBy = "policy_default";
     evaluation.objectiveLeaderCandidateId = transfer.candidateId;
     evaluation.comparisonStatus = "NEAR_TIE";

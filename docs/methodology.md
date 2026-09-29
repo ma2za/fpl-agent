@@ -31,8 +31,10 @@ Release `0.0.25` represents this policy as a versioned `decision_policy` artifac
 
 - A final decision that differs from the declared objective leader requires an agent-authored quantified tradeoff. Verification rejects an unexplained mismatch but never selects the replacement.
 - Paired simulations inside the declared stability band are `NEAR_TIE`. Small positive point estimates are not evidence of a clear winner.
-- Every transfer comparison includes the legal roll alternative, current and future free-transfer capacity, hits, bank, selling prices, and next-gameweek squad reachability.
-- When a transfer and roll are a near-tie, the operating default is to roll. The agent may override that default with a documented non-model reason.
+- Every transfer comparison includes the legal roll alternative, current and future free-transfer capacity, hits, bank, selling prices, next-gameweek squad reachability, replacement liquidity, downside, and a versioned option-value assumption.
+- A transfer beats roll only when its paired margin clears the declared materiality threshold on the canonical horizon. Otherwise the operating default is to roll, unless the coding agent records a quantified non-model override with evidence.
+- Every published transfer option carries reconciled `0.0.26` planning metadata. Missing immediate or multi-gameweek projections remain unavailable rather than becoming zero and block ranking on that horizon.
+- The selected authored variant is promoted atomically through a hash-bound active-decision manifest. Selection, confirmed manual submission, supersession, and successful archive capture remain distinct states.
 - Unavailable and decision-ineligible players are excluded before candidate generation. Starter, bench, and emergency-only eligibility are distinct.
 - A start probability above `0.90` requires current independent role evidence. Historical minutes cannot erase recent non-starts, reduced minutes, competition, or source conflict.
 - The frozen frontier retains the selected candidate, objective leader, roll baseline, every near-tie, and every materially discussed alternative.

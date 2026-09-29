@@ -79,6 +79,8 @@ later refreshes append final performance and postmortems compare frozen decision
 
 The active correctness policy requires one objective and horizon across the full decision pipeline, honest near-tie classification, a roll baseline for every transfer decision, qualifying current source observations for start probabilities above `0.90`, and hash-reconciled projection, dossier, role-evidence, and selected-player inputs for readiness and verification. See `docs/methodology.md` and the prioritized `0.0.25` to `0.0.37` program in `docs/roadmap.md`.
 
+Transfer-window publication requires five legal, distinct options plus roll, reconciled `0.0.26` planning metadata, a clear paired margin or quantified override before acting, and a hash-bound active-decision manifest through selection, confirmed manual submission, and archive capture.
+
 ## Install
 
 ```bash

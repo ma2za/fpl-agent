@@ -4,20 +4,23 @@ This document records the evidence capabilities currently implemented in `fpl-ag
 
 ## Prioritized Correctness Work
 
-The next ten releases are ordered by dependency and decision impact:
+The correctness program is ordered by dependency and decision impact:
 
-1. `0.0.25` delivers one canonical objective, honest near-tie language, and quantified override validation.
-2. `0.0.26` adds the roll baseline and future transfer option value.
-3. `0.0.27` adds recent-role contradiction guardrails and high-probability evidence requirements.
-4. `0.0.28` removes unavailable and role-ineligible players before optimization.
+1. `0.0.25` delivered one canonical objective, honest near-tie language, and quantified override validation.
+2. `0.0.26` delivered the enforced roll baseline, transfer optionality, and active-decision lifecycle.
+3. `0.0.27` is next: discriminative role probabilities, contradiction handling, and selected-player calibration.
+4. `0.0.28` delivered pre-optimization exclusion of unavailable and role-ineligible players.
 5. `0.0.29` freezes the complete decision-grade candidate frontier.
 6. `0.0.30` normalizes public submitted-state and outcome capture.
-7. `0.0.31` closes every week with attributable, archive-backed regret.
-8. `0.0.32` measures squad resilience, bench coverage, and replacement liquidity.
-9. `0.0.33` governs calibrated champion-challenger model changes.
-10. `0.0.34` gates releases on process reliability without using realized points as a quality score.
+7. `0.0.31` closes every week with attributable, archive-backed regret and typed root-cause actions.
+8. `0.0.32` measures squad resilience, bench coverage, price-point liquidity, and forced-transfer demand.
+9. `0.0.33` governs rolling-origin champion-challenger evaluation.
+10. `0.0.34` separates process release gates from outcome scorecards and adds phase checkpoints.
+11. `0.0.35` freezes the completed season for leakage-safe benchmarking.
+12. `0.0.36` resets current-role certainty through the offseason and preseason transition.
+13. `0.0.37` freezes the opening-squad and full-season operating contract before GW1.
 
-Until those releases ship, the immediate operating rules in the roadmap and methodology are mandatory for agent-authored recommendations.
+Until each remaining release ships, its immediate operating rules in the roadmap and methodology remain mandatory for agent-authored recommendations.
 
 ## Decision Boundary
 

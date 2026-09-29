@@ -12,7 +12,7 @@ import {
   type WeeklyStrategy
 } from "../../src";
 
-export function rankedTransferOptions(sellPlayerId = 12): WeeklyRecommendation["topTransferCandidates"] {
+export function rankedTransferOptions(sellPlayerId = 12, bank = 1): WeeklyRecommendation["topTransferCandidates"] {
   return [...[-1, -2, -3, -4, -5].map((expectedGain1GW, index) => ({
     id: `transfer-option-${index + 1}`,
     type: "transfer" as const,
@@ -25,7 +25,32 @@ export function rankedTransferOptions(sellPlayerId = 12): WeeklyRecommendation["
     reasons: [`Option ${index + 1} test case.`],
     concerns: ["Test uncertainty."],
     isLegal: true,
-    legalityErrors: []
+    legalityErrors: [],
+    planning: {
+      modelVersion: "0.0.26" as const,
+      rankingHorizon: "GW1" as const,
+      immediateGain: expectedGain1GW,
+      multiGameweekGain: expectedGain1GW * 3,
+      rankingGain: expectedGain1GW,
+      optionValue: -0.5,
+      replacementLiquidity: 3,
+      downside: null,
+      decisionValue: expectedGain1GW - 0.5,
+      nextGameweek: { freeTransfers: 1, bank, reachableSquads: 4 },
+      financials: {
+        bankBefore: bank,
+        saleProceeds: 0,
+        purchaseCost: 0,
+        bankAfter: bank,
+        sellingPriceBasis: "current_price_fallback" as const
+      },
+      optionValueAssumption: {
+        modelVersion: "0.0.26" as const,
+        pointsPerAdditionalFreeTransfer: 0.5,
+        statement: "Fixture option-value assumption."
+      },
+      assumptions: ["Fixture option-value assumption."]
+    }
   })), {
     id: "roll-baseline",
     type: "roll" as const,
@@ -38,7 +63,32 @@ export function rankedTransferOptions(sellPlayerId = 12): WeeklyRecommendation["
     reasons: ["Preserve the transfer."],
     concerns: ["No immediate squad improvement."],
     isLegal: true,
-    legalityErrors: []
+    legalityErrors: [],
+    planning: {
+      modelVersion: "0.0.26" as const,
+      rankingHorizon: "GW1" as const,
+      immediateGain: 0,
+      multiGameweekGain: 0,
+      rankingGain: 0,
+      optionValue: 0,
+      replacementLiquidity: 3,
+      downside: null,
+      decisionValue: 0,
+      nextGameweek: { freeTransfers: 2, bank, reachableSquads: 4 },
+      financials: {
+        bankBefore: bank,
+        saleProceeds: 0,
+        purchaseCost: 0,
+        bankAfter: bank,
+        sellingPriceBasis: "not_applicable" as const
+      },
+      optionValueAssumption: {
+        modelVersion: "0.0.26" as const,
+        pointsPerAdditionalFreeTransfer: 0.5,
+        statement: "Fixture option-value assumption."
+      },
+      assumptions: ["Fixture option-value assumption."]
+    }
   }];
 }
 
@@ -217,8 +267,8 @@ export function withDecisionConsistency(recommendation: WeeklyRecommendation) {
       transferCandidateId(recommendation),
       recommendation.decisionContext?.phase === "TRANSFER_WINDOW"
         ? recommendation.topTransferCandidates.map((option) => {
-          const moves = option.moves.map((move) => `${move.sellPlayerId}>${move.buyPlayerId}`).join(",");
-          return candidate(`action:${option.type}:${moves || "none"}`, option.expectedGain1GW);
+          const moves = option.moves.map((move) => `${move.sellPlayerId}>${move.buyPlayerId}`).sort().join(",");
+          return candidate(`action:${option.type}:${moves || "none"}`, option.planning?.decisionValue ?? 0);
         })
         : [candidate(transferCandidateId(recommendation))]
     ),

@@ -43,6 +43,7 @@ function gainForMoves(
   moves: TransferScenarioInput["moves"],
   points: Map<number, number> | null
 ) {
+  if (moves.length === 0) return 0;
   if (!points) return null;
   let gain = 0;
   for (const move of moves) {
@@ -109,7 +110,10 @@ function replacementLiquidity(input: {
   }));
 }
 
-export function evaluateTransferCandidate(input: TransferScenarioInput): TransferCandidate {
+function evaluateTransferCandidateInternal(
+  input: TransferScenarioInput,
+  includeReachability: boolean
+): TransferCandidate {
   const season = input.season ?? SUPPORTED_RULES_SEASON;
   const chip = input.chip ?? "none";
   const rankingHorizon = input.rankingHorizon ?? "GW1";
@@ -162,7 +166,7 @@ export function evaluateTransferCandidate(input: TransferScenarioInput): Transfe
     chip
   }).errors);
 
-  const expectedGain1GW = gainForMoves(input.moves, projectionMap(input.projections)) ?? 0;
+  const expectedGain1GW = gainForMoves(input.moves, projectionMap(input.projections));
   const expectedGain3GW = gainForMoves(input.moves, projectionMap(input.projections3GW));
   const expectedGain5GW = gainForMoves(input.moves, projectionMap(input.projections5GW));
   const downside = gainForMoves(input.moves, projectionMap(input.downsideProjections));
@@ -176,12 +180,14 @@ export function evaluateTransferCandidate(input: TransferScenarioInput): Transfe
   const optionValue = round((nextFreeTransfers - rollFreeTransfers) * optionValuePerAdditionalFreeTransfer);
   const nextGameweekSquad = chip === "free_hit" ? input.squad : finalSquad;
   const nextGameweekBankTenths = chip === "free_hit" ? bankBeforeTenths : bankAfterTenths;
-  const reachableSquads = countReachableSquads({
-    squad: nextGameweekSquad,
-    candidates: input.candidates,
-    bankTenths: Math.max(0, nextGameweekBankTenths),
-    purchasePricesTenths: input.purchasePricesTenths
-  });
+  const reachableSquads = includeReachability
+    ? countReachableSquads({
+        squad: nextGameweekSquad,
+        candidates: input.candidates,
+        bankTenths: Math.max(0, nextGameweekBankTenths),
+        purchasePricesTenths: input.purchasePricesTenths
+      })
+    : 1;
   const type: TransferCandidate["type"] = input.moves.length === 0
     ? "roll"
     : chip === "wildcard" || chip === "free_hit"
@@ -222,14 +228,16 @@ export function evaluateTransferCandidate(input: TransferScenarioInput): Transfe
       multiGameweekGain: rankingHorizon === "GW1-5" ? expectedGain5GW : expectedGain3GW,
       rankingGain,
       optionValue,
-      replacementLiquidity: replacementLiquidity({
-        boughtPlayers: chip === "free_hit" ? [] : boughtPlayers,
-        squad: nextGameweekSquad,
-        candidates: input.candidates,
-        bankTenths: Math.max(0, nextGameweekBankTenths),
-        purchasePricesTenths: input.purchasePricesTenths,
-        reachableSquads
-      }),
+      replacementLiquidity: includeReachability
+        ? replacementLiquidity({
+            boughtPlayers: chip === "free_hit" ? [] : boughtPlayers,
+            squad: nextGameweekSquad,
+            candidates: input.candidates,
+            bankTenths: Math.max(0, nextGameweekBankTenths),
+            purchasePricesTenths: input.purchasePricesTenths,
+            reachableSquads
+          })
+        : 0,
       downside,
       decisionValue,
       nextGameweek: {
@@ -258,6 +266,10 @@ export function evaluateTransferCandidate(input: TransferScenarioInput): Transfe
   };
 }
 
+export function evaluateTransferCandidate(input: TransferScenarioInput): TransferCandidate {
+  return evaluateTransferCandidateInternal(input, true);
+}
+
 export function generateTransferCandidates(input: TransferCandidateGenerationInput): TransferCandidate[] {
   const squadIds = new Set(input.squad.map((player) => player.id));
   const roll = evaluateTransferCandidate({ ...input, moves: [] });
@@ -266,10 +278,10 @@ export function generateTransferCandidates(input: TransferCandidateGenerationInp
   for (const sell of input.squad) {
     for (const buy of input.candidates) {
       if (squadIds.has(buy.id) || buy.position !== sell.position) continue;
-      const candidate = evaluateTransferCandidate({
+      const candidate = evaluateTransferCandidateInternal({
         ...input,
         moves: [{ sellPlayerId: sell.id, buyPlayerId: buy.id }]
-      });
+      }, false);
       if (candidate.isLegal) transfers.push(candidate);
     }
   }
@@ -282,5 +294,9 @@ export function generateTransferCandidates(input: TransferCandidateGenerationInp
     return rightValue - leftValue || left.transferCost - right.transferCost || left.id.localeCompare(right.id);
   });
 
-  return [...transfers.slice(0, input.limit ?? 5), roll];
+  const selected = transfers.slice(0, input.limit ?? 5).map((candidate) => evaluateTransferCandidate({
+    ...input,
+    moves: candidate.moves.map(({ sellPlayerId, buyPlayerId }) => ({ sellPlayerId, buyPlayerId }))
+  }));
+  return [...selected, roll];
 }

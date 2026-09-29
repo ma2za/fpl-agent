@@ -51,6 +51,7 @@ export function captainCandidateId(playerId: number) {
 export function transferCandidateId(recommendation: WeeklyRecommendation) {
   const moves = recommendation.recommendedAction.transfers
     .map((move) => `${move.sellPlayerId}>${move.buyPlayerId}`)
+    .sort()
     .join(",");
   return `action:${recommendation.recommendedAction.type}:${moves || "none"}`;
 }
@@ -274,11 +275,19 @@ function decisionValidation(recommendation: WeeklyRecommendation) {
       errors.push(`Decision ${evaluation.decisionId} near-tie candidates do not match its scores and materiality threshold.`);
     }
 
-    const rollCandidate = nearTieCandidates.find((candidate) => candidate.candidateId.startsWith("action:roll:"));
+    const rollCandidate = eligible.find((candidate) => candidate.candidateId.startsWith("action:roll:"));
+    const selectedIsTransfer = selected.candidateId.startsWith("action:transfer:") || selected.candidateId.startsWith("action:hit:");
+    const clearsRollHurdle = rollCandidate !== undefined &&
+      selected.objectiveScore - rollCandidate.objectiveScore > materialityThreshold + tolerance;
     const appliesRollDefault = policy?.nearTieTransferDefault === "ROLL" && evaluation.decisionType === "transfers" &&
-      evaluation.comparisonStatus === "NEAR_TIE" && rollCandidate?.candidateId === selected.candidateId;
+      evaluation.comparisonStatus === "NEAR_TIE" && rollCandidate?.candidateId === selected.candidateId &&
+      nearTieCandidates.some((candidate) => candidate.candidateId.startsWith("action:transfer:") || candidate.candidateId.startsWith("action:hit:"));
     const overridesRollDefault = policy?.nearTieTransferDefault === "ROLL" && evaluation.decisionType === "transfers" &&
-      evaluation.comparisonStatus === "NEAR_TIE" && rollCandidate !== undefined && selected.candidateId !== rollCandidate.candidateId;
+      selectedIsTransfer && rollCandidate !== undefined && !clearsRollHurdle;
+
+    if (recommendation.decisionContext?.phase === "TRANSFER_WINDOW" && evaluation.decisionType === "transfers" && !rollCandidate) {
+      errors.push(`Decision ${evaluation.decisionId} must include an eligible roll baseline.`);
+    }
 
     if (objectiveScoreDelta > tolerance && evaluation.selectedBy !== "explicit_override" && evaluation.selectedBy !== "policy_default") {
       errors.push(`Decision ${evaluation.decisionId} selected ${selected.candidateId} with score ${selected.objectiveScore}, below the declared-objective maximum ${bestScore}.`);
@@ -300,7 +309,7 @@ function decisionValidation(recommendation: WeeklyRecommendation) {
     }
 
     if (overridesRollDefault && evaluation.selectedBy !== "explicit_override") {
-      errors.push(`Decision ${evaluation.decisionId} must roll when a transfer is tied with the roll baseline unless a quantified override is recorded.`);
+      errors.push(`Decision ${evaluation.decisionId} must roll unless the selected transfer clears the paired materiality margin or a quantified override is recorded.`);
     }
 
     if (evaluation.tieBreakersApplied.length > 0 && nearTieCandidates.length < 2) {
