@@ -1,6 +1,6 @@
 # Roadmap
 
-This document records the capabilities present through `0.0.25` and the prioritized correctness program through `0.0.34`.
+This document records the capabilities present through `0.0.28` and the prioritized correctness program through `0.0.37`.
 
 ## Permanent Decision Boundary
 
@@ -12,7 +12,7 @@ This document records the capabilities present through `0.0.25` and the prioriti
 - Tool-produced evidence and candidate artifacts must remain structurally separate from agent-authored decision artifacts.
 - Verification may reject illegal or unsupported decisions, but it must never replace them or choose an alternative.
 
-## Current State: 0.0.25
+## Current State: 0.0.28
 
 ### Workspace
 
@@ -94,6 +94,7 @@ The exact covered and uncovered rule behavior is listed in `docs/rules-coverage.
 - Canonical decision-policy artifacts bind objective, horizon, risk mode, materiality floor, and transfer posture across optimization, simulation, evaluation, and recommendation.
 - Decision evaluations classify comparisons as `CLEAR`, `NEAR_TIE`, or `UNRESOLVED`, reject clear-winner language for near-ties, and permit only quantified evidence-backed overrides.
 - Transfer decisions default to rolling when the roll baseline remains inside the near-tie set.
+- Pre-optimization eligibility excludes unavailable or decision-ineligible players before candidate generation, preserves typed exclusion evidence, distinguishes starter, bench, and emergency roles, and enforces scoped manager constraints with expiry.
 
 ### Evidence Sources
 
@@ -703,41 +704,78 @@ Release gate:
 
 Status: implementation complete; browser release-gate verification pending.
 
-## Correctness Program: 0.0.25 to 0.0.34
+## Correctness Program: 0.0.25 to 0.0.37
 
-The first three submitted gameweeks produced 200 points against a combined gameweek average of 182. That result does not excuse the process failures exposed by the review:
+The program has two goals: improve every remaining-season decision and enter the next season with a leakage-safe, calibrated, reproducible operating system. It optimizes season-long decision quality under uncertainty, not isolated weekly projections or retrospective points.
 
-- The GW3 recommendation did not follow its declared three-gameweek objective. The selected Thiago structure scored `232.384`; the Mbeumo-to-Gakpo leader scored `233.489` under that same objective.
-- Margins of `0.003` expected points in GW2 and `0.273` in GW3 were presented with more confidence than the evidence supported.
-- The model assigned Wilson a `99.1%` start probability despite recent 65- and 45-minute appearances and visible competition. He then played 17 minutes in GW3.
-- GW2 retained 175 unavailable candidates instead of removing them before optimization.
-- GW1 retained only one candidate, and GW3 did not produce a complete archive-backed regret report.
-- Transfer optionality was assigned zero value even though two transfers improved the direct submitted result by only one point in total.
+### Five-Gameweek Review Baseline
 
-The GW4 deadline workflow exposed additional systemic failures before submission:
+The finalized GW1 to GW5 postmortems and public manager history establish this descriptive baseline:
 
-- Refresh and variant workflows can leave several contradictory truths: root tool evidence, an authored variant, a root decision record, stale readiness reports, and an immutable earlier archive.
-- There is no atomic, hash-bound promotion from an authored variant to the active manager selection. A fresh chat can therefore read the wrong recommendation even when the selected variant passes verification.
-- Generated readiness and decision-status reports can retain probabilities and selected-player membership from an earlier snapshot after projections or dossiers change.
-- A probability ceiling can prevent unsupported confidence while still making a strict manager requirement such as `>0.90` impossible. The workflow must report the unsatisfied constraint instead of treating `0.90` as equivalent.
-- Transfer candidates can be ranked by one horizon while displaying incomplete or zero-filled fields for other horizons, inviting a false explanation of why the selected candidate won.
-- The manual checklist identifies a transfer action without printing the actual sell and buy players.
-- A manager selection, a manual submission, and an immutable archive are different lifecycle states, but the current files do not make their relationship sufficiently hard to misuse.
-- Temporary preferences such as avoiding one club for a specific fixture block can be mistaken for permanent exclusions when scope and expiry are not typed.
+- The submitted team scored 326 points against a combined gameweek average of 299, a difference of +27.
+- After GW5 the public history placed the team 2,196,443rd of 10,833,601 entries, approximately the top 20.3 percent; this is an observed outcome, not a target or process gate.
+- The frozen AI choices would have scored 316 points. Manager overrides added 10 points, of which 8 came from the GW3 Wilson information correction.
+- Four transfers produced zero immediate net points in aggregate.
+- Their observed raw declared-horizon comparison through GW5 was +9, dominated by Buendía's +13. This is descriptive player scoring, not an exact squad counterfactual, because later choices, benching, captaincy, hits, and path dependence were not replayed.
 
-This program optimizes decision integrity, not retrospective points. No release may claim that it would have recovered realized points without a frozen pre-deadline candidate and replayable evidence.
+| Transfer | Immediate delta | Observed raw delta through GW5 |
+| --- | ---: | ---: |
+| Cash to Kayode | 0 | +3 |
+| João Pedro to Thiago | +1 | -5 |
+| Wilson to Buendía | +1 | +13 |
+| Calvert-Lewin to Wissa | -2 | -2 |
+| Total | 0 | +9 |
+
+- The AI projected 345.63 total points and its frozen choices realized 316, with a five-week mean absolute error of 10.05 points.
+- Submitted captains scored 14 more points than the submitted vice-captains would have scored under the same doubling rule.
+- No week is fully decision-grade: GW1 retained only the selected candidate, GW2 retained 175 invalid or unavailable candidates, GW3 has no complete archive, GW4's archive predates the active decision, and GW5 has no complete frozen decision archive.
+
+These outcomes do not establish predictive edge, justify a player ban, or authorize automatic parameter changes. Five gameweeks are a diagnostic sample for finding process failures, not a sufficient evaluation window for model selection.
+
+### Dual Scorecard
+
+The project keeps publication correctness and realized performance separate:
+
+| Scorecard | Measures | Decision use |
+| --- | --- | --- |
+| Process gates | Objective and horizon consistency, roll comparison, evidence freshness, eligibility, frontier completeness, active-decision integrity, submitted-state capture, archive completeness, override attribution, and review closure | Hard gates for final publication, comparability, and releases |
+| Outcome metrics | Cumulative points versus average, rank percentile, forecast error and calibration, decision ordering, immediate and declared-horizon transfer value, captaincy, XI, bench, and roll comparisons | Learning and prioritization only; never proof that a past decision was correct |
+
+Rank percentile is reported when the finalized public history contains the required population denominator. Missing outcome fields remain unavailable rather than being reconstructed from later knowledge.
+
+### Root-Cause Register
+
+Each supported failure has one primary owning release. Dependent releases may consume its artifact, but closure belongs to the release named here.
+
+| Root-cause layer | Five-week evidence | Primary release | Regression fixture | Acceptance gate | Closure condition |
+| --- | --- | --- | --- | --- | --- |
+| Evidence and role-state failure | Wilson was assigned a 99.1% start probability despite recent 65- and 45-minute appearances and visible competition, then played 17 minutes in GW3. | `0.0.27` | Frozen Wilson GW3 role inputs and source set | Contradictory recent use blocks unsupported high confidence and produces a typed contradiction. | Selected-player role estimates are discriminative, source-qualified, snapshot-consistent, and calibrated by declared cohort. |
+| Forecast calibration and false precision | Margins of 0.003 in GW2 and 0.273 in GW3 were overstated; projected AI points exceeded realized frozen-AI points by 29.63 across five weeks. | `0.0.33` | GW2 near tie, GW3 ordering, and the five-week selected-player forecast cohort | Rolling-origin champion-challenger evaluation reports calibration, ordering, interval coverage, and component error without fitting the evaluated outcomes. | A challenger passes declared calibration and ordering gates on sufficient frozen history, or the champion remains unchanged with the failure documented. |
+| Eligibility and candidate-generation failure | GW2 retained 175 invalid or unavailable candidates. | `0.0.28` | Frozen GW2 candidate pool | Zero ineligible candidates enter optimization and every exclusion retains evidence, rule, and timestamp. | Eligibility is enforced before generation for starter, bench, and emergency roles with no post-hoc frontier cleanup. |
+| Objective, horizon, and action-bias failure | The GW3 choice did not follow its declared objective; four transfers returned zero immediate net points; transfer optionality was treated as zero. | `0.0.26` | GW2 and GW3 roll replays plus all four observed transfer decisions | A transfer beats roll only through a `CLEAR` paired margin on the declared horizon or a typed non-model reason. | Roll, banked-transfer capacity, reachability, downside, and exact-horizon value are present for every transfer decision and the no-action hurdle is enforced. |
+| Human preference and override-classification failure | The Wilson correction, a Wissa preference, and a scoped Bournemouth constraint represent materially different interventions but were not consistently typed. | `0.0.31` | GW3 Wilson correction and GW4/GW5 preference and constraint records | Every divergence is classified as information correction, manager preference, scoped constraint, or operational submission change. | Override effects can be attributed without folding human judgment into model performance. |
+| Selection, submission, and archive lifecycle failure | GW4 held contradictory root, variant, decision-record, readiness, and archive states; GW5 lacks a complete frozen decision archive. | `0.0.30` | GW4 selected-but-unconfirmed state and GW5 missing-archive state | Recommended, selected, submission-pending, submitted, superseded, and archived states reconcile by hash and provenance. | Public or manager-confirmed submission is captured without mutating frozen decisions, and missing archives block decision-grade comparison. |
+| Squad resilience and future-transfer-demand failure | Wilson's role fragility and Hughes's weak bench role created autosub and forced-transfer exposure not represented by unused bench points. | `0.0.32` | Combined Wilson and Hughes absence scenarios | Bench evaluation covers every valid formation under one and two absences and prices projected forced-transfer demand. | Formation-safe coverage, price-point liquidity, and future transfer demand meet policy or have a player-specific agent rationale. |
+| Learning-loop and outcome-attribution failure | Missing archives prevent comparable regret; aggregate projection misses cannot yet be assigned to role, fixture, scoring, market, or selection. | `0.0.31` | GW1 to GW5 archive-completeness and attribution replay | Comparable regret is generated only from frozen evidence; forecast error reconciles to typed components; gaps remain non-comparable. | Every finalized week has a closed `RootCauseFinding` or an explicit non-comparable status before the next decision is finalized. |
+| Normal outcome variance requiring no corrective model action | Wissa played 90 minutes and scored zero in GW5, an outcome that does not itself prove a role or selection defect. | `0.0.31` | Full-minute blank and high-quality low-return cases | A model change is rejected when no supported preventable causal layer exists. | The finding is classified as normal variance with no corrective action, while remaining available to cohort-level calibration. |
+
+The learning loop is complete only when a pre-deadline decision and its evidence are frozen, the public submitted state is captured, outcomes are finalized, review findings are attributable, regression fixtures are added, changes pass governance, and the decision is replayed. Manual reconstruction may explain a gap but cannot make that week decision-grade.
 
 ### Immediate Operating Policy
 
 These rules apply to every recommendation before the releases below are implemented:
 
 1. One canonical objective and horizon must be declared and used by candidate generation, simulation, comparison, and the final decision. Any agent override must quantify the tradeoff against that objective.
-2. A numerical leader inside the simulation stability band is a tie, not a superior pick. If a transfer and a roll are tied, default to rolling unless a documented non-model consideration justifies the transfer.
+2. A numerical leader inside the simulation stability band is a tie, not a superior pick. A transfer may beat roll only through a `CLEAR` paired margin on the declared horizon or a typed non-model reason; otherwise the decision defaults to rolling.
 3. A start probability above `0.90` requires current, independent role evidence. Recent non-starts, reduced minutes, or unresolved competition must remain explicit and cannot be erased by historical minutes.
 4. Unavailable and decision-ineligible players are removed before candidate generation. An emergency bench candidate must be labeled separately from a credible starter.
 5. Every transfer decision must include the legal roll alternative and the effect on next-gameweek transfer capacity.
 6. Every final decision must retain all generated legal candidates needed to calculate regret. If that frontier is incomplete, publication is provisional.
-7. Manager overrides are recorded as separate decisions and treated as evidence in the postmortem, not folded into model performance.
+7. Manager overrides are recorded as separate decisions and classified as information correction, manager preference, scoped constraint, or operational submission change. They are treated as evidence in the postmortem, not folded into model performance.
+8. Transfer reviews score the exact horizon declared before the deadline. Raw player-point comparisons may be reported descriptively but must not masquerade as exact squad counterfactuals.
+9. Forecast error is attributed to role/minutes, fixture, scoring, market, and selection components when frozen evidence supports the split. Unsupported residuals remain unresolved or normal variance.
+10. Missing, stale, or invalid archives block comparable regret. Manual reconstruction may document what is missing but cannot become decision-grade evidence.
+11. Bench evaluation measures formation-safe coverage, price-point liquidity, and forced-transfer exposure rather than unused points alone.
 
 ### 0.0.25: Objective Integrity and Near-Tie Policy
 
@@ -759,7 +797,7 @@ Release gate:
 
 Status: delivered.
 
-### 0.0.26: Transfer Optionality and Roll Baseline
+### 0.0.26: Transfer Optionality, Enforced Roll Default, and Active Decision Lifecycle
 
 Stop treating a free transfer as worthless when immediate expected points are nearly equal.
 
@@ -768,7 +806,9 @@ Scope:
 - Generate a legal roll candidate for every transfer-window decision.
 - Model current free transfers, the five-transfer cap, hits, bank, selling prices, and next-gameweek reachable squads.
 - Report immediate gain, multi-gameweek gain, option value, replacement liquidity, and downside separately.
+- Treat banked-transfer capacity and projected future transfer demand as explicit costs of acting now.
 - Compare transfers over the declared horizon rather than only the next deadline.
+- Permit a transfer to beat roll only through a `CLEAR` paired margin on the declared horizon or a typed non-model reason.
 - Keep the option-value model versioned and visible as an assumption, not a fact.
 - Publish five ranked, distinct, legal transfer options for manager choice plus the roll baseline; require the selected action to appear in that set.
 - Add one atomic active-decision manifest that points to the selected authored variant, binds its recommendation and decision-record hashes, and records `selected`, `submitted`, and `archived` separately.
@@ -779,6 +819,7 @@ Scope:
 Release gate:
 
 - Replay GW2 and GW3 with the roll alternative retained and no zero-valued optionality assumption.
+- Replay all four GW1 to GW5 transfers against roll, preserving their declared horizons and labeling raw player-point deltas as descriptive.
 - Verify that a transfer below the near-tie threshold cannot be justified by decimal EV alone.
 - Cover one-transfer, two-transfer, hit, capped-roll, and chip interactions.
 - Reject short, duplicated, illegal, misranked, or selected-action-missing option sets.
@@ -788,7 +829,7 @@ Release gate:
 
 Status: in progress, priority 1 and next release. Five-option publication and selection consistency are implemented; atomic active-decision promotion, transfer reachability, option-value modeling, checklist rendering, and unknown-horizon handling remain open.
 
-### 0.0.27: Role Probability Guardrails
+### 0.0.27: Discriminative Role Probabilities, Contradiction Handling, and Calibration
 
 Make role estimates respond to recent evidence and admit uncertainty.
 
@@ -798,6 +839,7 @@ Scope:
 - Shrink sparse early-season estimates toward explicit cohorts.
 - Block start probabilities above `0.90` without qualifying current-role evidence.
 - Add contradiction findings when recent usage and the probability estimate materially disagree.
+- Require role probabilities to discriminate among supported role states rather than clustering at a policy ceiling.
 - Separate credible starter, likely substitute, emergency bench, and unknown-role states.
 - Require a selected or submitted manager decision record before a new gameweek archive can be frozen; archive verification remains idempotent after freezing.
 - Rebuild readiness and decision-status artifacts from the same projection, dossier, evidence, and selected-squad snapshot used by verification.
@@ -809,6 +851,7 @@ Release gate:
 - Pin Wilson's GW3 inputs as a regression fixture and reject the unsupported `99.1%` estimate.
 - Verify that historical minutes cannot override two recent non-start signals without current evidence.
 - Report probability calibration and evidence coverage separately.
+- Report selected-player calibration separately from full-pool calibration and preserve the selection rule used to form each cohort.
 - Reject an unavailable decision record at the archive boundary and preserve already frozen archives unchanged.
 - Reproduce the GW4 stale `0.991` readiness value beside the refreshed `0.90` projection and fail snapshot reconciliation.
 - Test `>`, `>=`, rounding, display formatting, and missing-source behavior at the 90-percent boundary.
@@ -836,9 +879,9 @@ Release gate:
 - Keep exclusions inspectable without allowing the tool to select the final squad.
 - Reproduce the GW4 Bournemouth instruction as a gameweek-scoped exclusion and prove it expires before GW5 candidate generation.
 
-Status: planned, priority 4.
+Status: delivered.
 
-### 0.0.29: Complete Decision Frontier
+### 0.0.29: Complete Frozen Decision Frontiers
 
 Make every weekly decision auditable before the deadline.
 
@@ -847,6 +890,7 @@ Scope:
 - Define the minimum frontier for hold, transfer, captaincy, starting XI, bench order, and chip decisions.
 - Retain the selected candidate, the objective leader, every near-tie, the roll baseline, and every materially discussed alternative.
 - Add archive completeness and simulation coverage checks before publication.
+- Block final publication when a required decision frontier or archive input is missing, invalid, or stale.
 - Record why a legal candidate was excluded from analysis without inventing a score for it.
 - Make incomplete frontiers visibly provisional.
 - Promote one authored variant to the active decision without deleting alternative variants or rewriting immutable evidence.
@@ -859,9 +903,9 @@ Release gate:
 - Guarantee replayability from frozen inputs and seeds.
 - Reject a workspace where the root pointer, selected variant, checklist, or decision record names a different action.
 
-Status: planned, priority 5.
+Status: planned, priority 3.
 
-### 0.0.30: Submitted-State and Outcome Capture
+### 0.0.30: Public Submitted-State and Outcome Capture
 
 Remove manual ambiguity about what was actually entered and what actually scored.
 
@@ -882,9 +926,9 @@ Release gate:
 - Never infer a submitted action from a recommendation file.
 - Reproduce the GW4 selected-but-unconfirmed Buendía state and prevent `config/squad.ts` or postmortem inputs from advancing until public or manager-confirmed submission evidence exists.
 
-Status: planned, priority 6.
+Status: planned, priority 4.
 
-### 0.0.31: Closed-Loop Weekly Regret
+### 0.0.31: Closed-Loop Regret and Typed Root-Cause Actions
 
 Produce a complete, attributable review before the next decision cycle.
 
@@ -892,31 +936,38 @@ Scope:
 
 - Join frozen forecasts, the complete legal frontier, submitted state, manager overrides, and finalized outcomes.
 - Decompose regret into candidate generation, model ordering, agent override, manager override, captaincy, XI, bench, transfer cost, and luck-sensitive residuals.
+- Classify overrides as information correction, manager preference, scoped constraint, or operational submission change.
+- Score transfers over the exact horizon declared before the deadline; label raw player-point comparisons as descriptive rather than exact squad counterfactuals.
+- Attribute forecast error to role/minutes, fixture, scoring, market, and selection components when supported, with unresolved residuals kept explicit.
 - Distinguish process errors from hindsight-only alternatives.
 - Generate calibration and regret reports automatically after finalization.
-- Require unresolved archive gaps to remain explicit.
+- Require unresolved archive gaps to remain explicit and block comparable regret instead of replacing frozen evidence with manual reconstruction.
+- Emit a versioned `RootCauseFinding` for each supported process failure or normal-variance conclusion, including its action, owning release, regression fixture, and closure state.
 - Preserve superseded pre-deadline recommendations as decision history while scoring only the actual submitted state.
 - Require the prior-week review and root-cause actions to be acknowledged before the next gameweek can be marked final.
 
 Release gate:
 
 - Produce comparable formal reports for GW1, GW2, and GW3, with non-comparable gaps labeled rather than estimated.
+- Reproduce the GW1 to GW5 review and its typed override, declared-horizon transfer, forecast-attribution, and archive-comparability findings.
 - Reconcile every component to submitted points and the best frozen legal candidate.
 - Complete the prior-gameweek review before the next recommendation can be final.
 - Reconcile the immutable earlier GW4 archive, later selected variant, and eventual submitted state without mutating any of them.
 
-Status: planned, priority 7.
+Status: planned, priority 5.
 
-### 0.0.32: Squad Resilience and Bench Liquidity
+### 0.0.32: Squad Resilience, Price-Point Liquidity, and Forced-Transfer Demand
 
 Reduce dependence on fragile starters and unusable bench slots.
 
 Scope:
 
 - Measure credible starters, formation-safe substitutions, role-secure bench coverage, replacement liquidity, and forced-transfer exposure.
+- Measure price-point liquidity and projected forced-transfer demand across the declared horizon.
 - Add squad-level limits for unknown-role and emergency-only players.
 - Price the effect of a weak bench under realistic starter-absence scenarios.
 - Expose cheap-player savings separately from resilience cost.
+- Evaluate bench value through formation-safe coverage and absence scenarios, not unused realized points alone.
 - Require an agent rationale for squads below the declared resilience floor.
 - Make low-role bench players such as Hughes an explicit forced-transfer and autosub-failure risk rather than hiding them behind total bench cost.
 
@@ -927,9 +978,9 @@ Release gate:
 - Keep resilience as a metric vector and policy constraint, not a hidden overall score.
 - Reject generic risk waivers that mechanically cover every starter without player-specific evidence or a concrete change condition.
 
-Status: planned, priority 8.
+Status: planned, priority 6.
 
-### 0.0.33: Calibration and Champion-Challenger Governance
+### 0.0.33: Rolling-Origin Champion-Challenger Evaluation
 
 Turn repeated role and projection errors into controlled model improvement.
 
@@ -938,6 +989,8 @@ Scope:
 - Add Brier score, calibration error, log loss, and interval coverage for appearance forecasts.
 - Segment projection error by position, role state, evidence coverage, model version, and early-season sample size.
 - Compare champion and challenger models on identical frozen archives.
+- Use rolling-origin, time-ordered evaluation only; random splits and future-informed features are prohibited.
+- Report full-pool and selected-player calibration separately, with the historical selection policy frozen for replay.
 - Require minimum evidence, declared expected benefit, rollback criteria, and coding-agent approval before adoption.
 - Track whether changes improve ordering and calibration, not only mean absolute point error.
 - Version and calibrate probability ceilings, strict threshold pass rates, and source-qualified uplift separately from raw start-probability accuracy.
@@ -945,21 +998,24 @@ Scope:
 Release gate:
 
 - Demonstrate that the Wilson regression fixture contributes to the relevant role cohort without directly fitting its realized outcome.
+- Prove each evaluation fold uses only evidence available before its prediction cutoff.
 - Reject a challenger that improves aggregate error while worsening decision ordering or high-confidence calibration.
 - Preserve reversible adoption and rollback history.
 - Reject a challenger that merely increases the share of players displayed above a manager threshold without improving calibration or evidence qualification.
 
-Status: planned, priority 9.
+Status: planned, priority 7.
 
-### 0.0.34: Decision Reliability Scorecard and Release Gate
+### 0.0.34: Dual Process/Outcome Scorecard and Phase Checkpoints
 
 Make process quality visible and prevent regression into elaborate but unauditable analysis.
 
 Scope:
 
-- Publish weekly measures for objective consistency, near-tie language, role calibration, invalid-candidate count, frontier completeness, archive completeness, override attribution, and postmortem timeliness.
-- Separate process measures from realized points and rank.
+- Publish weekly process measures for objective consistency, near-tie language, role calibration, invalid-candidate count, frontier completeness, archive completeness, override attribution, and postmortem timeliness.
+- Publish a separate outcome panel for cumulative points versus average, rank percentile, forecast error, decision ordering, transfer value, captaincy, XI, bench, and roll comparisons.
+- Keep outcome metrics outside publication, correctness, and release gates.
 - Add trend views across gameweeks and model versions.
+- Add phase checkpoints after the opening block and each declared season window without automatically mutating the live model.
 - Convert critical correctness measures into final-publication and release gates.
 - Complete the outstanding browser verification for the multi-gameweek workspace against these measures.
 - Add cross-file consistency, active-decision hash integrity, stale-derived-artifact detection, scoped-constraint expiry, and fresh-chat handover completeness to the scorecard.
@@ -967,11 +1023,75 @@ Scope:
 Release gate:
 
 - Require zero objective mismatches, zero retained ineligible candidates, and complete override attribution.
+- Demonstrate that changing realized points or rank cannot change a publication verdict when process artifacts are unchanged.
 - Display incomplete or non-comparable weeks without manufacturing a score.
 - Verify current, historical, provisional, and finalized views with Playwright and no authenticated FPL access.
 - Start a clean-room handover test that reads only repository instructions and active manifests, then proves it identifies the same selected action, submission state, deadline, source snapshot, and next release.
 
+Status: planned, priority 8.
+
+### 0.0.35: Season Freeze and Leakage-Safe Benchmarking
+
+Turn the completed season into an immutable, time-ordered benchmark rather than a hindsight-shaped training set.
+
+Scope:
+
+- Freeze the completed season's evidence snapshots, decisions, submitted states, outcomes, model and policy versions, and known completeness gaps.
+- Use rolling-origin replay only; prohibit random splits, future-informed features, and repaired historical inputs that were unavailable at the original cutoff.
+- Compare the champion with a transparent projection baseline and a no-action transfer policy on identical frozen inputs.
+- Produce a season report covering calibration, decision ordering, attributable regret, immediate and declared-horizon transfer value, and process completeness.
+- Preserve non-comparable gameweeks as explicit gaps rather than excluding them silently or reconstructing them with later knowledge.
+
+Release gate:
+
+- Hash every season-freeze input and reproduce each evaluation fold from only the evidence available before its deadline.
+- Prove the champion, transparent baseline, and no-action policy receive the same eligible information and evaluation windows.
+- Report every gameweek as comparable or non-comparable with a typed reason.
+- Keep season outcomes outside publication correctness and model-adoption gates.
+
+Status: planned, priority 9.
+
+### 0.0.36: Offseason and Preseason State Transition
+
+Carry useful history into a new season without carrying stale current-role certainty.
+
+Scope:
+
+- Add season identity and explicit player continuity across changed FPL IDs, clubs, positions, prices, managers, promoted teams, and new signings.
+- Retain historical performance with declared decay while resetting current-role evidence and certainty at the season boundary.
+- Prevent prior-season role evidence, lineup status, and manager statements from masquerading as current-season evidence.
+- Version scoring, squad, chip, transfer, price, and other rule changes before preseason analysis starts.
+- Record unresolved player mappings and rule changes as blocking gaps instead of guessing continuity.
+
+Release gate:
+
+- Replay fixtures for retained, transferred, repositioned, promoted, newly signed, and manager-affected players.
+- Prove prior-season performance remains queryable while current-role confidence resets and requires new evidence.
+- Reject preseason analysis when the active rule contract is missing or still references superseded season rules.
+- Preserve schema compatibility and provenance across the transition without rewriting the season freeze.
+
 Status: planned, priority 10.
+
+### 0.0.37: Opening Squad and Full-Season Operating Contract
+
+Freeze the next season's decision system before GW1 and operate it through declared review windows.
+
+Scope:
+
+- Generate independently optimized opening structures over the first six gameweeks rather than weakening one preferred draft into alternatives.
+- Compare captaincy routes, price-tier reachability, formation-safe bench resilience, bank, projected transfer demand, and role uncertainty.
+- Freeze the champion model, decision policy, thresholds, eligibility rules, and baselines before the GW1 deadline.
+- Define review checkpoints after the six-gameweek opening block and each existing season window.
+- Require governed proposals, leakage-safe replay, and explicit adoption for changes; reviews never mutate the live model automatically.
+
+Release gate:
+
+- Retain independently optimized legal structures for each material opening strategy and evaluate all over the same GW1 to GW6 horizon.
+- Expose structures that depend on early forced transfers, fragile bench coverage, unreachable price tiers, or unsupported role certainty.
+- Reproduce the preseason freeze from hashes and reject unversioned model, policy, threshold, baseline, or rule changes after lock.
+- Complete each scheduled review with separate process and outcome scorecards while preserving agent ownership of the final squad and every later decision.
+
+Status: planned, priority 11.
 
 ## Delivery Dependencies and Migration
 
@@ -1002,6 +1122,9 @@ Status: planned, priority 10.
 | `0.0.32` | role states and substitution utility | Keep existing utility vectors; add policy constraints without hidden scoring | Resilience and liquidity evidence |
 | `0.0.33` | frozen forecasts, outcomes, and regret | Challenger models never mutate historical forecasts | Governed calibration improvements |
 | `0.0.34` | all correctness releases and multi-gameweek workspace | Keep points and rank outside process-quality gates | Decision reliability scorecard |
+| `0.0.35` | closed-loop regret, calibration governance, and the dual scorecard | Freeze completed-season artifacts additively; preserve gaps; evaluate only by rolling origin | Leakage-safe season benchmark and season report |
+| `0.0.36` | season freeze, historical player evidence, and versioned rules | Add season identity and continuity mappings; reset current-role certainty without deleting history | Preseason state-transition manifest |
+| `0.0.37` | transitioned preseason state, counterfactual generation, resilience, and transfer reachability | Freeze the champion and operating contract before GW1; require governed changes after lock | Opening-squad benchmark and full-season operating contract |
 
 Implementation order is strict where the downstream calculation would otherwise manufacture precision. In particular:
 
@@ -1011,6 +1134,9 @@ Implementation order is strict where the downstream calculation would otherwise 
 - Calibration does not alter model parameters automatically.
 - Decision scorecards do not reward or punish realized points.
 - Historical gaps are labeled, not repaired with hindsight.
+- Season benchmarking follows closed-loop attribution, calibration governance, and dual-scorecard separation.
+- Offseason transition follows the immutable season freeze and never rewrites it.
+- The opening-squad contract follows the preseason transition and freezes all decision-critical versions before GW1.
 
 Review-derived regression fixtures remain pinned through the migration:
 
@@ -1054,6 +1180,26 @@ The release sequence uses or extends versioned contracts for:
 - `SelectionEvidenceReference`
 - `AgentDecisionArtifact`
 - `CalibrationReport`
+- `RootCauseFinding`
+- `DecisionScorecard`
+- `SeasonFreezeManifest`
+- `SeasonTransitionManifest`
+- `FullSeasonOperatingContract`
+
+`RootCauseFinding` is versioned and must record:
+
+- schema version, gameweek, and decision type;
+- frozen evidence, forecast, policy, frontier, decision, submission, and outcome references used by the finding;
+- the observed failure and one supported causal layer;
+- preventability as `PREVENTABLE`, `PARTIALLY_PREVENTABLE`, `NOT_PREVENTABLE`, or `UNRESOLVED`;
+- immediate impact and impact over the horizon declared before the deadline, with unavailable values left unavailable;
+- corrective action or an explicit no-change conclusion, plus one target release;
+- the regression fixture that reproduces the finding;
+- measurable closure criteria and status as `OPEN`, `IMPLEMENTED`, `VERIFIED`, or `CLOSED_NO_CHANGE`.
+
+Its causal layer is one of evidence and role state, forecast calibration, eligibility and candidate generation, objective and action policy, human override, decision lifecycle, squad resilience, learning and attribution, or normal outcome variance. A result may cite related findings, but each finding has one primary causal layer and one owning release.
+
+`RootCauseFinding` is introduced by `0.0.31`. `DecisionScorecard` in `0.0.34` stores process-gate verdicts separately from outcome measures. `SeasonFreezeManifest` in `0.0.35` binds completed-season evidence, decisions, versions, gaps, and rolling-origin folds. `SeasonTransitionManifest` in `0.0.36` binds season identity, player continuity, rules, and current-role resets. `FullSeasonOperatingContract` in `0.0.37` binds the pre-GW1 champion, policy, thresholds, baselines, opening horizon, and review checkpoints.
 
 `AgentDecisionArtifact` must record:
 
@@ -1202,6 +1348,19 @@ The agent decides which evidence and tradeoffs determine the final recommendatio
 | Change conditions are not executable | `0.0.16` | Typed triggers fire from measurable thresholds and request agent re-analysis without choosing an action. |
 | Player evidence is lost between gameweeks | `0.0.16` | Idempotent refreshes append all-player observations and revisions to a provenance-preserving SQLite store. |
 | Selections do not prove evidence-tool use | `0.0.17` | Every selected player references the exact current dossier and stored observations used by the coding agent. |
+| Objective drift and decimal differences create false certainty | `0.0.25` | One policy governs generation through publication and paired simulations label near ties without clear-winner language. |
+| Acting is treated as free while rolling has no value | `0.0.26` | Every transfer beats an explicit roll through a clear paired margin or a typed non-model reason over the declared horizon. |
+| Role probabilities ignore contradictions or cluster at a ceiling | `0.0.27` | Wilson's frozen fixture triggers contradiction handling and selected-player calibration without unsupported high confidence. |
+| Invalid players enter the optimized pool | `0.0.28` | The GW2 replay admits zero ineligible candidates and preserves every exclusion reason. |
+| Incomplete frontiers masquerade as measurable regret | `0.0.29` | Missing selected, leading, near-tie, roll, or discussed candidates blocks final publication and comparable regret. |
+| Recommendation, selection, submission, and archive are conflated | `0.0.30` | Public or confirmed submitted state reconciles distinct lifecycle states by hash without mutating frozen decisions. |
+| Overrides, transfer horizons, and forecast errors are not attributable | `0.0.31` | Typed `RootCauseFinding` records reconcile exact declared horizons and supported role, fixture, scoring, market, and selection effects. |
+| Bench quality is judged by unused points or price alone | `0.0.32` | Absence scenarios expose formation-safe coverage, price-point liquidity, and projected forced-transfer demand. |
+| Model changes overfit recent outcomes or leak future evidence | `0.0.33` | Champion-challenger evaluation is rolling-origin, selected-cohort aware, reversible, and frozen before each cutoff. |
+| Realized points can hide a failed decision process | `0.0.34` | Process gates and outcome measures are separate panels, and outcome changes cannot alter publication verdicts. |
+| Completed-season evaluation is shaped by hindsight | `0.0.35` | The immutable season freeze reports every rolling-origin fold, baseline, gap, and information cutoff. |
+| Prior-season role certainty leaks into preseason | `0.0.36` | Season transition retains decayed history while resetting current-role evidence across every continuity case. |
+| Opening drafts ignore captain routes, liquidity, and future transfers | `0.0.37` | Independently optimized GW1 to GW6 structures are evaluated under a frozen pre-GW1 operating contract. |
 
 ## Cross-Release Acceptance Requirements
 
@@ -1218,6 +1377,18 @@ The agent decides which evidence and tradeoffs determine the final recommendatio
 - Add unit, integration, schema, compatibility, and deterministic snapshot coverage for every release.
 - Preserve existing benchmarked paths within 20 percent of their committed baselines or document and approve a new baseline.
 - Add dedicated full-pool performance baselines for probability simulation, substitution utility, counterfactual generation, scenario analysis, and transfer graphs.
+- Keep process-gate verdicts and outcome metrics in separate versioned scorecards; points, rank, and realized regret never make a recommendation publishable or retrospectively correct.
+- Report cumulative points versus average, rank percentile when available, forecast error, decision ordering, transfer value, captaincy, XI, bench, and roll comparisons without imposing a numeric rank target.
+- Require every supported root cause to map to one owning release, regression fixture, measurable acceptance gate, and closure condition through a `RootCauseFinding`.
+- Score transfer reviews over the exact pre-deadline declared horizon and label raw player-point deltas as descriptive when an exact squad counterfactual is unavailable.
+- Treat missing, invalid, or stale archives as non-comparable; manual reconstructions cannot satisfy decision-grade or regret gates.
+- Require rolling-origin evaluation with frozen cutoffs for champion-challenger and season benchmarks; prohibit random or future-informed evaluation.
+- Reset current-role certainty at season transition while preserving decayed historical performance and provenance.
+- Freeze the next-season champion, policy, thresholds, baselines, and rules before GW1; no checkpoint or outcome mutates them automatically.
+- Treat five-gameweek results as diagnostic evidence only, not sufficient evidence for automatic parameter changes, player bans, or predictive-edge claims.
+- `0.0.35` passes only when the completed season is hash-frozen and every champion, baseline, and no-action comparison is reproducible by rolling origin.
+- `0.0.36` passes only when every supported continuity case preserves history while resetting current-role certainty under a versioned next-season rule contract.
+- `0.0.37` passes only when GW1 to GW6 opening structures and the full-season operating contract are frozen before GW1 and later reviews require explicit governed adoption.
 - Update this roadmap's current-state section only after a release passes all of its acceptance gates.
 
 ## Deferred Limitations

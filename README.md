@@ -10,6 +10,18 @@ The repo is designed so a coding agent can read the squad config, FPL rules, pub
 
 `fpl-agent` is intended to become a durable, local player-intelligence workspace rather than a collection of gameweek-only snapshots. Repeated refreshes will accumulate official performance, public news, role evidence, source coverage, and historical revisions for every active FPL player in an ignored local SQLite store.
 
+The project pursues two linked goals:
+
+- improve remaining-season decisions every gameweek under uncertainty
+- enter the next season with a leakage-safe, calibrated, and reproducible decision system
+
+Success means season-long improvement in decision quality, not maximizing isolated weekly projections or explaining outcomes after the fact. The system uses a dual scorecard:
+
+- process gates decide whether a recommendation is publishable and whether an analysis is decision-grade
+- outcome metrics measure learning and performance, but never retrospectively make a decision correct
+
+The complete learning loop is: freeze the pre-deadline decision and its evidence, capture the public submitted state, finalize the outcome, write an attributable review, add a regression fixture, govern any model or policy change, and replay the affected decision. Five gameweeks are not enough to justify automatic parameter changes, player bans, or claims of predictive edge.
+
 The evidence history will preserve canonical source URLs, publishers, publication and retrieval times, content hashes, adapter versions, credibility, relevance, disagreement, and missing coverage. Official FPL performance will cover the full active player pool; public-web research will record explicit coverage for every player, including completed searches that find no relevant report.
 
 Before selecting a final squad, the coding agent must use repository tools to inspect a current dossier for every selected player and cite the exact stored evidence used. Deterministic tools may collect, normalize, compare, and reject unsupported decisions, but they must never select the final squad. The project remains public-source, read-only with respect to FPL, free of authenticated FPL access, and dependent on the human manager to apply every accepted action manually.
@@ -65,7 +77,7 @@ human manually applies accepted changes in FPL
 later refreshes append final performance and postmortems compare frozen decisions to outcomes
 ```
 
-The active correctness policy requires one objective and horizon across the full decision pipeline, honest near-tie classification, a roll baseline for every transfer decision, qualifying current source observations for start probabilities above `0.90`, and hash-reconciled projection, dossier, role-evidence, and selected-player inputs for readiness and verification. See `docs/methodology.md` and the prioritized `0.0.25` to `0.0.34` program in `docs/roadmap.md`.
+The active correctness policy requires one objective and horizon across the full decision pipeline, honest near-tie classification, a roll baseline for every transfer decision, qualifying current source observations for start probabilities above `0.90`, and hash-reconciled projection, dossier, role-evidence, and selected-player inputs for readiness and verification. See `docs/methodology.md` and the prioritized `0.0.25` to `0.0.37` program in `docs/roadmap.md`.
 
 ## Install
 
@@ -312,6 +324,7 @@ pnpm dev
 - Public manager endpoints exist in the API client but are not wired into recommendation flow yet.
 - Venue-specific FPL attack/defence strengths can be unavailable or zero; horizon evidence then labels lower-confidence overall-strength or raw-FDR fallbacks instead of treating zero as real strength.
 - Pre-optimization eligibility is enforced and persisted before counterfactual generation. Complete frontier enforcement, normalized submitted-state capture, and automatic closed-loop regret remain planned in `0.0.29` to `0.0.31`; until delivered, their documented operating policies remain manual gates.
+- Leakage-safe season benchmarking, offseason state transition, and the next-season opening contract remain planned in `0.0.35` to `0.0.37`; prior-season role evidence must not be treated as current-role certainty before those controls are delivered.
 
 ## Project Status
 
